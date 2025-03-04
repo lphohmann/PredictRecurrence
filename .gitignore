@@ -1,0 +1,29 @@
+# Ignore environment directories
+/venv/
+/env/
+
+# Ignore data files (large datasets)
+data/
+
+# Ignore model output files (models should be stored externally or in Git LFS if large)
+models/
+
+# Ignore output files (logs, results, etc.)
+output/
+*.log
+
+# Ignore Python bytecode files
+*.pyc
+__pycache__/
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore IDE-specific files (e.g., VSCode, PyCharm, etc.)
+.vscode/
+.idea/
+
+# Ignore macOS and Windows-specific files
+.DS_Store
+Thumbs.db
+
