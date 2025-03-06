@@ -1,3 +1,6 @@
+# Ignore R history file
+.Rhistory
+
 # Ignore environment directories
 /venv/
 /env/
