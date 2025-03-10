@@ -2,7 +2,7 @@
 # Author: Lennart Hohmann
 # Date: 02.03.2025
 #-------------------
-# empty environment 
+# empty environment
 rm(list=ls())
 # set working directory to the project directory
 setwd("~/PhD_Workspace/PredictRecurrence/")
@@ -52,6 +52,8 @@ anno <- anno[c("Sample","GEX.assay","ER","PR","HER2","LN.spec",
      "DRFIbin","DRFI","NCN.PAM50")]
 
 # split treatment
+anno$TreatGroup[anno$TreatGroup == ""] <- NA
+anno$TreatGroup[is.na(anno$TreatGroup)] <- "Missing"
 anno$Chemo <- ifelse(grepl("Chemo", anno$TreatGroup), 1, 0)
 anno$Endo <- ifelse(grepl("Endo", anno$TreatGroup), 1, 0)
 anno$Immu <- ifelse(grepl("Immu", anno$TreatGroup), 1, 0)
@@ -135,9 +137,9 @@ plot.1 <- ggVennDiagram(venn_list, label_alpha = 0) +
   theme_void() +  
   theme(legend.position = "none") +
   labs(
-    title = paste0("Whole SCAN-B Follow-up-cohort n=",length(unlist(venn_list))),
+    title = paste0("SCAN-B; All; n=",length(anno$Sample),
     subtitle = "With variants from RNAseq"
-  )
+  ))
 
 # Prepare list of sample groups
 venn_list <- list(
@@ -153,9 +155,9 @@ plot.2 <- ggVennDiagram(venn_list, label_alpha = 0) +
   theme_void() +  
   theme(legend.position = "none") +
   labs(
-    title = paste0("Whole SCAN-B Follow-up-cohort n=",length(unlist(venn_list))),
+    title = paste0("SCAN-B; All; n=",length(anno$Sample),
     subtitle = "With variants from WGS"
-  )
+  ))
 
 
 #######################################################################
@@ -181,8 +183,8 @@ plot.3 <- ggVennDiagram(venn_list, label_alpha = 0) +
   theme_void() +  
   theme(legend.position = "none") +
   labs(
-    title = paste0("ERpHER2n SCAN-B Follow-up-cohort n=",
-                   length(unlist(venn_list))),
+    title = paste0("SCAN-B; ER+HER2-; n=",
+                   length(anno$Sample[anno$Group==clin.group])),
     subtitle = "With variants from RNAseq"
   )
 
@@ -203,8 +205,8 @@ plot.4 <- ggVennDiagram(venn_list, label_alpha = 0) +
   theme_void() +  
   theme(legend.position = "none") +
   labs(
-    title = paste0("ERpHER2n SCAN-B Follow-up-cohort n=",
-                   length(unlist(venn_list))),
+    title = paste0("SCAN-B; ER+HER2-; n=",
+                   length(anno$Sample[anno$Group==clin.group])),
     subtitle = "With variants from WGS"
   )
 
@@ -221,7 +223,7 @@ group_counts$Percentage <- round((group_counts$Freq / sum(group_counts$Freq)) * 
 plot.5 <- ggplot(data = group_counts, aes(x = "", y = Freq, fill = Var1)) +
   geom_bar(stat = "identity", width = 1, show.legend = TRUE) + 
   coord_polar(theta = "y") +  # This makes the chart circular
-  labs(title = "Distribution of ClinSubgroups in FU cohort") +
+  labs(title = "ER & HER2 status") +
   theme_void() +  # Remove the background grid
   theme(legend.position = "none",
     axis.text.x = element_blank(),  # Remove x-axis text
@@ -243,18 +245,20 @@ plot.5 <- ggplot(data = group_counts, aes(x = "", y = Freq, fill = Var1)) +
 
 venn_list <- list(
   "Endocrine" = anno$Sample[anno$Endo == 1 & anno$Group==clin.group],
-  "Chemo" = anno$Sample[anno$Chemo == 1 & anno$Group==clin.group]
-  )
+  "Chemo" = anno$Sample[anno$Chemo == 1 & anno$Group==clin.group],
+  "Immu" = anno$Sample[anno$Immu == 1 & anno$Group==clin.group])
 
 # Create the Venn diagram
 plot.6 <- ggVennDiagram(venn_list, label_alpha = 0) + 
-  scale_fill_gradientn(colors = c("#7fbf7b", "#c2a5cf")) + 
+  scale_fill_gradientn(colors = c("#7fbf7b", "#c2a5cf","#fdc086")) + 
   theme_void() +  
   theme(legend.position = "none") +
   labs(
-    title = paste0("ERpHER2n SCAN-B Follow-up-cohort n=",
-                   length(unlist(venn_list))),
-    subtitle = "Treatment groups"
+    title = paste0("SCAN-B; ERpHER2n; n=",
+                   length(anno$Sample[anno$Group==clin.group])),
+    subtitle = paste0("Treatment groups; None n=", 
+    length(anno$Sample[anno$TreatGroup == "None" & anno$Group==clin.group]),
+    "; Missing n=",length(anno$Sample[anno$TreatGroup == "Missing" & anno$Group==clin.group]))
   )
 
 #######################################################################
