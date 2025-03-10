@@ -19,11 +19,8 @@ output.path <- "./output/"
 # input paths
 infile.1 <- "./data/raw/Summarized_SCAN_B_rel4_NPJbreastCancer_with_ExternalReview_Bosch_data.RData"
 infile.2 <- "./data/raw/genematrix_noNeg.Rdata" 
-infile.3 <- "./data/raw/GSE278586_ProcessedData_LUepic_n499.txt"
-infile.4 <- "./data/raw/SCANBrel4_n6614_ExpressedSomaticVariants.csv"
-# rna seq mutations
-# infile.3 <- ""  #499 cases with DNA methylation dat (EPIC)
-# infile.4 <- ""  #499 cases with WGS dat
+infile.3 <- "./data/raw/GSE278586_ProcessedData_LUepic_n499.txt" # 499 cases with DNA methylation dat (EPIC)
+infile.4 <- "./data/raw/SCANBrel4_n6614_ExpressedSomaticVariants.csv" # rna seq mutations
 # CNA?
 
 # output paths
@@ -137,27 +134,27 @@ plot.1 <- ggVennDiagram(venn_list, label_alpha = 0) +
   theme_void() +  
   theme(legend.position = "none") +
   labs(
-    title = paste0("SCAN-B; All; n=",length(anno$Sample),
+    title = paste0("SCAN-B; All; n=",length(anno$Sample)),
     subtitle = "With variants from RNAseq"
-  ))
+  )
 
 # Prepare list of sample groups
-venn_list <- list(
-  "DNAmethyl" = modalities.df$Sample[modalities.df$DNAmethyl == 1],
-  "WGS.mut" = modalities.df$Sample[modalities.df$WGS.mut == 1],
-  "RNAseq.gex" = modalities.df$Sample[modalities.df$RNAseq.gex == 1]
-)
+# venn_list <- list(
+#   "DNAmethyl" = modalities.df$Sample[modalities.df$DNAmethyl == 1],
+#   "WGS.mut" = modalities.df$Sample[modalities.df$WGS.mut == 1],
+#   "RNAseq.gex" = modalities.df$Sample[modalities.df$RNAseq.gex == 1]
+# )
 
-# Create the Venn diagram
-plot.2 <- ggVennDiagram(venn_list, label_alpha = 0) + 
-  scale_fill_gradientn(colors = c("#F8BBD0", "#EC407A", "#C2185B"), 
-                       values = c(0, 0.2, 1)) + 
-  theme_void() +  
-  theme(legend.position = "none") +
-  labs(
-    title = paste0("SCAN-B; All; n=",length(anno$Sample),
-    subtitle = "With variants from WGS"
-  ))
+# # Create the Venn diagram
+# plot.2 <- ggVennDiagram(venn_list, label_alpha = 0) + 
+#   scale_fill_gradientn(colors = c("#F8BBD0", "#EC407A", "#C2185B"), 
+#                        values = c(0, 0.2, 1)) + 
+#   theme_void() +  
+#   theme(legend.position = "none") +
+#   labs(
+#     title = paste0("SCAN-B; All; n=",length(anno$Sample),
+#     subtitle = "With variants from WGS"
+#   ))
 
 
 #######################################################################
@@ -188,27 +185,27 @@ plot.3 <- ggVennDiagram(venn_list, label_alpha = 0) +
     subtitle = "With variants from RNAseq"
   )
 
-# Prepare list of sample groups
-venn_list <- list(
-  "DNAmethyl" = modalities.df$Sample[modalities.df$DNAmethyl == 1 & 
-                                       modalities.df$Sample %in% anno$Sample[anno$Group==clin.group]],
-  "WGS.mut" = modalities.df$Sample[modalities.df$WGS.mut == 1 & 
-                                     modalities.df$Sample %in% anno$Sample[anno$Group==clin.group]],
-  "RNAseq.gex" = modalities.df$Sample[modalities.df$RNAseq.gex == 1 & 
-                                        modalities.df$Sample %in% anno$Sample[anno$Group==clin.group]]
-)
+# # Prepare list of sample groups
+# venn_list <- list(
+#   "DNAmethyl" = modalities.df$Sample[modalities.df$DNAmethyl == 1 & 
+#                                        modalities.df$Sample %in% anno$Sample[anno$Group==clin.group]],
+#   "WGS.mut" = modalities.df$Sample[modalities.df$WGS.mut == 1 & 
+#                                      modalities.df$Sample %in% anno$Sample[anno$Group==clin.group]],
+#   "RNAseq.gex" = modalities.df$Sample[modalities.df$RNAseq.gex == 1 & 
+#                                         modalities.df$Sample %in% anno$Sample[anno$Group==clin.group]]
+# )
 
-# Create the Venn diagram
-plot.4 <- ggVennDiagram(venn_list, label_alpha = 0) + 
-  scale_fill_gradientn(colors = c("#F8BBD0", "#EC407A", "#C2185B"), 
-                       values = c(0, 0.2, 1)) + 
-  theme_void() +  
-  theme(legend.position = "none") +
-  labs(
-    title = paste0("SCAN-B; ER+HER2-; n=",
-                   length(anno$Sample[anno$Group==clin.group])),
-    subtitle = "With variants from WGS"
-  )
+# # Create the Venn diagram
+# plot.4 <- ggVennDiagram(venn_list, label_alpha = 0) + 
+#   scale_fill_gradientn(colors = c("#F8BBD0", "#EC407A", "#C2185B"), 
+#                        values = c(0, 0.2, 1)) + 
+#   theme_void() +  
+#   theme(legend.position = "none") +
+#   labs(
+#     title = paste0("SCAN-B; ER+HER2-; n=",
+#                    length(anno$Sample[anno$Group==clin.group])),
+#     subtitle = "With variants from WGS"
+#   )
 
 #######################################################################
 # pie chart FU cohort ClinGroups
@@ -254,9 +251,9 @@ plot.6 <- ggVennDiagram(venn_list, label_alpha = 0) +
   theme_void() +  
   theme(legend.position = "none") +
   labs(
-    title = paste0("SCAN-B; ERpHER2n; n=",
+    title = paste0("Treatment in ERpHER2n; n=",
                    length(anno$Sample[anno$Group==clin.group])),
-    subtitle = paste0("Treatment groups; None n=", 
+    subtitle = paste0("None n=", 
     length(anno$Sample[anno$TreatGroup == "None" & anno$Group==clin.group]),
     "; Missing n=",length(anno$Sample[anno$TreatGroup == "Missing" & anno$Group==clin.group]))
   )
@@ -269,8 +266,8 @@ plot.6 <- ggVennDiagram(venn_list, label_alpha = 0) +
 pdf(file = outfile.1, onefile = TRUE, width = 8.27, height = 11.69)
 
 # Arrange the plots in a grid (2x2)
-grid.arrange(plot.1, plot.2, plot.3, plot.4, 
-             plot.5, plot.6, ncol = 2, nrow = 3)
-
+# grid.arrange(plot.1, plot.2, plot.3, plot.4, 
+#              plot.5, plot.6, ncol = 2, nrow = 3)
+grid.arrange(plot.5,plot.1, plot.3, plot.6, ncol = 2, nrow = 2)
 # Close the PDF device to save the file
 dev.off()
