@@ -66,8 +66,7 @@ clin.dat <- clin.dat[c("Sample","GEX.assay","ER","PR","HER2","LN.spec",
      "Age","NCN.PAM50",
      "DRFi_days","DRFi_event",
      "OS_days","OS_event",
-     "RFi_days","RFi_event",
-     "BCFi_days","BCFi_event")]
+     "RFi_days","RFi_event")]
 
 # split treatment
 clin.dat$TreatGroup[clin.dat$TreatGroup == ""] <- NA
