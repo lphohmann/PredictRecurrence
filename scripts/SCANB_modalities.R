@@ -11,7 +11,7 @@ setwd("~/PhD_Workspace/PredictRecurrence/")
 # packages
 #source("./scripts/src/")
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(ggplot2, ggVennDiagram, gridExtra)
+pacman::p_load(ggplot2, ggVennDiagram, gridExtra, data.table, naniar)
 #-------------------
 # set/create output directories
 output_path <- "./output/"
@@ -29,10 +29,10 @@ clin_group <- "ER+HER2-"
 #-------------------
 # output paths
 outfile_1 <- paste0(output_path,"SCANB_Modalities_",clin_group,".pdf")
-outfile_2 <- paste0(output.path,"SCANB_Modalities_",clin_group,".txt") 
+outfile_2 <- paste0(output_path,"SCANB_Modalities_",clin_group,".txt") 
 #-------------------
 # storing objects 
-plot.list <- list() # object to store plots
+#plot.list <- list() # object to store plots
 txt.out <- c() # object to store text output, ggf. use capture.output()
 
 #######################################################################
@@ -41,7 +41,9 @@ txt.out <- c() # object to store text output, ggf. use capture.output()
 
 sample_modalities <- read.csv(infile_1)
 clinical <- read.csv(infile_2)
-RNAseq_expr <- read.csv(infile_3) # nolint
+#RNAseq_expr <- read.csv(infile_3) # takes too long
+RNAseq_expr <- data.table::fread(infile_3)
+RNAseq_expr <- as.data.frame(RNAseq_expr)
 RNAseq_mut <- read.csv(infile_4)
 DNAmethyl <- read.csv(infile_5) # until the real data is loaded
 names(DNAmethyl) <- c("Sample")
@@ -69,7 +71,7 @@ group_counts <- table(clinical$Group)[c("ER+HER2-","ER+HER2+","ER-HER2+","TNBC",
 group_counts <- as.data.frame(group_counts)
 group_counts$Percentage <- round((group_counts$Freq / sum(group_counts$Freq)) * 100,0)
 # Plot the pie chart using ggplot2
-plot.1 <- ggplot(data = group_counts, aes(x = "", y = Freq, fill = Var1)) +
+plot_1 <- ggplot(data = group_counts, aes(x = "", y = Freq, fill = Var1)) +
   geom_bar(stat = "identity", width = 1, show.legend = TRUE) + 
   coord_polar(theta = "y") +  # This makes the chart circular
   labs(title = "ER & HER2 status") +
@@ -89,118 +91,70 @@ plot.1 <- ggplot(data = group_counts, aes(x = "", y = Freq, fill = Var1)) +
             position = position_stack(vjust = 0.5), size = 4)
 
 #######################################################################
-# Whole FU cohort modalities
+# Modalities Venn
 #######################################################################
 
 # Prepare list of sample groups
 venn_list <- list(
-  "DNAmethyl" = modalities.df$Sample[modalities.df$DNAmethyl == 1],
-  "RNAseq.mut" = modalities.df$Sample[modalities.df$RNAseq.mut == 1],
-  "RNAseq.gex" = modalities.df$Sample[modalities.df$RNAseq.gex == 1]
+  "DNAmethyl" = sub_sample_modalities$Sample[sub_sample_modalities$DNAmethyl == 1],
+  "RNAseq.mut" = sub_sample_modalities$Sample[sub_sample_modalities$RNAseq_mutations == 1],
+  "RNAseq.gex" = sub_sample_modalities$Sample[sub_sample_modalities$RNAseq_expression == 1]
 )
 
 # Create the Venn diagram
-plot.1 <- ggVennDiagram(venn_list, label_alpha = 0) + 
-  scale_fill_gradientn(colors = c("#F8BBD0", "#EC407A", "#C2185B"), 
+plot_2 <- ggVennDiagram(venn_list, label_alpha = 0) + 
+  scale_fill_gradientn(colors = c("#FFFFFF","#FFFFFF","#FFFFFF"), 
                        values = c(0, 0.2, 1)) +
   theme_void() +  
   theme(legend.position = "none") +
   labs(
-    title = paste0("SCAN-B; All; n=",length(anno$Sample)),
-    subtitle = "With variants from RNAseq"
+    title = paste0("SCAN-B; ",clin_group,"; n=",length(sub_clinical$Sample))#,
+    #subtitle = "With variants from RNAseq"
   )
 
-# Prepare list of sample groups
-# venn_list <- list(
-#   "DNAmethyl" = modalities.df$Sample[modalities.df$DNAmethyl == 1],
-#   "WGS.mut" = modalities.df$Sample[modalities.df$WGS.mut == 1],
-#   "RNAseq.gex" = modalities.df$Sample[modalities.df$RNAseq.gex == 1]
-# )
-
-# # Create the Venn diagram
-# plot.2 <- ggVennDiagram(venn_list, label_alpha = 0) + 
-#   scale_fill_gradientn(colors = c("#F8BBD0", "#EC407A", "#C2185B"), 
-#                        values = c(0, 0.2, 1)) + 
-#   theme_void() +  
-#   theme(legend.position = "none") +
-#   labs(
-#     title = paste0("SCAN-B; All; n=",length(anno$Sample),
-#     subtitle = "With variants from WGS"
-#   ))
-
-
 #######################################################################
-# ERpHER2n FU cohort modalities
+# Clinical data in-depth
 #######################################################################
 
-clin.group <- "ER+HER2-"
+# Missing #############################################################
+# Plot Nullity Matrix
+plot_3 <- gg_miss_upset(sub_clinical) 
+plot_4 <- vis_miss(sub_clinical)
+#gg_miss_var(sub_clinical)
 
-# Prepare list of sample groups
+# Events #############################################################
+events <- lapply(list(
+  sub_clinical$OS_event,
+  sub_clinical$RFi_event, 
+  sub_clinical$DRFi_event),
+  table)
+events <- data.frame(
+  Outcome = c("OS","OS","RFi","RFi","DRFi","DRFi"),
+  Count = c(as.vector(events[[1]]),as.vector(events[[2]]),as.vector(events[[3]])), Event = c(0,1,0,1,0,1))
+plot_5 <- ggplot(events, aes(x = Outcome, y = Count, fill = as.factor(Event))) +
+  geom_bar(stat = 'identity', position = 'stack') +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) +
+  labs(x = 'Outcome', y = 'Count', title = "OS vs. RFI vs. DRFi Events") +
+  geom_text(aes(label = Count), position = position_stack(vjust = 0.5)) +  # Display count labels inside the bars
+  theme_minimal()
+
+# Treatments #############################################################
 venn_list <- list(
-  "DNAmethyl" = modalities.df$Sample[modalities.df$DNAmethyl == 1 & 
-                                       modalities.df$Sample %in% anno$Sample[anno$Group==clin.group]],
-  "RNAseq.mut" = modalities.df$Sample[modalities.df$RNAseq.mut == 1 & 
-                                        modalities.df$Sample %in% anno$Sample[anno$Group==clin.group]],
-  "RNAseq.gex" = modalities.df$Sample[modalities.df$RNAseq.gex == 1 & 
-                                        modalities.df$Sample %in% anno$Sample[anno$Group==clin.group]]
-)
+  "Endocrine" = sub_clinical$Sample[sub_clinical$Endo == 1 & sub_clinical$Group==clin_group],
+  "Chemo" = sub_clinical$Sample[sub_clinical$Chemo == 1 & sub_clinical$Group==clin_group],
+  "Immu" = sub_clinical$Sample[sub_clinical$Immu == 1 & sub_clinical$Group==clin_group])
 
 # Create the Venn diagram
-plot.3 <- ggVennDiagram(venn_list, label_alpha = 0) + 
-  scale_fill_gradientn(colors = c("#F8BBD0", "#EC407A", "#C2185B"), 
-                       values = c(0, 0.2, 1)) +
-  theme_void() +  
-  theme(legend.position = "none") +
-  labs(
-    title = paste0("SCAN-B; ER+HER2-; n=",
-                   length(anno$Sample[anno$Group==clin.group])),
-    subtitle = "With variants from RNAseq"
-  )
-
-# # Prepare list of sample groups
-# venn_list <- list(
-#   "DNAmethyl" = modalities.df$Sample[modalities.df$DNAmethyl == 1 & 
-#                                        modalities.df$Sample %in% anno$Sample[anno$Group==clin.group]],
-#   "WGS.mut" = modalities.df$Sample[modalities.df$WGS.mut == 1 & 
-#                                      modalities.df$Sample %in% anno$Sample[anno$Group==clin.group]],
-#   "RNAseq.gex" = modalities.df$Sample[modalities.df$RNAseq.gex == 1 & 
-#                                         modalities.df$Sample %in% anno$Sample[anno$Group==clin.group]]
-# )
-
-# # Create the Venn diagram
-# plot.4 <- ggVennDiagram(venn_list, label_alpha = 0) + 
-#   scale_fill_gradientn(colors = c("#F8BBD0", "#EC407A", "#C2185B"), 
-#                        values = c(0, 0.2, 1)) + 
-#   theme_void() +  
-#   theme(legend.position = "none") +
-#   labs(
-#     title = paste0("SCAN-B; ER+HER2-; n=",
-#                    length(anno$Sample[anno$Group==clin.group])),
-#     subtitle = "With variants from WGS"
-#   )
-
-
-
-#######################################################################
-# venn ERpHER2n FU cohort treatment #TreatGroup
-#######################################################################
-
-venn_list <- list(
-  "Endocrine" = anno$Sample[anno$Endo == 1 & anno$Group==clin.group],
-  "Chemo" = anno$Sample[anno$Chemo == 1 & anno$Group==clin.group],
-  "Immu" = anno$Sample[anno$Immu == 1 & anno$Group==clin.group])
-
-# Create the Venn diagram
-plot.6 <- ggVennDiagram(venn_list, label_alpha = 0) + 
-  scale_fill_gradientn(colors = c("#7fbf7b", "#c2a5cf","#fdc086")) + 
+plot_6 <- ggVennDiagram(venn_list, label_alpha = 0) + 
+  scale_fill_gradientn(colors = c("#FFFFFF","#FFFFFF","#FFFFFF")) + 
   theme_void() +  
   theme(legend.position = "none") +
   labs(
     title = paste0("Treatment in ERpHER2n; n=",
-                   length(anno$Sample[anno$Group==clin.group])),
+                   length(sub_clinical$Sample[sub_clinical$Group==clin_group])),
     subtitle = paste0("None n=", 
-    length(anno$Sample[anno$TreatGroup == "None" & anno$Group==clin.group]),
-    "; Missing n=",length(anno$Sample[anno$TreatGroup == "Missing" & anno$Group==clin.group]))
+    length(clinical$Sample[clinical$TreatGroup == "None" & clinical$Group==clin_group]),
+    "; Missing n=",length(clinical$Sample[clinical$TreatGroup == "Missing" & clinical$Group==clin_group]))
   )
 
 #######################################################################
@@ -208,11 +162,10 @@ plot.6 <- ggVennDiagram(venn_list, label_alpha = 0) +
 #######################################################################
 
 # Set up the PDF output
-pdf(file = outfile.1, onefile = TRUE, width = 8.27, height = 11.69)
+pdf(file = outfile_1, onefile = TRUE)#, height = 8.27/2, width = 11.69/2)
 
-# Arrange the plots in a grid (2x2)
-# grid.arrange(plot.1, plot.2, plot.3, plot.4, 
-#              plot.5, plot.6, ncol = 2, nrow = 3)
-grid.arrange(plot.5,plot.1, plot.3, plot.6, ncol = 2, nrow = 2)
-# Close the PDF device to save the file
+grid.arrange(plot_1,plot_2,plot_5,plot_6,ncol = 2,nrow = 2)
+print(plot_3)
+print(plot_4)
+
 dev.off()

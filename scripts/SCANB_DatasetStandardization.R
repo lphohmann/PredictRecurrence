@@ -1,3 +1,4 @@
+#!/usr/bin/env Rscript
 # Script: Standardizing patient identifiers and structure across SCAN-B datasets
 # Author: Lennart Hohmann
 # Date: 10.03.2025
@@ -59,14 +60,23 @@ ensemble_to_hgnc <- function(ensemble.ids) {
 # annotation 
 clin.dat <- loadRData(infile.1)
 clin.dat <- clin.dat[clin.dat$Follow.up.cohort == TRUE,]
-
+clin.dat$LN <- ifelse(clin.dat$LN > 0, "N+", "N0")
+clin.dat$PR[clin.dat$PR==""] <-NA
 #View(clin.dat)
-clin.dat <- clin.dat[c("Sample","GEX.assay","ER","PR","HER2","LN.spec",
+clin.dat <- clin.dat[c("Sample","GEX.assay","ER","PR","HER2","LN",
      "NHG","Size.mm","TreatGroup","InvCa.type",
      "Age","NCN.PAM50",
      "DRFi_days","DRFi_event",
      "OS_days","OS_event",
      "RFi_days","RFi_event")]
+
+# convert to years
+clin.dat$OS_years <- clin.dat$OS_days / 365
+clin.dat$RFi_years <- clin.dat$RFi_days / 365
+clin.dat$DRFi_years <- clin.dat$DRFi_days / 365
+clin.dat$OS_days <- NULL
+clin.dat$RFi_days <- NULL
+clin.dat$DRFi_days <- NULL
 
 # split treatment
 clin.dat$TreatGroup[clin.dat$TreatGroup == ""] <- NA
@@ -74,7 +84,7 @@ clin.dat$TreatGroup[is.na(clin.dat$TreatGroup)] <- "Missing"
 clin.dat$Chemo <- ifelse(grepl("Chemo", clin.dat$TreatGroup), 1, 0)
 clin.dat$Endo <- ifelse(grepl("Endo", clin.dat$TreatGroup), 1, 0)
 clin.dat$Immu <- ifelse(grepl("Immu", clin.dat$TreatGroup), 1, 0)
-clin.dat$TreatGroup <- NULL
+#clin.dat$TreatGroup <- NULL
 
 # change this, depending on if we go for HR+HER2- or ER+HER2-
 clin.dat$Group <- ifelse(clin.dat$ER == "Positive" & clin.dat$HER2 == "Negative",
