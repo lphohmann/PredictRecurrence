@@ -1,6 +1,7 @@
+#!/usr/bin/env Rscript
 # Script: overview data modalities SCAN-B
 # Author: Lennart Hohmann
-# Date: 02.03.2025
+# Date: 11.03.2025
 #-------------------
 # empty environment
 rm(list=ls())
@@ -13,108 +14,79 @@ if (!require("pacman")) install.packages("pacman")
 pacman::p_load(ggplot2, ggVennDiagram, gridExtra)
 #-------------------
 # set/create output directories
-output.path <- "./output/"
-#dir.create(output.path)
+output_path <- "./output/"
+dir.create(output_path)
 #-------------------
 # input paths
-infile.1 <- "./data/raw/Summarized_SCAN_B_rel4_NPJbreastCancer_with_ExternalReview_Bosch_data.RData"
-infile.2 <- "./data/raw/genematrix_noNeg.Rdata" 
-infile.3 <- "./data/raw/GSE278586_ProcessedData_LUepic_n499.txt" # 499 cases with DNA methylation dat (EPIC)
-infile.4 <- "./data/raw/SCANBrel4_n6614_ExpressedSomaticVariants.csv" # rna seq mutations
-# CNA?
-
+infile_1 <- "./data/standardized/SCANB_sample_modalities.csv"
+infile_2 <- "./data/standardized/SCANB_clinical.csv"
+infile_3 <- "./data/standardized/SCANB_RNAseq_expression.csv"
+infile_4 <- "./data/standardized/SCANB_RNAseq_mutations.csv"
+infile_5 <- "./data/standardized/SCANB_DNAmethylation.csv"
+#-------------------
+# which clin group to run for
+clin_group <- "ER+HER2-"
+#-------------------
 # output paths
-outfile.1 <- paste0(output.path,"SCANB_Modalities.pdf") #.txt
+outfile_1 <- paste0(output_path,"SCANB_Modalities_",clin_group,".pdf")
+outfile_2 <- paste0(output.path,"SCANB_Modalities_",clin_group,".txt") 
+#-------------------
+# storing objects 
+plot.list <- list() # object to store plots
+txt.out <- c() # object to store text output, ggf. use capture.output()
 
 #######################################################################
+# load data
+#######################################################################
 
-# function: loads RData data file and allows to assign it directly to variable
-loadRData <- function(file.path){
-  load(file.path)
-  get(ls()[ls() != "file.path"])
+sample_modalities <- read.csv(infile_1)
+clinical <- read.csv(infile_2)
+RNAseq_expr <- read.csv(infile_3) # nolint
+RNAseq_mut <- read.csv(infile_4)
+DNAmethyl <- read.csv(infile_5) # until the real data is loaded
+names(DNAmethyl) <- c("Sample")
+
+# Subgroup data
+if (clin_group == "All") {
+  sub_sample_modalities <- sample_modalities
+  sub_clinical <- clinical
+  sub_RNAseq_expr <- RNAseq_expr
+  sub_RNAseq_mut <- RNAseq_mut
+  sub_DNAmethyl <- DNAmethyl
+  } else {
+    sub_clinical <- subset(clinical, Group == clin_group)
+    sub_sample_modalities <- subset(sample_modalities, Sample %in% sub_clinical$Sample)
+    sub_RNAseq_expr <- RNAseq_expr[, c("Gene", intersect(colnames(RNAseq_expr), sub_clinical$Sample))]
+    sub_RNAseq_mut <- RNAseq_mut[, c("Gene", intersect(colnames(RNAseq_mut), sub_clinical$Sample))]
+    sub_DNAmethyl <- DNAmethyl[DNAmethyl$Sample %in% sub_clinical$Sample, ]
 }
 
 #######################################################################
-# clinical data
+# Pie chart FU cohort ClinGroups
 #######################################################################
 
-# annotation 
-anno <- loadRData(infile.1)
-anno <- anno[anno$Follow.up.cohort == TRUE,]
-
-#View(anno)
-anno <- anno[c("Sample","GEX.assay","ER","PR","HER2","LN.spec",
-     "NHG","Size.mm","TreatGroup","DRFi_days",
-     "Age",  "OSbin","OS","RFIbin","RFI",
-     "DRFIbin","DRFI","NCN.PAM50")]
-
-# split treatment
-anno$TreatGroup[anno$TreatGroup == ""] <- NA
-anno$TreatGroup[is.na(anno$TreatGroup)] <- "Missing"
-anno$Chemo <- ifelse(grepl("Chemo", anno$TreatGroup), 1, 0)
-anno$Endo <- ifelse(grepl("Endo", anno$TreatGroup), 1, 0)
-anno$Immu <- ifelse(grepl("Immu", anno$TreatGroup), 1, 0)
-
-anno$Group <- ifelse(anno$ER == "Positive" & 
-                     anno$HER2 == "Negative",
-                     "ER+HER2-",
-                     ifelse(anno$ER == "Positive" & 
-                            anno$HER2 == "Positive",
-                            "ER+HER2+",
-                            ifelse(anno$ER == "Negative" & 
-                                   anno$HER2 == "Positive",
-                                   "ER-HER2+",
-                                   ifelse(anno$ER == "Negative" & 
-                                          anno$HER2 == "Negative" & 
-                                          anno$PR == "Negative", 
-                                          "TNBC",
-                                            "Other"))))
-
-#table(anno$Group,anno$NCN.PAM50)
-
-#######################################################################
-# RNA-seq data
-#######################################################################
-
-# load and prep gene expr. data
-gex.dat <- as.data.frame(loadRData(infile.2))
-
-# correct colnames
-gex.dat <- gex.dat[anno$GEX.assay]
-names(gex.dat) <- anno$Sample[match(colnames(gex.dat),
-                                    anno$GEX.assay)]
-
-#######################################################################
-# DNA methylation data (n=499)
-#######################################################################
-
-# Read the first line of the file
-epic.samples <- readLines(infile.3, n = 1)
-epic.samples <- strsplit(epic.samples, "\t")[[1]]
-epic.samples <- epic.samples[!grepl("Detection_Pval", epic.samples)]
-epic.samples <- sub("\\..*", "", epic.samples[-1])
-
-#epic.dat <- read.table(infile.3) # too big to load
-
-#######################################################################
-# WGS variant calling data (n=?) 499 -> is published?; 
-# alternative RNAseq mutations
-#######################################################################
-
-mut.dat <- read.csv(infile.4)
-RNAmut.samples <- names(mut.dat)
-
-#######################################################################
-# Available modalities overview table
-#######################################################################
-
-# overview table
-modalities.df <- anno[c("Sample")]
-modalities.df$Clinical <- 1
-modalities.df$RNAseq.gex <- ifelse(modalities.df$Sample %in% names(gex.dat),1,0)
-modalities.df$RNAseq.mut <- ifelse(modalities.df$Sample %in% RNAmut.samples,1,0)
-modalities.df$DNAmethyl <- ifelse(modalities.df$Sample %in% epic.samples,1,0)
-modalities.df$WGS.mut <- ifelse(modalities.df$Sample %in% epic.samples,1,0) # hypothetically
+group_counts <- table(clinical$Group)[c("ER+HER2-","ER+HER2+","ER-HER2+","TNBC","Other")]
+group_counts <- as.data.frame(group_counts)
+group_counts$Percentage <- round((group_counts$Freq / sum(group_counts$Freq)) * 100,0)
+# Plot the pie chart using ggplot2
+plot.1 <- ggplot(data = group_counts, aes(x = "", y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity", width = 1, show.legend = TRUE) + 
+  coord_polar(theta = "y") +  # This makes the chart circular
+  labs(title = "ER & HER2 status") +
+  theme_void() +  # Remove the background grid
+  theme(legend.position = "none",
+    axis.text.x = element_blank(),  # Remove x-axis text
+        axis.ticks = element_blank(),  # Remove axis ticks
+        legend.title = element_blank()) +  # Remove legend title
+  scale_fill_manual(values = c(
+    "ER+HER2-" = "#abd9e9", 
+    "ER+HER2+" = "#f1b6da", 
+    "ER-HER2+" = "#d01c8b", 
+    "TNBC" = "#d7191c",
+    "Other" ="#bababa"
+  )) +
+  geom_text(aes(label = paste(Var1, "\n", Freq, " (", Percentage, "%)", sep = "")), 
+            position = position_stack(vjust = 0.5), size = 4)
 
 #######################################################################
 # Whole FU cohort modalities
@@ -207,34 +179,7 @@ plot.3 <- ggVennDiagram(venn_list, label_alpha = 0) +
 #     subtitle = "With variants from WGS"
 #   )
 
-#######################################################################
-# pie chart FU cohort ClinGroups
-#######################################################################
 
-# Step 2: Summarize counts of each group using table
-group_counts <- table(anno$Group)[c("ER+HER2-","ER+HER2+","ER-HER2+","TNBC","Other")]
-group_counts <- as.data.frame(group_counts)
-group_counts$Percentage <- round((group_counts$Freq / sum(group_counts$Freq)) * 100,0)
-
-# Step 3: Plot the pie chart using ggplot2
-plot.5 <- ggplot(data = group_counts, aes(x = "", y = Freq, fill = Var1)) +
-  geom_bar(stat = "identity", width = 1, show.legend = TRUE) + 
-  coord_polar(theta = "y") +  # This makes the chart circular
-  labs(title = "ER & HER2 status") +
-  theme_void() +  # Remove the background grid
-  theme(legend.position = "none",
-    axis.text.x = element_blank(),  # Remove x-axis text
-        axis.ticks = element_blank(),  # Remove axis ticks
-        legend.title = element_blank()) +  # Remove legend title
-  scale_fill_manual(values = c(
-    "ER+HER2-" = "#abd9e9", 
-    "ER+HER2+" = "#f1b6da", 
-    "ER-HER2+" = "#d01c8b", 
-    "TNBC" = "#d7191c",
-    "Other" ="#bababa"
-  )) +
-  geom_text(aes(label = paste(Var1, "\n", Freq, " (", Percentage, "%)", sep = "")), 
-            position = position_stack(vjust = 0.5), size = 4)
 
 #######################################################################
 # venn ERpHER2n FU cohort treatment #TreatGroup

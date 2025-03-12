@@ -7,6 +7,7 @@
 
 # import 
 import os
+import sys
 import missingno as msno
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -14,6 +15,8 @@ import numpy as np
 import sklearn
 from venn import venn
 from matplotlib.backends.backend_pdf import PdfPages
+import src.utils as my
+my.test_func()
 
 # set wd
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
@@ -70,28 +73,20 @@ else:
 
 
 ################################################################################
-# ER and HER2 status in SCAN-B
+# Piechart of ER and HER2 status in SCAN-B
 ################################################################################
 
 group_order = ["ER+HER2-", "ER+HER2+", "ER-HER2+", "TNBC", "Other"]
-
-# Step 1: Count the occurrences of each group and reorder based on 'group_order'
 group_counts = clinical['Group'].value_counts()[group_order]
-
-# Step 2: Convert the Series into a DataFrame and rename the count column as 'Count'
+# rename the count column as 'Count'
 group_counts_df = group_counts.reset_index(name='Count')
-
-# Step 3: Add a new column 'Percentage' and calculate the percentage for each group
+# Add a new column 'Percentage' and calculate the percentage for each group
 group_counts_df = group_counts_df.assign(
     Percentage=lambda x: (x['Count'] / x['Count'].sum()) * 100
 )
-
-# Step 4: Round the 'Percentage' column to 0 decimal places
 group_counts_df = group_counts_df.round({'Percentage': 0})
-
-# Step 5: Rename the 'index' column to 'Group'
+# Rename the 'index' column to 'Group'
 group_counts_df = group_counts_df.rename(columns={'index': 'Group'})
-
 # Plotting the pie chart
 plt.figure(figsize=fig_size)
 plt.pie(group_counts_df['Count'], 
@@ -110,18 +105,12 @@ plt.close()
 # Available data modalities
 ################################################################################
 
-# ### In the whole SCAN-B cohort
-
-sub_sample_modalities.head()
-
 # Create a list of sample groups based on conditions in the DataFrame
 venn_dict = {
-    #"Clinical": set(sub_sample_modalities[sub_sample_modalities['clinical'] == 1]['Sample']),
     "DNAmethyl": set(sub_sample_modalities[sub_sample_modalities['DNAmethylation'] == 1]['Sample']),
     "RNAseq_mut": set(sub_sample_modalities[sub_sample_modalities['RNAseq_mutations'] == 1]['Sample']),
     "RNAseq_gex": set(sub_sample_modalities[sub_sample_modalities['RNAseq_expression'] == 1]['Sample'])
 }
-
 plt.figure(figsize=fig_size)
 venn(venn_dict)
 plt.title(f"SCAN-B; {clin_group}; n={len(sub_sample_modalities['Sample'])}")
@@ -129,12 +118,9 @@ pdf.savefig() # save to pdf
 #plt.show()
 plt.close()
 
-
-
 ################################################################################
 # In-depth look: Clinicopathological variables
 ################################################################################
-# later: III - Survival analyses and Censoring distribution
 
 summary = sub_clinical.describe(include='all')  # Summary of all columns (numerical and categorical)
 #print(summary)
@@ -154,6 +140,17 @@ pdf.savefig(pad_inches=0.1)  # Save to PDF
 plt.close()
 
 # number of events per outcome measure
+# OS vs RFI
+cross_tab = pd.crosstab(sub_clinical['OS_event'], sub_clinical['RFi_event'])
+#print(cross_tab)
+formatted_string = "; ".join([
+    f"OS_event 0 n= {cross_tab.iloc[0,0]}",
+    f"OS_event 1 n= {cross_tab.iloc[1,0]}",
+    f"RFi_event 0 n= {cross_tab.iloc[0,1]}",
+    f"RFi_event 1 n= {cross_tab.iloc[1,1]}"
+])
+
+#print(f"OS vs. RFI events: {formatted_string}.")
 # Count the events
 event_counts = sub_clinical[["OS_event", "RFi_event","DRFi_event"]].apply(pd.Series.value_counts).T
 # plot bars in stack manner
@@ -167,25 +164,30 @@ for c in ax.containers:
     # remove the labels parameter if it's not needed for customized labels
     ax.bar_label(c, labels=list(map(int, labels)), label_type='center')
 
+plt.title(f"OS vs. RFI events: {formatted_string}.",fontsize=8)
 plt.tight_layout()
 pdf.savefig()  # Save to PDF
 plt.close()
-
-pdf.close()
-
 
 # treatments
 treatment_counts = sub_clinical[["Endo","Chemo"]]
 # Create a list of sample groups based on conditions in the DataFrame
 venn_dict = {
-    "Endo": list(sub_clinical[sub_clinical['Endo'] == 1]['Sample']),
-    "Chemo": list(sub_clinical[sub_clinical['Chemo'] == 1]['Sample']),
-    "Immu": list(sub_clinical[sub_clinical['Immu'] == 1]['Sample'])
+    "Endo": set(sub_clinical[sub_clinical['Endo'] == 1]['Sample']),
+    "Chemo": set(sub_clinical[sub_clinical['Chemo'] == 1]['Sample']),
+    "Immu": set(sub_clinical[sub_clinical['Immu'] == 1]['Sample'])
 }
 
 plt.figure(figsize=fig_size)
 venn(venn_dict)
 plt.title(f"SCAN-B; {clin_group}; n={len(sub_clinical['Sample'])}")
 pdf.savefig() # save to pdf
-plt.show()
+#plt.show()
 plt.close()
+
+pdf.close()
+
+
+################################################################################
+# Survival analyses and Censoring distribution
+################################################################################
