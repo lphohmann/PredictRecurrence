@@ -157,6 +157,13 @@ plot_6 <- ggVennDiagram(venn_list, label_alpha = 0) +
     "; Missing n=",length(clinical$Sample[clinical$TreatGroup == "Missing" & clinical$Group==clin_group]))
   )
 
+
+#######################################################################
+# Check missing data in RNA-seq
+#######################################################################
+
+res <- apply(sub_RNAseq_expr,1,sum(is.na()))
+
 #######################################################################
 # save plots to pdf
 #######################################################################
