@@ -44,6 +44,7 @@ txt_out <- c() # object to store text output, ggf. use capture.output()
 
 sample_modalities <- read.csv(infile_1)
 clinical <- read.csv(infile_2)
+clinical$NHG <- as.character(clinical$NHG)
 
 # Subgroup data
 if (clin_group == "All") {
@@ -122,7 +123,9 @@ for(i in seq_along(OM_list)) {
 
   ##########################
   pval <- surv_pvalue(surv_fit, data = sub_clinical)
-  pvalue_text <- paste("Log-rank p-value=", round(pval$pval,4))
+  pvalue_text <- ifelse(pval$pval <= 0.001,
+  "Log-rank p-value ≤ 0.001",
+  paste("Log-rank p-value =", round(pval$pval, 3)))
   # KM plot
   plot <- ggsurvplot(surv_fit, 
                     data = sub_clinical,
@@ -192,7 +195,9 @@ for(i in seq_along(OM_list)) {
 
   ##########################
   pval <- surv_pvalue(surv_fit, data = sub_clinical)
-  pvalue_text <- paste("Log-rank p-value=", pval$pval,4)
+  pvalue_text <- ifelse(pval$pval <= 0.001,
+  "Log-rank p-value ≤ 0.001",
+  paste("Log-rank p-value =", round(pval$pval, 3)))
   # KM plot
   plot <- ggsurvplot(surv_fit, 
                     data = sub_clinical,
@@ -224,6 +229,51 @@ for(i in seq_along(OM_list)) {
   txt_out <- append(txt_out,c(capture.output(res),"\n###########################################\n"))
 }
 
+#######################################################################
+# Num events in treatgroups
+#######################################################################
+
+# Initialize an empty list to store the data
+events_list <- list()
+
+# Iterate through each treatment group
+for(treatment in unique(sub_clinical$TreatGroup_ERpHER2n)[!is.na(unique(sub_clinical$TreatGroup_ERpHER2n))]) {
+  
+  # Calculate the event counts for OS, RFi, and DRFi for each treatment group
+  events <- lapply(list(
+    sub_clinical$OS_event[sub_clinical$TreatGroup_ERpHER2n == treatment],
+    sub_clinical$RFi_event[sub_clinical$TreatGroup_ERpHER2n == treatment], 
+    sub_clinical$DRFi_event[sub_clinical$TreatGroup_ERpHER2n == treatment]),
+    table)
+  
+  # Prepare the data for the current treatment group
+  events_df <- data.frame(
+    Outcome = rep(c("OS", "RFi", "DRFi"), each = 2),  # Repeat OS, RFi, DRFi for 0 and 1 events
+    Count = c(as.vector(events[[1]]), as.vector(events[[2]]), as.vector(events[[3]])),  # Count of events
+    Event = rep(c(0, 1), times = 3),  # 0 and 1 event counts for each outcome
+    TreatGroup = rep(treatment, 6)  # Add the treatment group as a new column
+  )
+  
+  # Append the current treatment group's data to the events list
+  events_list[[treatment]] <- events_df
+}
+
+# Combine all data into a single dataframe
+events_combined <- do.call(rbind, events_list)
+
+# Create a stacked barplot for the three treatment groups
+plot <- ggplot(events_combined, aes(x = Outcome, y = Count, fill = as.factor(Event))) +
+  geom_bar(stat = "identity", position = "stack") +  # Stacked bar plot
+  facet_wrap(~TreatGroup) +  # Separate the plots by treatment group
+  labs(
+    title = "Stacked Barplot of Events (OS, RFi, DRFi) by Treatment Group",
+    x = "Outcome", y = "Count", fill = "Event"
+  ) +
+  theme_minimal() +  # Use a clean theme
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) +  # Adjust x-axis labels
+  geom_text(aes(label = Count), position = position_stack(vjust = 0.5))  # Add labels inside bars
+
+plot_list <- append(plot_list,list(plot))
 
 #######################################################################
 # save plots to pdf

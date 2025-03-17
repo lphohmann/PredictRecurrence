@@ -47,6 +47,7 @@ RNAseq_expr <- as.data.frame(RNAseq_expr)
 RNAseq_mut <- read.csv(infile_4)
 DNAmethyl <- read.csv(infile_5) # until the real data is loaded
 names(DNAmethyl) <- c("Sample")
+clinical$NHG <- as.character(clinical$NHG)
 
 # Subgroup data
 if (clin_group == "All") {
@@ -118,8 +119,10 @@ plot_2 <- ggVennDiagram(venn_list, label_alpha = 0) +
 
 # Missing #############################################################
 # Plot Nullity Matrix
-plot_3 <- gg_miss_upset(sub_clinical) 
-plot_4 <- vis_miss(sub_clinical)
+sub_clinical$TreatGroup[sub_clinical$TreatGroup == "Missing"] <- NA
+plot_3 <- gg_miss_upset(sub_clinical[c("Age","PR","LN","NHG","Size.mm","OS_event","OS_years","RFi_event","RFi_years","DRFi_event","DRFi_years")]) 
+plot_4 <- vis_miss(sub_clinical[c("ER","HER2","PR","Age","PR","LN","NHG","Size.mm","TreatGroup","RFi_event","RFi_years","OS_event","OS_years","DRFi_event","DRFi_years")]) +
+scale_fill_manual(values = c("black", "red"))
 #gg_miss_var(sub_clinical)
 
 # Events #############################################################
@@ -162,7 +165,8 @@ plot_6 <- ggVennDiagram(venn_list, label_alpha = 0) +
 # Check missing data in RNA-seq
 #######################################################################
 
-res <- apply(sub_RNAseq_expr,1,sum(is.na()))
+#res <- apply(sub_RNAseq_expr,1,sum(is.na()))
+
 
 #######################################################################
 # save plots to pdf

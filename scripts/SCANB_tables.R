@@ -36,7 +36,8 @@ table_list <- list()
 
 sample_modalities <- read.csv(infile_1)
 clinical <- read.csv(infile_2)
-
+clinical$NHG <- as.character(clinical$NHG)
+#str(clinical)
 # Subgroup data
 if (clin_group == "All") {
   sub_sample_modalities <- sample_modalities
@@ -50,7 +51,7 @@ if (clin_group == "All") {
 # sub cohort
 sub_cohort <- "DNAmethylation"
 sub_clinical$Subset <- sub_sample_modalities$DNAmethylation[match(sub_clinical$Sample,sub_sample_modalities$Sample)]
-sub_clinical$TreatGroup_ERpHER2n <- ifelse(!(sub_clinical$TreatGroup %in% c("ChemoEndo","Endo","None")),NA,sub_clinical$TreatGroup)
+sub_clinical$TreatGroup_ERpHER2n <- ifelse(!(sub_clinical$TreatGroup %in% c("ChemoEndo","Endo","None")),"Other",sub_clinical$TreatGroup)
 
 #######################################################################
 # make Table 1
@@ -85,38 +86,22 @@ my.render.cat <- function(x) {
     c("", sapply(stats.default(x), function(y) with(y,
         sprintf("%d (%0.0f %%)", FREQ, PCT))))
 }
+table_1 <- table1(~ Age + Size.mm + PR + LN + NHG | TreatGroup_ERpHER2n, 
+data = sub_clinical,
+                overall=c(left="Total"),render.continuous=my.render.cont, 
+                render.categorical=my.render.cat)
 
-table_1 <- table1(~ Age + PR + LN + NHG + Size.mm | TreatGroup, data = sub_clinical,
-                overall=c(left="Total"),
-                groupspan=c(1, 6), caption="ER+HER2- FU cohort",
-                render.continuous=my.render.cont, render.categorical=my.render.cat)
-
-table_list <- append(table_1, table_list)
+table_list <- append(as.data.frame(table_1), table_list)
 
 #######################################################################
 # save 
 #######################################################################
-
-# Open a connection to a file for saving the HTML content
-html_file <- file(outfile_1, "w")
-
-# Write the HTML header (optional, for formatting)
-cat("<html><head><title>Tables Output</title></head><body>", file = html_file)
-
-# Loop through the list and save each table as HTML
-for (table in table_list) {
-  # Convert each table to HTML and append it to the file
-  cat("<h3>Table</h3>", file = html_file)  # Optional heading for each table
-  cat(htmlTable::htmlTable(table), file = html_file)
-  cat("<br><br>", file = html_file)  # Space between tables
-}
-
-# Write the HTML footer
-cat("</body></html>", file = html_file)
-
-# Close the file connection
-close(html_file)
-
-# Optionally, open the file in the default browser
-#browseURL(outfile_1)
+save_html(table_1, file = outfile_1)
+# Loop through the list and save each table as sheet in excel file
+# for (table in table_list) {
+#   # Convert each table to HTML and append it to the file
+#   cat("<h3>Table</h3>", file = html_file)  # Optional heading for each table
+#   cat(htmlTable::htmlTable(table), file = html_file)
+#   cat("<br><br>", file = html_file)  # Space between tables
+# }
 
