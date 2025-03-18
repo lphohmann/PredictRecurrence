@@ -122,7 +122,11 @@ plot_2 <- ggVennDiagram(venn_list, label_alpha = 0) +
 sub_clinical$TreatGroup[sub_clinical$TreatGroup == "Missing"] <- NA
 plot_3 <- gg_miss_upset(sub_clinical[c("Age","PR","LN","NHG","Size.mm","OS_event","OS_years","RFi_event","RFi_years","DRFi_event","DRFi_years")]) 
 plot_4 <- vis_miss(sub_clinical[c("ER","HER2","PR","Age","PR","LN","NHG","Size.mm","TreatGroup","RFi_event","RFi_years","OS_event","OS_years","DRFi_event","DRFi_years")]) +
-scale_fill_manual(values = c("black", "red"))
+scale_fill_manual(values = c("black", "red")) +
+theme(
+    axis.text.x = element_text(size = 14, angle = 45, hjust = 0.5),
+    axis.title = element_text(size = 16),
+    axis.text.y = element_text(size = 14))  # Angle and adjust )
 #gg_miss_var(sub_clinical)
 
 # Events #############################################################
