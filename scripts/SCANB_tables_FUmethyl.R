@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Script: survival analyses in subsets SCAN-B
+# Script: tables in subsets SCAN-B FU methlyation cohrot
 # Author: Lennart Hohmann
 # Date: 11.03.2025
 #-------------------
@@ -22,10 +22,14 @@ infile_1 <- "./data/standardized/SCANB_sample_modalities.csv"
 infile_2 <- "./data/standardized/SCANB_clinical.csv"
 #-------------------
 # which clin group to run for
+#clin_group <- "All" # "ER+HER2-"
 clin_group <- "ER+HER2-"
+
 #-------------------
 # output paths
-outfile_1 <- paste0(output_path,"SCANB_tables_",clin_group,".html")
+outfile_1 <- paste0(output_path, "SCANB_FUmethyl_SubgroupTable_", clin_group, ".html")
+outfile_2 <- paste0(output_path,"SCANB_FUmethyl_TreatmentTable_",clin_group,".html")
+
 #-------------------
 # storing objects 
 table_list <- list()
@@ -37,6 +41,9 @@ table_list <- list()
 sample_modalities <- read.csv(infile_1)
 clinical <- read.csv(infile_2)
 clinical$NHG <- as.character(clinical$NHG)
+sample_modalities <- sample_modalities[sample_modalities$DNAmethylation==1,]
+clinical <- clinical[clinical$Sample %in% sample_modalities$Sample, ]
+
 #str(clinical)
 # Subgroup data
 if (clin_group == "All") {
@@ -49,8 +56,7 @@ if (clin_group == "All") {
 #names(sub_sample_modalities)
 
 # sub cohort
-sub_cohort <- "DNAmethylation"
-sub_clinical$Subset <- sub_sample_modalities$DNAmethylation[match(sub_clinical$Sample,sub_sample_modalities$Sample)]
+#sub_clinical$Subset <- sub_sample_modalities$DNAmethylation[match(sub_clinical$Sample,sub_sample_modalities$Sample)]
 sub_clinical$TreatGroup_ERpHER2n <- ifelse(!(sub_clinical$TreatGroup %in% c("ChemoEndo","Endo","None")),"Other",sub_clinical$TreatGroup)
 
 #######################################################################
@@ -71,11 +77,13 @@ label(sub_clinical$OS_years) <- "Overall Survival (years)"
 label(sub_clinical$RFi_years) <- "Recurrence-Free Interval (years)"
 label(sub_clinical$DRFi_years) <- "Distant Recurrence-Free Interval (years)"
 label(sub_clinical$TreatGroup_ERpHER2n) <- "Treatment regimen"
+label(sub_clinical$Group) <- "Subgroup"
 
 # Convert categorical variables to factors for proper formatting
 sub_clinical$PR <- factor(sub_clinical$PR, levels = c("Negative", "Positive"))
 sub_clinical$LN <- factor(sub_clinical$LN)
 sub_clinical$TreatGroup_ERpHER2n <- factor(sub_clinical$TreatGroup_ERpHER2n)
+sub_clinical$Group <- factor(sub_clinical$Group, levels = c("ER+HER2-", "ER+HER2+", "ER-HER2+", "TNBC", "Other"))
 
 # Apply custom renders
 my.render.cont <- function(x) {
@@ -86,17 +94,25 @@ my.render.cat <- function(x) {
     c("", sapply(stats.default(x), function(y) with(y,
         sprintf("%d (%0.0f %%)", FREQ, PCT))))
 }
-table_1 <- table1(~ Age + Size.mm + PR + LN + NHG | TreatGroup_ERpHER2n, 
-data = sub_clinical,
+table_1 <- table1(~ Age + Size.mm + PR + LN + NHG | Group, data = sub_clinical,
                 overall=c(left="Total"),render.continuous=my.render.cont, 
                 render.categorical=my.render.cat)
 
 table_list <- append(as.data.frame(table_1), table_list)
 
+table_2 <- table1(~ Age + Size.mm + PR + LN + NHG | TreatGroup, 
+data = sub_clinical,
+                overall=c(left="Total"),render.continuous=my.render.cont, 
+                render.categorical=my.render.cat)
+
+table_list <- append(as.data.frame(table_2), table_list)
+
 #######################################################################
-# save 
+# save
 #######################################################################
 save_html(table_1, file = outfile_1)
+save_html(table_2, file = outfile_2)
+
 # Loop through the list and save each table as sheet in excel file
 # for (table in table_list) {
 #   # Convert each table to HTML and append it to the file

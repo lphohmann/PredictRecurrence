@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Script: survival analyses in subsets SCAN-B
+# Script: survival analyses in subsets SCAN-B full FU
 # Author: Lennart Hohmann
 # Date: 11.03.2025
 #-------------------
@@ -31,8 +31,8 @@ infile_2 <- "./data/standardized/SCANB_clinical.csv"
 clin_group <- "ER+HER2-"
 #-------------------
 # output paths
-outfile_1 <- paste0(output_path,"SCANB_Modalities_surv_",clin_group,".pdf")
-outfile_2 <- paste0(output_path,"SCANB_Modalities_surv_",clin_group,".txt") 
+outfile_1 <- paste0(output_path,"SCANB_FU_Modalities_surv_",clin_group,".pdf")
+outfile_2 <- paste0(output_path,"SCANB_FU_Modalities_surv_",clin_group,".txt") 
 #-------------------
 # storing objects 
 plot_list <- list() # object to store plots
