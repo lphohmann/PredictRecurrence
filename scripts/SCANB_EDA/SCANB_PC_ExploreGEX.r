@@ -9,66 +9,91 @@ rm(list=ls())
 setwd("~/PhD_Workspace/PredictRecurrence/")
 #-------------------
 # packages
-#source("./scripts/src/")
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(ggplot2, ggVennDiagram, data.table, gridExtra, naniar)
+pacman::p_load(ggplot2, ggVennDiagram, data.table, gridExtra, naniar, reshape2)
 #-------------------
 # set/create output directories
 output_path <- "./output/SCANB_EDA/"
-dir.create(output_path)
+dir.create(output_path, showWarnings = FALSE)
 #-------------------
 # input paths
 infile_1 <- "./data/standardized/SCANB_ProjectCohort/SCANB_PC_clinical.csv"
 infile_2 <- "./data/standardized/SCANB_ProjectCohort/SCANB_PC_RNAseq_expression.csv"
 #-------------------
 # output paths
-outfile_1 <- paste0(output_path,"SCANB_PC_ExploreGEX.pdf")
+outfile_1 <- paste0(output_path, "SCANB_PC_ExploreGEX.pdf")
 #-------------------
 # storing objects 
-#plot.list <- list() # object to store plots
+plot.list <- list() # object to store plots
 txt.out <- c() # object to store text output, ggf. use capture.output()
+
+#######################################################################
+# functions
+#######################################################################
+
+# Function to calculate missing data summary
+calculate_missing_data <- function(data) {
+  missing_per_sample <- colSums(is.na(data))
+  missing_per_gene <- rowSums(is.na(data))
+  list(missing_per_sample = missing_per_sample, missing_per_gene = missing_per_gene)
+}
+
+# Function to plot missing data summary
+plot_missing_data_summary <- function(missing_data, title) {
+  missing_data_df <- data.frame(
+    Sample = names(missing_data$missing_per_sample),
+    MissingValues = missing_data$missing_per_sample
+  )
+  
+  plot <- ggplot(missing_data_df, aes(x = Sample, y = MissingValues)) +
+    geom_bar(stat = "identity") +
+    theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
+    labs(title = title, x = "Samples", y = "Number of Missing Values")
+  
+  return(plot)
+}
 
 #######################################################################
 # load data
 #######################################################################
+
 # which clin groups to run for
 clin_groups <- c("All", "ER+", "ER+HER2-", "TNBC")
-#clin_group <- "ER+HER2-" # All ER+HER2-
 
 clinical <- read.csv(infile_1)
 gex <- data.table::fread(infile_2)
 gex <- as.data.frame(gex)
 
-# for(clin_group in clin_groups) {}
-#clin_group = "All" #"ER+HER2-"
-clin_group = "ER+HER2-" #"ER+HER2-" tests
+#######################################################################
+# Analyses in general PC
+#######################################################################
 
-# Subgroup data
-if (clin_group == "All") {
+# Calculate and plot missing data summary for the entire dataset
+missing_data <- calculate_missing_data(gex[, -1]) # exclude the gene col
+plot <- plot_missing_data_summary(missing_data, "Missing Data Summary for All Samples")
+plot.list <- append(plot.list, list(plot))
+
+#######################################################################
+# Analyses to run in all subgroups
+#######################################################################
+for (clin_group in clin_groups) {
+  # Subgroup data
+  if (clin_group == "All") {
     sub_gex <- gex
-} else {
-    sub_gex <- gex[, c(
-        "Gene",
-        intersect(colnames(gex), clinical$Sample[clinical$Group == clin_group])
+  } else {
+    sub_samples <- clinical$Sample[grepl(
+      clin_group,
+      clinical$Group,
+      fixed = TRUE # don't treat like regex, otherwise + issues
     )]
+    sub_gex <- gex[, c("Gene", intersect(colnames(gex), sub_samples))]
+  }
+
+  # Calculate and plot missing data summary for the subgroup
+  missing_data <- calculate_missing_data(sub_gex[, -1])
+  plot <- plot_missing_data_summary(missing_data, paste0("Missing Data Summary for ", clin_group))
+  plot.list <- append(plot.list, list(plot))
 }
-
-#######################################################################
-# f
-#######################################################################
-
-#######################################################################
-# Missing data
-#######################################################################
-
-# Plot Nullity Matrix
-sub_clinical$TreatGroup[sub_clinical$TreatGroup == "Missing"] <- NA
-plot_4 <- vis_miss(sub_clinical[c("ER", "HER2", "PR", "Age", "PR", "LN", "NHG", "Size.mm", "TreatGroup", "RFi_event", "RFi_years", "OS_event", "OS_years", "DRFi_event", "DRFi_years")]) +
-    scale_fill_manual(values = c("black", "red")) +
-    theme(
-    axis.text.x = element_text(size = 14, angle = 45, hjust = 0.5),
-    axis.title = element_text(size = 16),
-    axis.text.y = element_text(size = 14))  # Angle and adjust )
 
 #######################################################################
 # save plots to pdf
@@ -77,7 +102,9 @@ plot_4 <- vis_miss(sub_clinical[c("ER", "HER2", "PR", "Age", "PR", "LN", "NHG", 
 # Set up the PDF output
 pdf(file = outfile_1, onefile = TRUE, width = 8.27, height = 11.69)
 
-grid.arrange(plot_1, plot_2, ncol = 2, nrow = 3)
-grid.arrange(plot_3, plot_4, ncol = 1, nrow = 2)
+for (i in 1:length(plot.list)) {
+  print(plot.list[[i]])
+  #grid.arrange(plot.list[[i]], ncol = 1, nrow = 1)
+}
 
 dev.off()
