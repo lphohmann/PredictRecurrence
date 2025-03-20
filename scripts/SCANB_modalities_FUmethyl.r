@@ -25,7 +25,8 @@ infile_4 <- "./data/standardized/SCANB_RNAseq_mutations.csv"
 infile_5 <- "./data/standardized/SCANB_DNAmethylation.csv"
 #-------------------
 # which clin group to run for
-clin_group <- "ER+HER2-" # All ER+HER2-
+clin_group <- "All"
+#clin_group <- "ER+HER2-" # All ER+HER2-
 #-------------------
 # output paths
 outfile_1 <- paste0(output_path,"SCANB_FUmethyl_Modalities_",clin_group,".pdf")

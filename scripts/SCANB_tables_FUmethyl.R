@@ -22,8 +22,8 @@ infile_1 <- "./data/standardized/SCANB_sample_modalities.csv"
 infile_2 <- "./data/standardized/SCANB_clinical.csv"
 #-------------------
 # which clin group to run for
-#clin_group <- "All" # "ER+HER2-"
-clin_group <- "ER+HER2-"
+clin_group <- "All" # "ER+HER2-"
+#clin_group <- "ER+HER2-"
 
 #-------------------
 # output paths

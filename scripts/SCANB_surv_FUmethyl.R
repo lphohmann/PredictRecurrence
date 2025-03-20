@@ -63,100 +63,31 @@ if (clin_group == "All") {
 
 # sub cohort
 #sub_clinical$Subset <- sub_sample_modalities$DNAmethylation[match(sub_clinical$Sample,sub_sample_modalities$Sample)]
-#sub_clinical$TreatGroup_ERpHER2n <- ifelse(!(sub_clinical$TreatGroup %in% c("ChemoEndo","Endo","None")),NA,sub_clinical$TreatGroup)
 
-#######################################################################
-# Cox regression and KM curves for clinical subgroups
-#######################################################################
-OM_list <- c("OS_years", "DRFi_years", "RFi_years")
-OMbin_list <- c("OS_event", "DRFi_event", "RFi_event")
-i=1
-for (i in seq_along(OM_list)) {
-  OM <- OM_list[i]
-  OMbin <- OMbin_list[i]
-
-  # data, surv object, and fit
-  surv_obj <- Surv(sub_clinical[[OM]], sub_clinical[[OMbin]])
-  surv_fit <- survminer::surv_fit(surv_obj ~ Group,
-    data = sub_clinical,
-    conf.type = "log-log"
-  )
-  # label output
-  plot_title <- paste0(OM, "; ", clin_group)
-  txt_out <- append(
-    txt_out,
-    c(
-      plot_title, "\n",
-      paste0("Analyses with clinical endpoint: ", OM, " in ", clin_group), "\n###########################################\n"
-    )
-  )
-  # subtype numbers
-  txt_out <- append(
-    txt_out,
-    c(capture.output(table(sub_clinical$Group)), "\n###########################################\n")
-  )
-
-  # add log rank pval
-  txt_out <- append(
-    txt_out,
-    c(
-      "log-rank test", "\n",
-      capture.output(surv_pvalue(surv_fit, data = sub_clinical)), "\n###########################################\n"
-    )
-  )
-
-  ##########################
-
-  # uv cox
-  main_Group <- coxph(surv_obj ~ Group, data = sub_clinical)
-  res <- summary(main_Group)
-  plot <- ggforest(main_Group,
-    data = sub_clinical,
-    main = plot_title
-  ) + theme_bw()
-
-  plot_list <- append(plot_list, list(plot))
-  txt_out <- append(txt_out, c(capture.output(res), "\n###########################################\n"))
-
-  ##########################
-  pval <- surv_pvalue(surv_fit, data = sub_clinical)
-  pvalue_text <- ifelse(pval$pval <= 0.001,
-    "Log-rank p-value ≤ 0.001",
-    paste("Log-rank p-value =", round(pval$pval, 3))
-  )
-  # KM plot
-  plot <- ggsurvplot(surv_fit,
-    data = sub_clinical,
-    pval = TRUE, conf.int = FALSE,
-    xlab = OM,
-    break.x.by = 1,
-    break.y.by = 0.05,
-    ylab = paste0(OM, " probability"),
-    ylim = c(0.5, 1),
-    title = paste(plot_title, "\n", pvalue_text),
-    legend = c(0.3, 0.4),
-    legend.title = "Group",
-    risk.table = TRUE,
-    legend.labs = gsub("Group=", "", names(surv_fit$strata))
-  ) # [["plot"]]
-
-  plot_list <- append(plot_list, list(plot))
-
-  ##########################
-
-  # mv cox
-  main.all <- coxph(surv_obj ~ Group + PR + Age + LN + Size.mm + NHG,
-    data = sub_clinical
-  )
-  res <- summary(main.all)
-  plot <- ggforest(main.all,
-    data = sub_clinical,
-    main = plot_title
-  ) + theme_bw()
-
-  plot_list <- append(plot_list, list(plot))
-  txt_out <- append(txt_out, c(capture.output(res), "\n###########################################\n"))
+# define treatment groups that are important for the subgroups
+if (clin_group == "ER+HER2-") { 
+  sub_clinical$TreatGroup_sub <- ifelse(!(sub_clinical$TreatGroup %in% c("ChemoEndo", "Endo", "None")), NA, sub_clinical$TreatGroup)
 }
+
+#######################################################################
+# Num events in project cohort
+#######################################################################
+
+events <- lapply(list(
+  sub_clinical$OS_event,
+  sub_clinical$RFi_event, 
+  sub_clinical$DRFi_event),
+  table)
+events <- data.frame(
+  Outcome = c("OS","OS","RFi","RFi","DRFi","DRFi"),
+  Count = c(as.vector(events[[1]]),as.vector(events[[2]]),as.vector(events[[3]])), Event = c(0,1,0,1,0,1))
+plot <- ggplot(events, aes(x = Outcome, y = Count, fill = as.factor(Event))) +
+  geom_bar(stat = 'identity', position = 'stack') +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) +
+  labs(x = 'Outcome', y = 'Count', title = "OS vs. RFI vs. DRFi Events in Subcohort") +
+  geom_text(aes(label = Count), position = position_stack(vjust = 0.5)) +  # Display count labels inside the bars
+  theme_minimal()
+plot_list <- append(plot_list, list(plot))
 
 #######################################################################
 # Num events in Group
@@ -206,18 +137,20 @@ plot <- ggplot(events_combined, aes(x = Outcome, y = Count, fill = as.factor(Eve
 
 plot_list <- append(plot_list, list(plot))
 
+#######################################################################
+# Cox regression and KM curves for clinical subgroups
+#######################################################################
+OM_list <- c("OS_years", "RFi_years") # "DRFi_years",
+OMbin_list <- c("OS_event", "RFi_event") # "DRFi_event",
 
-#######################################################################
-# Cox regression and KM curves for Treatment groups
-#######################################################################
-if (clin_group != "All") {
-  for (i in seq_along(OM_list)) {
+if (clin_group == "All") {
+  for (i in 1) { # seq_along(OM_list)) { # too few events for some groups
     OM <- OM_list[i]
     OMbin <- OMbin_list[i]
 
     # data, surv object, and fit
     surv_obj <- Surv(sub_clinical[[OM]], sub_clinical[[OMbin]])
-    surv_fit <- survminer::surv_fit(surv_obj ~ TreatGroup,
+    surv_fit <- survminer::surv_fit(surv_obj ~ Group,
       data = sub_clinical,
       conf.type = "log-log"
     )
@@ -233,7 +166,7 @@ if (clin_group != "All") {
     # subtype numbers
     txt_out <- append(
       txt_out,
-      c(capture.output(table(sub_clinical$TreatGroup)), "\n###########################################\n")
+      c(capture.output(table(sub_clinical$Group)), "\n###########################################\n")
     )
 
     # add log rank pval
@@ -248,7 +181,98 @@ if (clin_group != "All") {
     ##########################
 
     # uv cox
-    main_TreatGroup_ERpHER2n <- coxph(surv_obj ~ TreatGroup, data = sub_clinical)
+    main_Group <- coxph(surv_obj ~ Group, data = sub_clinical)
+    res <- summary(main_Group)
+    plot <- ggforest(main_Group,
+      data = sub_clinical,
+      main = plot_title
+    ) + theme_bw()
+
+    plot_list <- append(plot_list, list(plot))
+    txt_out <- append(txt_out, c(capture.output(res), "\n###########################################\n"))
+
+    ##########################
+    pval <- surv_pvalue(surv_fit, data = sub_clinical)
+    pvalue_text <- ifelse(pval$pval <= 0.001,
+      "Log-rank p-value ≤ 0.001",
+      paste("Log-rank p-value =", round(pval$pval, 3))
+    )
+    # KM plot
+    plot <- ggsurvplot(surv_fit,
+      data = sub_clinical,
+      pval = TRUE, conf.int = FALSE,
+      xlab = OM,
+      break.x.by = 1,
+      break.y.by = 0.05,
+      ylab = paste0(OM, " probability"),
+      ylim = c(0.5, 1),
+      title = paste(plot_title, "\n", pvalue_text),
+      legend = c(0.3, 0.4),
+      legend.title = "Group",
+      risk.table = TRUE,
+      legend.labs = gsub("Group=", "", names(surv_fit$strata))
+    ) # [["plot"]]
+
+    plot_list <- append(plot_list, list(plot))
+
+    ##########################
+
+    # mv cox
+    main.all <- coxph(surv_obj ~ Group + PR + Age + LN + Size.mm + NHG,
+      data = sub_clinical
+    )
+    res <- summary(main.all)
+    plot <- ggforest(main.all,
+      data = sub_clinical,
+      main = plot_title
+    ) + theme_bw()
+
+    plot_list <- append(plot_list, list(plot))
+    txt_out <- append(txt_out, c(capture.output(res), "\n###########################################\n"))
+  }
+}
+#######################################################################
+# Cox regression and KM curves for Treatment groups
+#######################################################################
+if (clin_group %in% c("ER+HER2-")) { #,"TNBC")
+  for (i in seq_along(OM_list)) {
+    OM <- OM_list[i]
+    OMbin <- OMbin_list[i]
+
+    # data, surv object, and fit
+    surv_obj <- Surv(sub_clinical[[OM]], sub_clinical[[OMbin]])
+    surv_fit <- survminer::surv_fit(surv_obj ~ TreatGroup_sub,
+      data = sub_clinical,
+      conf.type = "log-log"
+    )
+    # label output
+    plot_title <- paste0(OM, "; ", clin_group)
+    txt_out <- append(
+      txt_out,
+      c(
+        plot_title, "\n",
+        paste0("Analyses with clinical endpoint: ", OM, " in ", clin_group), "\n###########################################\n"
+      )
+    )
+    # subtype numbers
+    txt_out <- append(
+      txt_out,
+      c(capture.output(table(sub_clinical$TreatGroup_sub)), "\n###########################################\n")
+    )
+
+    # add log rank pval
+    txt_out <- append(
+      txt_out,
+      c(
+        "log-rank test", "\n",
+        capture.output(surv_pvalue(surv_fit, data = sub_clinical)), "\n###########################################\n"
+      )
+    )
+
+    ##########################
+
+    # uv cox
+    main_TreatGroup <- coxph(surv_obj ~ TreatGroup_sub, data = sub_clinical)
     res <- summary(main_TreatGroup)
     plot <- ggforest(main_TreatGroup,
       data = sub_clinical,
@@ -277,7 +301,7 @@ if (clin_group != "All") {
       legend = c(0.3, 0.4),
       legend.title = "Treatment",
       risk.table = TRUE,
-      legend.labs = gsub("TreatGroup=", "", names(surv_fit$strata))
+      legend.labs = gsub("TreatGroup_sub=", "",names(surv_fit$strata))
     ) # [["plot"]]
 
     plot_list <- append(plot_list, list(plot))
@@ -285,7 +309,7 @@ if (clin_group != "All") {
     ##########################
 
     # mv cox
-    main.all <- coxph(surv_obj ~ TreatGroup + PR + Age + LN + Size.mm + NHG,
+    main.all <- coxph(surv_obj ~ TreatGroup_sub + PR + Age + LN + Size.mm + NHG,
       data = sub_clinical
     )
     res <- summary(main.all)
@@ -306,13 +330,13 @@ if (clin_group != "All") {
   events_list <- list()
 
   # Iterate through each treatment group
-  for (treatment in unique(sub_clinical$TreatGroup)[!is.na(unique(sub_clinical$TreatGroup))]) {
+  for (treatment in unique(sub_clinical$TreatGroup_sub)[!is.na(unique(sub_clinical$TreatGroup_sub))]) {
     # Calculate the event counts for OS, RFi, and DRFi for each treatment group
     events <- lapply(
       list(
-        sub_clinical$OS_event[sub_clinical$TreatGroup == treatment],
-        sub_clinical$RFi_event[sub_clinical$TreatGroup == treatment],
-        sub_clinical$DRFi_event[sub_clinical$TreatGroup == treatment]
+        sub_clinical$OS_event[sub_clinical$TreatGroup_sub == treatment],
+        sub_clinical$RFi_event[sub_clinical$TreatGroup_sub == treatment],
+        sub_clinical$DRFi_event[sub_clinical$TreatGroup_sub == treatment]
       ),
       table
     )
@@ -322,7 +346,7 @@ if (clin_group != "All") {
       Outcome = rep(c("OS", "RFi", "DRFi"), each = 2), # Repeat OS, RFi, DRFi for 0 and 1 events
       Count = c(as.vector(events[[1]]), as.vector(events[[2]]), as.vector(events[[3]])), # Count of events
       Event = rep(c(0, 1), times = 3), # 0 and 1 event counts for each outcome
-      TreatGroup = rep(treatment, 6) # Add the treatment group as a new column
+      TreatGroup_sub = rep(treatment, 6) # Add the treatment group as a new column
     )
 
     # Append the current treatment group's data to the events list
@@ -335,7 +359,7 @@ if (clin_group != "All") {
   # Create a stacked barplot for the three treatment groups
   plot <- ggplot(events_combined, aes(x = Outcome, y = Count, fill = as.factor(Event))) +
     geom_bar(stat = "identity", position = "stack") + # Stacked bar plot
-    facet_wrap(~TreatGroup) + # Separate the plots by treatment group
+    facet_wrap(~TreatGroup_sub) + # Separate the plots by treatment group
     labs(
       title = "Stacked Barplot of Events (OS, RFi, DRFi) by Treatment Group",
       x = "Outcome", y = "Count", fill = "Event"

@@ -25,7 +25,8 @@ infile_4 <- "./data/standardized/SCANB_RNAseq_mutations.csv"
 infile_5 <- "./data/standardized/SCANB_DNAmethylation.csv"
 #-------------------
 # which clin group to run for
-clin_group <- "ER+HER2-"
+#clin_group <- "ER+HER2-"
+clin_group <- "All"
 #-------------------
 # output paths
 outfile_1 <- paste0(output_path,"SCANB_FU_Modalities_",clin_group,".pdf")
@@ -145,7 +146,9 @@ plot_5 <- ggplot(events, aes(x = Outcome, y = Count, fill = as.factor(Event))) +
   theme_minimal()
 
 # Treatments #############################################################
-venn_list <- list(
+
+if(clin_group=="ER+HER2-") {
+  venn_list <- list(
   "Endocrine" = sub_clinical$Sample[sub_clinical$Endo == 1 & sub_clinical$Group==clin_group],
   "Chemo" = sub_clinical$Sample[sub_clinical$Chemo == 1 & sub_clinical$Group==clin_group],
   "Immu" = sub_clinical$Sample[sub_clinical$Immu == 1 & sub_clinical$Group==clin_group])
@@ -162,6 +165,8 @@ plot_6 <- ggVennDiagram(venn_list, label_alpha = 0) +
     length(clinical$Sample[clinical$TreatGroup == "None" & clinical$Group==clin_group]),
     "; Missing n=",length(clinical$Sample[clinical$TreatGroup == "Missing" & clinical$Group==clin_group]))
   )
+}
+
 
 
 #######################################################################
@@ -178,7 +183,11 @@ plot_6 <- ggVennDiagram(venn_list, label_alpha = 0) +
 # Set up the PDF output
 pdf(file = outfile_1, onefile = TRUE)#, height = 8.27/2, width = 11.69/2)
 
-grid.arrange(plot_1,plot_2,plot_5,plot_6,ncol = 2,nrow = 2)
+if (clin_group == "ER+HER2-") {
+  grid.arrange(plot_1, plot_2, plot_5, plot_6, ncol = 2, nrow = 2)
+} else {
+    grid.arrange(plot_1, plot_2, plot_5, ncol = 2, nrow = 2)
+}
 print(plot_3)
 print(plot_4)
 

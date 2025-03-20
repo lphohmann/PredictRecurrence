@@ -28,7 +28,8 @@ infile_1 <- "./data/standardized/SCANB_sample_modalities.csv"
 infile_2 <- "./data/standardized/SCANB_clinical.csv"
 #-------------------
 # which clin group to run for
-clin_group <- "ER+HER2-"
+#clin_group <- "ER+HER2-"
+clin_group <- "All"
 #-------------------
 # output paths
 outfile_1 <- paste0(output_path,"SCANB_FU_Modalities_surv_",clin_group,".pdf")
