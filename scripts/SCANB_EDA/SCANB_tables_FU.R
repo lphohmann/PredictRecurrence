@@ -14,12 +14,12 @@ if (!require("pacman")) install.packages("pacman")
 pacman::p_load(table1,htmltools,finalfit,Publish,htmlTable)
 #-------------------
 # set/create output directories
-output_path <- "./output/"
+output_path <- "./output/SCANB_EDA/"
 dir.create(output_path)
 #-------------------
 # input paths
-infile_1 <- "./data/standardized/SCANB_sample_modalities.csv"
-infile_2 <- "./data/standardized/SCANB_clinical.csv"
+infile_1 <- "./data/standardized/SCANB_FullFU/SCANB_sample_modalities.csv"
+infile_2 <- "./data/standardized/SCANB_FullFU/SCANB_clinical.csv"
 #-------------------
 # which clin group to run for
 #clin_group <- "ER+HER2-"

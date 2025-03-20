@@ -14,15 +14,15 @@ if (!require("pacman")) install.packages("pacman")
 pacman::p_load(ggplot2, ggVennDiagram, gridExtra, data.table, naniar)
 #-------------------
 # set/create output directories
-output_path <- "./output/"
+output_path <- "./output/SCANB_EDA/"
 dir.create(output_path)
 #-------------------
 # input paths
-infile_1 <- "./data/standardized/SCANB_sample_modalities.csv"
-infile_2 <- "./data/standardized/SCANB_clinical.csv"
-infile_3 <- "./data/standardized/SCANB_RNAseq_expression.csv"
-infile_4 <- "./data/standardized/SCANB_RNAseq_mutations.csv"
-infile_5 <- "./data/standardized/SCANB_DNAmethylation.csv"
+infile_1 <- "./data/standardized/SCANB_FullFU/SCANB_sample_modalities.csv"
+infile_2 <- "./data/standardized/SCANB_FullFU/SCANB_clinical.csv"
+infile_3 <- "./data/standardized/SCANB_FullFU/SCANB_RNAseq_expression.csv"
+infile_4 <- "./data/standardized/SCANB_FullFU/SCANB_RNAseq_mutations.csv"
+infile_5 <- "./data/standardized/SCANB_FullFU/SCANB_DNAmethylation.csv"
 #-------------------
 # which clin group to run for
 #clin_group <- "ER+HER2-"

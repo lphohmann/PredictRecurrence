@@ -20,12 +20,12 @@ pacman::p_load(ggplot2, gridExtra, ggfortify,
                #stringi)
 #-------------------
 # set/create output directories
-output_path <- "./output/"
+output_path <- "./output/SCANB_EDA/"
 dir.create(output_path)
 #-------------------
 # input paths
-infile_1 <- "./data/standardized/SCANB_sample_modalities.csv"
-infile_2 <- "./data/standardized/SCANB_clinical.csv"
+infile_1 <- "./data/standardized/SCANB_FullFU/SCANB_sample_modalities.csv"
+infile_2 <- "./data/standardized/SCANB_FullFU/SCANB_clinical.csv"
 #-------------------
 # which clin group to run for
 #clin_group <- "ER+HER2-"
@@ -46,6 +46,8 @@ txt_out <- c() # object to store text output, ggf. use capture.output()
 sample_modalities <- read.csv(infile_1)
 clinical <- read.csv(infile_2)
 clinical$NHG <- as.character(clinical$NHG)
+clinical$Group <- factor(clinical$Group, levels = c("ER+HER2-", "ER+HER2+", "ER-HER2+", "TNBC", "Other"))
+clinical$LN <- factor(clinical$LN, levels = c("N0", "N+"))
 
 # Subgroup data
 if (clin_group == "All") {

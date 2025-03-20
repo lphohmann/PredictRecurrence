@@ -20,12 +20,12 @@ pacman::p_load(ggplot2, gridExtra, ggfortify,
                #stringi)
 #-------------------
 # set/create output directories
-output_path <- "./output/"
+output_path <- "./output/SCANB_EDA/"
 dir.create(output_path)
 #-------------------
 # input paths
-infile_1 <- "./data/standardized/SCANB_sample_modalities.csv"
-infile_2 <- "./data/standardized/SCANB_clinical.csv"
+infile_1 <- "./data/standardized/SCANB_FullFU/SCANB_sample_modalities.csv"
+infile_2 <- "./data/standardized/SCANB_FullFU/SCANB_clinical.csv"
 #-------------------
 # which clin group to run for
 clin_group <- "All" # "ER+HER2-"
@@ -49,7 +49,8 @@ clinical$NHG <- as.character(clinical$NHG)
 #only methyl 
 sample_modalities <- sample_modalities[sample_modalities$DNAmethylation==1,]
 clinical <- clinical[clinical$Sample %in% sample_modalities$Sample, ]
-clinical$Group <- factor(clinical$Group, levels = c("ER+HER2-","ER+HER2+","ER-HER2+", "TNBC", "Other"))
+clinical$Group <- factor(clinical$Group, levels = c("ER+HER2-", "ER+HER2+", "ER-HER2+", "TNBC", "Other"))
+clinical$LN <- factor(clinical$LN, levels = c("N0","N+"))
 
 # Subgroup data
 if (clin_group == "All") {
@@ -144,14 +145,16 @@ OM_list <- c("OS_years", "RFi_years") # "DRFi_years",
 OMbin_list <- c("OS_event", "RFi_event") # "DRFi_event",
 
 if (clin_group == "All") {
-  for (i in 1) { # seq_along(OM_list)) { # too few events for some groups
+  surv_sub_clinical <- sub_clinical[sub_clinical$Group != "Other",]
+  for (i in seq_along(OM_list)) { # too few events for some groups
+
     OM <- OM_list[i]
     OMbin <- OMbin_list[i]
 
     # data, surv object, and fit
-    surv_obj <- Surv(sub_clinical[[OM]], sub_clinical[[OMbin]])
+    surv_obj <- Surv(surv_sub_clinical[[OM]], surv_sub_clinical[[OMbin]])
     surv_fit <- survminer::surv_fit(surv_obj ~ Group,
-      data = sub_clinical,
+      data = surv_sub_clinical,
       conf.type = "log-log"
     )
     # label output
@@ -166,7 +169,7 @@ if (clin_group == "All") {
     # subtype numbers
     txt_out <- append(
       txt_out,
-      c(capture.output(table(sub_clinical$Group)), "\n###########################################\n")
+      c(capture.output(table(surv_sub_clinical$Group)), "\n###########################################\n")
     )
 
     # add log rank pval
@@ -174,17 +177,18 @@ if (clin_group == "All") {
       txt_out,
       c(
         "log-rank test", "\n",
-        capture.output(surv_pvalue(surv_fit, data = sub_clinical)), "\n###########################################\n"
+        capture.output(surv_pvalue(surv_fit, data = surv_sub_clinical)), "\n###########################################\n"
       )
     )
 
     ##########################
 
     # uv cox
-    main_Group <- coxph(surv_obj ~ Group, data = sub_clinical)
+    surv_sub_clinical$Group <- droplevels(surv_sub_clinical$Group)
+    main_Group <- coxph(surv_obj ~ Group, data = surv_sub_clinical)
     res <- summary(main_Group)
     plot <- ggforest(main_Group,
-      data = sub_clinical,
+      data = surv_sub_clinical,
       main = plot_title
     ) + theme_bw()
 
@@ -192,14 +196,14 @@ if (clin_group == "All") {
     txt_out <- append(txt_out, c(capture.output(res), "\n###########################################\n"))
 
     ##########################
-    pval <- surv_pvalue(surv_fit, data = sub_clinical)
+    pval <- surv_pvalue(surv_fit, data = surv_sub_clinical)
     pvalue_text <- ifelse(pval$pval <= 0.001,
       "Log-rank p-value ≤ 0.001",
       paste("Log-rank p-value =", round(pval$pval, 3))
     )
     # KM plot
     plot <- ggsurvplot(surv_fit,
-      data = sub_clinical,
+      data = surv_sub_clinical,
       pval = TRUE, conf.int = FALSE,
       xlab = OM,
       break.x.by = 1,
@@ -219,11 +223,11 @@ if (clin_group == "All") {
 
     # mv cox
     main.all <- coxph(surv_obj ~ Group + PR + Age + LN + Size.mm + NHG,
-      data = sub_clinical
+      data = surv_sub_clinical
     )
     res <- summary(main.all)
     plot <- ggforest(main.all,
-      data = sub_clinical,
+      data = surv_sub_clinical,
       main = plot_title
     ) + theme_bw()
 

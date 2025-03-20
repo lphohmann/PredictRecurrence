@@ -25,11 +25,11 @@ os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 ################################################################################
 
 # input paths
-infile_1 = "./data/standardized/SCANB_sample_modalities.csv"
-infile_2 = "./data/standardized/SCANB_clinical.csv"
-infile_3 = "./data/standardized/SCANB_RNAseq_expression.csv"
-infile_4 = "./data/standardized/SCANB_RNAseq_mutations.csv"
-infile_5 = "./data/standardized/SCANB_DNAmethylation.csv"
+infile_1 = "./data/standardized/SCANB_FullFU/SCANB_sample_modalities.csv"
+infile_2 = "./data/standardized/SCANB_FullFU/SCANB_clinical.csv"
+infile_3 = "./data/standardized/SCANB_FullFU/SCANB_RNAseq_expression.csv"
+infile_4 = "./data/standardized/SCANB_FullFU/SCANB_RNAseq_mutations.csv"
+infile_5 = "./data/standardized/SCANB_FullFU/SCANB_DNAmethylation.csv"
 
 # set subgroup to run the analyses
 #clin_group = "All" # "All" or "ER+HER2-"
@@ -38,7 +38,7 @@ clin_group = "ER+HER2-"
 fig_size = (8.27/2, 11.69/2)
 
 # output paths
-outfile_1 = f"./output/SCANB_Modalities_Surv_{clin_group}.pdf"
+outfile_1 = f"./output/SCANB_EDA/SCANB_Modalities_Surv_{clin_group}.pdf"
 
 # plot file
 pdf = PdfPages(outfile_1)
