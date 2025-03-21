@@ -73,6 +73,8 @@ missing_data <- calculate_missing_data(gex[, -1]) # exclude the gene col
 plot <- plot_missing_data_summary(missing_data, "Missing Data Summary for All Samples")
 plot.list <- append(plot.list, list(plot))
 
+#sum(is.na(gex[, -1])) # no missing values but 0 
+
 #######################################################################
 # Analyses to run in all subgroups
 #######################################################################

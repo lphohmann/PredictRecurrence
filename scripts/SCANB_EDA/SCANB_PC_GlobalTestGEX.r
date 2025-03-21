@@ -22,7 +22,7 @@ infile_1 <- "./data/standardized/SCANB_ProjectCohort/SCANB_PC_clinical.csv"
 infile_2 <- "./data/standardized/SCANB_ProjectCohort/SCANB_PC_RNAseq_expression.csv"
 #-------------------
 # output paths
-outfile_1 <- paste0(output_path, "GlobalTest_Results.txt")
+outfile_1 <- paste0(output_path, "SCANB_PC_GlobalTestGEX.txt")
 #-------------------
 # storing objects 
 results <- list() # object to store results
@@ -35,12 +35,17 @@ clinical <- read.csv(infile_1)
 gex <- data.table::fread(infile_2)
 gex <- as.data.frame(gex)
 
-# Ensure the first column is the gene ID
+# Move gene names to rownames
 rownames(gex) <- gex$Gene
 gex <- gex[, -1]
+#gex[1:5,1:5]
 
 # Ensure clinical data has the same samples as gex
 clinical <- clinical[clinical$Sample %in% colnames(gex), ]
+
+# Ensure the samples in clinical data are in the same order as in gex
+clinical <- clinical[match(colnames(gex), clinical$Sample), ]
+
 
 #######################################################################
 # Run Global Test
@@ -48,16 +53,23 @@ clinical <- clinical[clinical$Sample %in% colnames(gex), ]
 
 # Define outcomes
 outcomes <- c("RFi_event", "OS_event")
-
+#outcome <- "RFi_event"
 for (outcome in outcomes) {
-  # Ensure the outcome is numeric
-  clinical[[outcome]] <- as.numeric(as.character(clinical[[outcome]]))
-  
-  # Run the global test
-  gt_result <- gt(clinical[[outcome]], gex)
-  
-  # Store the result
-  results[[outcome]] <- summary(gt_result)
+
+    # select only samples with available outcome measure data
+    sub_clinical <- clinical[!is.na(clinical[[outcome]]), ]
+    sub_gex <- gex[, colnames(gex) %in% sub_clinical$Sample]
+    #identical(colnames(sub_gex), sub_clinical$Sample) # TRUE
+
+    # Ensure the outcome is numeric
+    sub_clinical[[outcome]] <- as.numeric(as.character(sub_clinical[[outcome]]))
+    
+    # Run the global test
+    gt_result <- gt(sub_clinical[[outcome]], t(sub_gex)) # Transpose gex to match the expected format
+    
+    
+    # Store the result
+    results[[outcome]] <- summary(gt_result)
 }
 
 #######################################################################
