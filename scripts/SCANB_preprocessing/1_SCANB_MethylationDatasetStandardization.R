@@ -15,6 +15,9 @@ pacman::p_load(data.table)
 #----------------------------------------------------------------------
 # input paths
 infile.1 <- "./data/raw/GSE278586_ProcessedData_LUepic_n499.txt"
+infile.2 <- "./data/raw/PurBeta_adjustedTumor_betaMatrix_V1_V2_reduced_717459commonCpGs_TNBCs_n136.RData"
+infile.3 <- "./data/raw/TNBC_adjustedBetaTumor_workspace_235samples_trimmedCpGs_updatedAnno.RData"
+
 #infile.2 <- "./data/raw/" # NatMed TNBC cohort
 #infile.3 <- "./data/raw/" # MO cohort data
 #----------------------------------------------------------------------
