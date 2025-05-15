@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Script: Standardizing methylation data for SCANB, 1 file with all avail. data
+# Script: Standardizing methylation data for SCANB, creating 1 file with all training data
 # Author: Lennart Hohmann
 # Date: 24.03.2025
 #----------------------------------------------------------------------
