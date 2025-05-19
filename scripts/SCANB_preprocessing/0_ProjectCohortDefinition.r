@@ -22,7 +22,6 @@ infile.3 <- "./data/processed/TNBC_unadjusted.RData"
 infile.4 <- "./data/standardized/SCANB_FullFU/SCANB_clinical.csv"
 infile.5 <- "./data/raw/Updated_merged_annotations_n235_WGS_MethylationCohort.RData"
 infile.6 <- "./data/raw/PurBeta_adjustedTumor_betaMatrix_V1_V2_reduced_717459commonCpGs_TNBCs_n136.RData"
-
 #----------------------------------------------------------------------
 # output paths
 outfile.1 <- "./data/set_definitions/PC_train.csv"
@@ -39,6 +38,12 @@ tnbc <- loadRData(infile.3)
 tnbc.idkey <- loadRData(infile.5)
 anno <- read.csv(infile.4, header = TRUE, sep = ",")
 
+# extra tnbcs
+tnbc_136 <- loadRData(infile.6)
+head(tnbc_136)
+colnames(tnbc_136) <- gsub("\\..*$", "", colnames(tnbc_136))
+ncol(tnbc_136)
+
 ##########################
 # TEST SET EVENT NUM CHECK
 ##########################
@@ -51,9 +56,9 @@ table(mo.test.anno$clinGroup, mo.test.anno$RFi_event)
 
 # need more events in test set
 
-#######################################################
+#########################
 # STANDARDIZE SAMPLE IDS
-#######################################################
+#########################
 
 #mo.test$Sample # is in right format
 # standardize sample ids
@@ -68,10 +73,20 @@ colnames(tnbc) <- tnbc.idkey$External_ID_sample[match(
 #######################################################
 # IDENTIFY EXTRA SAMPLES (NOT IN TRAIN OR TEST ALREADY)
 #######################################################
-mo.all <- c(mo.test$Sample, colnames(mo.train))
 
+mo.all <- c(mo.test$Sample, colnames(mo.train))
 length(setdiff(colnames(erp), mo.all)) # 189 extra samples
 # length(setdiff(colnames(tnbc), mo.all)) # 1 extra sample, drop
+length(setdiff(colnames(tnbc_136), mo.all)) # 21 extra samples
+
+tnbc_136.df <- data.frame("Sample"=colnames(tnbc_136))
+tnbc_136.df <- merge(tnbc_136.df, anno, by = "Sample")
+tnbc_21.df <- tnbc_136.df[!(tnbc_136.df$Sample %in% mo.all),]
+#dim(tnbc_136.df)
+#dim(tnbc_21.df)
+table(tnbc_21.df$OS_event)
+table(tnbc_21.df$RFi_event)
+
 
 #######################################################
 # SPLIT INTO TRAIN AND TEST TO ADD TO THE EXISTING SETS
