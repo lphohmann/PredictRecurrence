@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Script: Defining the Project training cohort, by merging DNA methylation cohorts and excluding samples in MO test set
+# Script: Defining the training and test sets
 # Author: Lennart Hohmann
 # Date: 14.05.2025
 #----------------------------------------------------------------------
@@ -12,7 +12,7 @@ setwd("~/PhD_Workspace/PredictRecurrence/")
 #source("./scripts/src/")
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(data.table,caret)
-source("./src/untils.R")
+source("./src/utils.R")
 #----------------------------------------------------------------------
 # input paths
 infile.0 <- "./data/raw/id_multiomics_TEST_cohort_EPICassay.Rdata"
@@ -24,25 +24,24 @@ infile.5 <- "./data/raw/Updated_merged_annotations_n235_WGS_MethylationCohort.RD
 infile.6 <- "./data/raw/PurBeta_adjustedTumor_betaMatrix_V1_V2_reduced_717459commonCpGs_TNBCs_n136.RData"
 #----------------------------------------------------------------------
 # output paths
-outfile.1 <- "./data/set_definitions/PC_train.csv"
-outfile.2 <- "./data/set_definitions/PC_test.csv" # depends on if MO test has sufficient events or not (if not add extra samples to it)
+outfile.1 <- "./data/set_definitions/train_ids.csv"
+outfile.2 <- "./data/set_definitions/test_ids.csv" # depends on if MO test has sufficient events or not (if not add extra samples to it)
 
 ###################
 # LOAD INPUT FILES
 ###################
 
-mo.test <- loadRData(infile.0)
-mo.train <- loadRData(infile.1)
-erp <- loadRData(infile.2)
-tnbc <- loadRData(infile.3)
-tnbc.idkey <- loadRData(infile.5)
 anno <- read.csv(infile.4, header = TRUE, sep = ",")
 
-# extra tnbcs
+mo.test <- loadRData(infile.0)
+mo.train <- loadRData(infile.1)
+
+erp <- loadRData(infile.2)
+
+tnbc <- loadRData(infile.3)
+tnbc.idkey <- loadRData(infile.5)
 tnbc_136 <- loadRData(infile.6)
-head(tnbc_136)
 colnames(tnbc_136) <- gsub("\\..*$", "", colnames(tnbc_136))
-ncol(tnbc_136)
 
 ##########################
 # TEST SET EVENT NUM CHECK
@@ -53,8 +52,6 @@ mo.test.anno <- merge(mo.test, anno, by = "Sample")
 
 table(mo.test.anno$clinGroup, mo.test.anno$OS_event)
 table(mo.test.anno$clinGroup, mo.test.anno$RFi_event)
-
-# need more events in test set
 
 #########################
 # STANDARDIZE SAMPLE IDS
@@ -75,9 +72,9 @@ colnames(tnbc) <- tnbc.idkey$External_ID_sample[match(
 #######################################################
 
 mo.all <- c(mo.test$Sample, colnames(mo.train))
-length(setdiff(colnames(erp), mo.all)) # 189 extra samples
-# length(setdiff(colnames(tnbc), mo.all)) # 1 extra sample, drop
-length(setdiff(colnames(tnbc_136), mo.all)) # 21 extra samples
+length(setdiff(colnames(erp), mo.all)) # 189 extra samples, add them
+# length(setdiff(colnames(tnbc), mo.all)) # only 1 extra sample, drop
+length(setdiff(colnames(tnbc_136), mo.all)) # 21 extra samples, add them
 
 tnbc_136.df <- data.frame("Sample"=colnames(tnbc_136))
 tnbc_136.df <- merge(tnbc_136.df, anno, by = "Sample")
@@ -87,34 +84,57 @@ tnbc_21.df <- tnbc_136.df[!(tnbc_136.df$Sample %in% mo.all),]
 table(tnbc_21.df$OS_event)
 table(tnbc_21.df$RFi_event)
 
-
 #######################################################
 # SPLIT INTO TRAIN AND TEST TO ADD TO THE EXISTING SETS
 # TAKING OUTCOME INTO CONSIDERATION
 #######################################################
 
+# extra ERpHER2n samples
 # Step 1: Select erp samples not already in mo.all
 extra.samples <- setdiff(colnames(erp), mo.all)
 extra.samples.anno <- data.frame("Sample"=extra.samples) 
 extra.samples.anno$RFI_event <- anno$RFi_event[match(extra.samples, anno$Sample)]
-sum(is.na(extra.samples.anno$RFI_event)) # 0
 # Step 2: Create stratified split based on RFI events
 set.seed(22)  # For reproducibility
 samp <- createDataPartition(extra.samples.anno$RFI_event, p = 0.75, list = FALSE)
 # Step 3: Create train and test sets
-added.samples.train <- extra.samples.anno[samp, ]
-added.samples.test  <- extra.samples.anno[-samp, ]
+added.erp.samples.train <- extra.samples.anno[samp, ]
+added.erp.samples.test  <- extra.samples.anno[-samp, ]
 
 # check
-#table(added.samples.train$RFI_event)
-# table(added.samples.test$RFI_event)
+table(added.erp.samples.train$RFI_event)
+table(added.erp.samples.test$RFI_event)
+
+# extra TNBC samples
+# Step 1: Select  samples not already in mo.all
+extra.samples <- setdiff(colnames(tnbc_136), mo.all)
+extra.samples.anno <- data.frame("Sample"=extra.samples) 
+extra.samples.anno$RFI_event <- anno$RFi_event[match(extra.samples, anno$Sample)]
+table(is.na(extra.samples.anno$RFI_event)) # 7 without RFI
+# Step 2: Just add all to train set
+added.tnbc.samples.train <- extra.samples.anno
+
+# check
+table(added.tnbc.samples.train$RFI_event)
 
 ##############################
 # DEFINE FINAL TEST TRAIN SETS
 ##############################
 
-train.ids <- c(colnames(mo.train),added.samples.train$Sample)
-test.ids <- c(mo.test$Sample,added.samples.test$Sample)
+train.ids <- c(colnames(mo.train),added.erp.samples.train$Sample,added.tnbc.samples.train$Sample)
+test.ids <- c(mo.test$Sample,added.erp.samples.test$Sample)
+length(train.ids) # 1567
+length(test.ids) # 759
+
+####################################
+# FILT CASES W/O AVAIL OUTCOME DATA?
+####################################
+
+table(is.na(anno[anno$Sample %in% test.ids, "RFi_event"]))
+table(is.na(anno[anno$Sample %in% train.ids, "RFi_event"]))
+
+train.ids <- anno$Sample[anno$Sample %in% train.ids & !is.na(anno$RFi_event)]
+test.ids <- anno$Sample[anno$Sample %in% test.ids & !is.na(anno$RFi_event)]
 length(train.ids) # 1567
 length(test.ids) # 759
 

@@ -11,7 +11,7 @@ setwd("~/PhD_Workspace/PredictRecurrence/")
 #source("./scripts/src/")
 #if (!require("pacman")) install.packages("pacman")
 #pacman::p_load()
-source("./src/untils.R")
+source("./src/utils.R")
 #-------------------
 # input paths
 infile_1 <- "./data/raw/PureBeta_results/TNBC_PureBetaResult.RData"
@@ -32,7 +32,5 @@ tnbc_adj <- tnbc_res$Corrected_tumour
 save(tnbc_adj, file = outfile_1)
 
 # save erp
-str(erp_res)
-
 erp_adj <- erp_res$Corrected_tumour
 save(erp_adj, file = outfile_2)
