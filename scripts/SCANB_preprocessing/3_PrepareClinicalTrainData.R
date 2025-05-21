@@ -75,5 +75,8 @@ fwrite(clin.dat, file=outfile.1, na = "NA")
 
 ERpHER2n_train_ids <- clin.dat$Sample[clin.dat$Group=="ER+HER2-"]
 TNBC_train_ids <- clin.dat$Sample[clin.dat$Group=="TNBC"]
+
+#table(clin.dat$Group)
+
 write.table(ERpHER2n_train_ids, file = outfile.2, row.names = FALSE, col.names = FALSE) #erp
 write.table(TNBC_train_ids, file = outfile.3, row.names = FALSE, col.names = FALSE) #tnbc
