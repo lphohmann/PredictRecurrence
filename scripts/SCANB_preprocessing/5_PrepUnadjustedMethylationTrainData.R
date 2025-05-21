@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Script: Standardizing uncorrected methylation data for SCANB, 
+# Script: Standardizing uncorrected methylation data for SCANB
 # Author: Lennart Hohmann
 # Date: 20.05.2025
 #----------------------------------------------------------------------
@@ -120,7 +120,8 @@ train_unadjusted <- cbind(
     ERpHER2n_unadjusted_toadd[, -which(names(ERpHER2n_unadjusted_toadd) == "ID_REF")])
 
 dim(train_unadjusted)
-train_unadjusted <- train_unadjusted[, c("ID_REF", setdiff(names(train_unadjusted), "ID_REF"))]
+#train_unadjusted <- train_unadjusted[, c("ID_REF", setdiff(names(train_unadjusted), "ID_REF"))]
+train_unadjusted <- train_unadjusted[, c("ID_REF", train.ids)]
 
 #######################################################################
 # save output files

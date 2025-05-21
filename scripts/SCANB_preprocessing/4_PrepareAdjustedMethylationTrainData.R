@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Script: Standardizing TCC adjusted methylation data for SCANB, 
+# Script: Standardizing TCC adjusted methylation data for SCANB
 # Author: Lennart Hohmann
 # Date: 20.05.2025
 #----------------------------------------------------------------------
@@ -97,7 +97,9 @@ train_adjusted <- cbind(
     ERpHER2n_toadd[, -which(names(ERpHER2n_toadd) == "ID_REF")])
 
 dim(train_adjusted)
-train_adjusted <- train_adjusted[, c("ID_REF", setdiff(names(train_adjusted), "ID_REF"))]
+#train_adjusted <- train_adjusted[, c("ID_REF", setdiff(names(train_adjusted), "ID_REF"))]
+
+train_adjusted <- train_adjusted[, c("ID_REF", train.ids)]
 
 #######################################################################
 # save output files

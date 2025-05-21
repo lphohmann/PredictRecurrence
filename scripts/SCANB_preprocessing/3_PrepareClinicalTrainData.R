@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
-# Script: Standardizing methylation data for SCANB, creating 1 file with all training data
+# Script: Standardizing clinical training data for SCANB
 # Author: Lennart Hohmann
-# Date: 24.03.2025
+# Date: 21.05.2025
 #----------------------------------------------------------------------
 # empty environment
 rm(list=ls())
@@ -12,63 +12,60 @@ setwd("~/PhD_Workspace/PredictRecurrence/")
 #source("./scripts/src/")
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(data.table)
-source("./src/untils.R")
+source("./src/utils.R")
 #----------------------------------------------------------------------
 # input paths
-infile.0 <- "./data/raw/Updated_merged_annotations_n235_WGS_MethylationCohort.RData"
-infile.1 <- "./data/raw/GSE278586_ProcessedData_LUepic_n499.txt"
-infile.2 <- "./data/raw/PurBeta_adjustedTumor_betaMatrix_V1_V2_reduced_717459commonCpGs_TNBCs_n136.RData"
-infile.3 <- "./data/raw/TNBC_adjustedBetaTumor_workspace_235samples_trimmedCpGs_updatedAnno.RData"
-
-#infile.2 <- "./data/raw/" # NatMed TNBC cohort
-#infile.3 <- "./data/raw/" # MO cohort data
+infile.0 <- "./data/set_definitions/train_ids.csv"
+infile.1 <- "./data/raw/Summarized_SCAN_B_rel4_NPJbreastCancer_with_ExternalReview_Bosch_data.RData"
 #----------------------------------------------------------------------
 # output paths
-output.path <- "./data/standardized/"
+output.path <- "./data/train/"
 dir.create(output.path, showWarnings = FALSE)
-outfile.1 <- paste0(output.path,"SCANB_DNAmethylation.csv")
-#######################################################################
-# HER2E paper data (n=499)
-#######################################################################
-DNA_methyl.dat <- data.table::fread(infile.1)
-DNA_methyl.dat <- as.data.frame(DNA_methyl.dat)
-DNA_methyl.dat <- DNA_methyl.dat[!grepl("Detection_Pval", names(DNA_methyl.dat))]
-names(DNA_methyl.dat)[-1] <- sub("\\..*", "", names(DNA_methyl.dat[-1]))
-#######################################################################
-# MO data (n=) 
-#######################################################################
-#mo.train <- loadRData(infile.5)
-#mo.train.ids <- mo.train$SpecimenName
-#mo.test <- loadRData(infile.6)
-#mo.test.ids <- mo.test$SpecimenName
-#######################################################################
-# NatMed TNBC paper data (n=)
-#######################################################################
-
-#tnbc.dat.1 <- loadRData(infile.2)
-#tnbc.dat.1 <- as.data.frame(tnbc.dat.1)
-
-#head(tnbc.dat.2)
-
-tnbc.dat.2 <- loadRData(infile.3)
-tnbc.dat.2 <- as.data.frame(tnbc.dat.2)
-
-tnbc.anno <- loadRData(infile.0)
-tnbc.anno <- as.data.frame(tnbc.anno)[c("PD_ID","OS","OSbin","RFIbin","RFI")]
-#dim(tnbc.anno)
-write.csv(tnbc.dat.2, file = "./data/raw/tnbc235.csv", row.names = TRUE)
-write.csv(tnbc.anno, file = "./data/raw/tnbc_anno.csv", row.names = FALSE)
-#View(tnbc.anno)
-#######################################################################
-# Overlap, defining final dataset
-#######################################################################
-#length(intersect(names(DNA_methyl.dat)[-1], c(mo.test.ids,mo.train.ids))) # 310 overlap
-
-# filter to include the same CpG set for all samples
-
-
+outfile.1 <- paste0(output.path, "train_clinical.csv")
 
 #######################################################################
-# save output files
+# clinical data
 #######################################################################
-write.csv(allMethyl.dat, file=outfile.1, row.names = FALSE)
+
+train.ids <- read.table(infile.0)[[1]]
+
+clin.dat <- loadRData(infile.1)
+clin.dat <- clin.dat[clin.dat$Follow.up.cohort == TRUE,]
+clin.dat <- clin.dat[clin.dat$Sample %in% train.ids,]
+
+clin.dat$LN <- ifelse(clin.dat$LN > 0, "N+", "N0")
+clin.dat$PR[clin.dat$PR==""] <- NA
+
+# select clinical variables to include
+clin.dat <- clin.dat[c("Sample","ER","PR","HER2","LN",
+     "NHG","Size.mm","TreatGroup","InvCa.type",
+     "Age","NCN.PAM50",
+     "OS_days","OS_event",
+     "RFi_days","RFi_event")]
+
+# convert outcome to years
+clin.dat$OS_years <- clin.dat$OS_days / 365
+clin.dat$RFi_years <- clin.dat$RFi_days / 365
+clin.dat$OS_days <- NULL
+clin.dat$RFi_days <- NULL
+
+# split treatment
+clin.dat$TreatGroup[clin.dat$TreatGroup == ""] <- NA
+clin.dat$TreatGroup[is.na(clin.dat$TreatGroup)] <- "Missing"
+
+# create column for clinical groups (ER and HER2 status)
+clin.dat$Group <- ifelse(
+    clin.dat$ER == "Positive" & clin.dat$HER2 == "Negative",
+    "ER+HER2-",
+        ifelse(
+            clin.dat$HER2 == "Negative" & clin.dat$ER == "Negative" & clin.dat$PR == "Negative", 
+            "TNBC",
+                "Other"))
+
+clin.dat[clin.dat == ""] <- NA
+
+#######################################################################
+# save
+#######################################################################
+
+fwrite(clin.dat, file=outfile.1, na = "NA")

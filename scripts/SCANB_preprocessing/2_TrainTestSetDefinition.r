@@ -127,7 +127,7 @@ length(train.ids) # 1567
 length(test.ids) # 759
 
 ####################################
-# FILT CASES W/O AVAIL OUTCOME DATA?
+# FILT CASES W/O AVAIL RFI OUTCOME DATA?
 ####################################
 
 table(is.na(anno[anno$Sample %in% test.ids, "RFi_event"]))
