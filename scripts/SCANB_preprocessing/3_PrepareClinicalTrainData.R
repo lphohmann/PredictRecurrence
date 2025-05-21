@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Script: Standardizing clinical training data for SCANB
+# Script: Standardizing clinical training data for SCANB; define sample subsets
 # Author: Lennart Hohmann
 # Date: 21.05.2025
 #----------------------------------------------------------------------
@@ -22,6 +22,9 @@ infile.1 <- "./data/raw/Summarized_SCAN_B_rel4_NPJbreastCancer_with_ExternalRevi
 output.path <- "./data/train/"
 dir.create(output.path, showWarnings = FALSE)
 outfile.1 <- paste0(output.path, "train_clinical.csv")
+dir.create("./data/set_definitions/train_subcohorts/", showWarnings = FALSE)
+outfile.2 <- "./data/set_definitions/train_subcohorts/ERpHER2n_train_ids.csv"
+outfile.3 <- "./data/set_definitions/train_subcohorts/TNBC_train_ids.csv"
 
 #######################################################################
 # clinical data
@@ -69,3 +72,8 @@ clin.dat[clin.dat == ""] <- NA
 #######################################################################
 
 fwrite(clin.dat, file=outfile.1, na = "NA")
+
+ERpHER2n_train_ids <- clin.dat$Sample[clin.dat$Group=="ER+HER2-"]
+TNBC_train_ids <- clin.dat$Sample[clin.dat$Group=="TNBC"]
+write.table(ERpHER2n_train_ids, file = outfile.2, row.names = FALSE, col.names = FALSE) #erp
+write.table(TNBC_train_ids, file = outfile.3, row.names = FALSE, col.names = FALSE) #tnbc

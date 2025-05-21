@@ -72,17 +72,18 @@ colnames(tnbc) <- tnbc.idkey$External_ID_sample[match(
 #######################################################
 
 mo.all <- c(mo.test$Sample, colnames(mo.train))
+length(mo.all)
 length(setdiff(colnames(erp), mo.all)) # 189 extra samples, add them
-# length(setdiff(colnames(tnbc), mo.all)) # only 1 extra sample, drop
-length(setdiff(colnames(tnbc_136), mo.all)) # 21 extra samples, add them
+length(setdiff(colnames(tnbc), mo.all)) # 129 extra samples, add them 
+length(setdiff(colnames(tnbc_136), mo.all)) # 21 extra samples, add them 
 
-tnbc_136.df <- data.frame("Sample"=colnames(tnbc_136))
-tnbc_136.df <- merge(tnbc_136.df, anno, by = "Sample")
-tnbc_21.df <- tnbc_136.df[!(tnbc_136.df$Sample %in% mo.all),]
-#dim(tnbc_136.df)
-#dim(tnbc_21.df)
-table(tnbc_21.df$OS_event)
-table(tnbc_21.df$RFi_event)
+#tnbc_extra.df <- data.frame("Sample"=c(colnames(tnbc_136),colnames(tnbc)))
+#sum(!(tnbc_extra.df$Sample %in% anno$Sample)) # 7 not in anno
+#tnbc_extra.df <- merge(tnbc_extra.df, anno, by = "Sample")
+#tnbc_extra.df <- tnbc_extra.df[!(tnbc_extra.df$Sample %in% mo.all),]
+
+#table(tnbc_extra.df$OS_event)
+#table(tnbc_extra.df$RFi_event)
 
 #######################################################
 # SPLIT INTO TRAIN AND TEST TO ADD TO THE EXISTING SETS
@@ -105,26 +106,37 @@ added.erp.samples.test  <- extra.samples.anno[-samp, ]
 table(added.erp.samples.train$RFI_event)
 table(added.erp.samples.test$RFI_event)
 
+# ------------------------------------------------
+
 # extra TNBC samples
 # Step 1: Select  samples not already in mo.all
-extra.samples <- setdiff(colnames(tnbc_136), mo.all)
-extra.samples.anno <- data.frame("Sample"=extra.samples) 
-extra.samples.anno$RFI_event <- anno$RFi_event[match(extra.samples, anno$Sample)]
-table(is.na(extra.samples.anno$RFI_event)) # 7 without RFI
-# Step 2: Just add all to train set
-added.tnbc.samples.train <- extra.samples.anno
+extra.samples.anno <- data.frame("Sample"=c(colnames(tnbc_136),colnames(tnbc)))
+sum(!(extra.samples.anno$Sample %in% anno$Sample)) # 7 not in anno
+extra.samples.anno$RFI_event <- anno$RFi_event[match(extra.samples.anno$Sample, anno$Sample)]
+extra.samples.anno <- extra.samples.anno[!(extra.samples.anno$Sample %in% mo.all),]
+dim(extra.samples.anno)
+table(is.na(extra.samples.anno$RFI_event)) # 16 have no RFI
+extra.samples.anno <- extra.samples.anno[!is.na(extra.samples.anno$RFI_event),]
+dim(extra.samples.anno)
+
+# Step 2: Create stratified split based on RFI events
+samp <- createDataPartition(extra.samples.anno$RFI_event, p = 0.75, list = FALSE)
+# Step 3: Create train and test sets
+added.tnbc.samples.train <- extra.samples.anno[samp, ]
+added.tnbc.samples.test  <- extra.samples.anno[-samp, ]
 
 # check
 table(added.tnbc.samples.train$RFI_event)
+table(added.tnbc.samples.test$RFI_event)
 
 ##############################
-# DEFINE FINAL TEST TRAIN SETS
+# DEFINE TEST TRAIN SETS
 ##############################
 
-train.ids <- c(colnames(mo.train),added.erp.samples.train$Sample,added.tnbc.samples.train$Sample)
-test.ids <- c(mo.test$Sample,added.erp.samples.test$Sample)
-length(train.ids) # 1567
-length(test.ids) # 759
+train.ids <- c(colnames(mo.train), added.erp.samples.train$Sample, added.tnbc.samples.train$Sample)
+test.ids <- c(mo.test$Sample, added.erp.samples.test$Sample, added.tnbc.samples.test$Sample)
+length(train.ids) # 1668
+length(test.ids) # 792
 
 ####################################
 # FILT CASES W/O AVAIL RFI OUTCOME DATA?
@@ -133,10 +145,27 @@ length(test.ids) # 759
 table(is.na(anno[anno$Sample %in% test.ids, "RFi_event"]))
 table(is.na(anno[anno$Sample %in% train.ids, "RFi_event"]))
 
+table(is.na(anno[anno$Sample %in% test.ids, "DRFi_event"]))
+table(is.na(anno[anno$Sample %in% train.ids, "DRFi_event"]))
+
+table(is.na(anno[anno$Sample %in% test.ids, "OS_event"]))
+table(is.na(anno[anno$Sample %in% train.ids, "OS_event"]))
+
+table(anno[anno$Sample %in% test.ids, c("RFi_event","DRFi_event")])
+table(anno[anno$Sample %in% train.ids, c("RFi_event","DRFi_event")])
+
+
 train.ids <- anno$Sample[anno$Sample %in% train.ids & !is.na(anno$RFi_event)]
 test.ids <- anno$Sample[anno$Sample %in% test.ids & !is.na(anno$RFi_event)]
-length(train.ids) # 1567
-length(test.ids) # 759
+length(train.ids) # 1347
+length(test.ids) # 636
+
+##############################
+# EVENT NUMS IN SETS
+##############################
+
+table(anno[anno$Sample %in% train.ids, c("RFi_event","Group")])
+table(anno[anno$Sample %in% test.ids, c("RFi_event","Group")])
 
 ###################
 # SAVE OUTPUT FILES

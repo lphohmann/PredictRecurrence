@@ -19,7 +19,8 @@ infile.0 <- "./data/set_definitions/train_ids.csv"
 # MO
 infile.1 <- "./data/processed/MO_train_adjusted.RData"
 # TNBC extra
-infile.2 <- "./data/raw/PurBeta_adjustedTumor_betaMatrix_V1_V2_reduced_717459commonCpGs_TNBCs_n136.RData"
+infile.2 <- "./data/processed/TNBC_bothCohorts_adjusted.RData"
+#infile.2 <- "./data/raw/PurBeta_adjustedTumor_betaMatrix_V1_V2_reduced_717459commonCpGs_TNBCs_n136.RData"
 # ER+HER2- extra
 infile.3 <- "./data/processed/ERpHER2n_WGSset_adjusted.RData"
 #----------------------------------------------------------------------
@@ -38,10 +39,11 @@ train.ids <- read.table(infile.0)[[1]]
 MO_train <- as.data.frame(loadRData(infile.1))
 colnames(MO_train) <- sub("\\..*", "", colnames(MO_train))
 dim(MO_train)
+
 # TNBC extra
-tnbc_136 <- as.data.frame(loadRData(infile.2))
-colnames(tnbc_136) <- sub("\\..*", "", colnames(tnbc_136))
-dim(tnbc_136)
+tnbc <- as.data.frame(loadRData(infile.2))
+#colnames(tnbc_136) <- sub("\\..*", "", colnames(tnbc_136))
+dim(tnbc)
 
 # ER+HER2- extra
 ERpHER2n <- as.data.frame(loadRData(infile.3))
@@ -57,9 +59,9 @@ extra_samples <- setdiff(train.ids, colnames(MO_train))
 # merge on cpg_id
 MO_train$ID_REF <- rownames(MO_train)
 
-tnbc_136$ID_REF <- rownames(tnbc_136)
-tnbc_136_toadd <- tnbc_136[colnames(tnbc_136) %in% c("ID_REF",extra_samples)]
-rm(tnbc_136)
+tnbc_toadd <- tnbc[colnames(tnbc) %in% c("ID_REF",extra_samples)]
+dim(tnbc_toadd)
+rm(tnbc)
 
 ERpHER2n$ID_REF <- rownames(ERpHER2n)
 ERpHER2n_toadd <- ERpHER2n[colnames(ERpHER2n) %in% c("ID_REF",extra_samples)]
@@ -67,7 +69,7 @@ rm(ERpHER2n)
 
 shared_cpgs <- Reduce(intersect, list(
   MO_train$ID_REF,
-  tnbc_136_toadd$ID_REF,
+  tnbc_toadd$ID_REF,
   ERpHER2n_toadd$ID_REF
 ))
 
@@ -80,20 +82,20 @@ subset_and_order <- function(df, shared_cpgs) {
 }
 
 MO_train <- subset_and_order(MO_train, shared_cpgs)
-tnbc_136_toadd <- subset_and_order(tnbc_136_toadd, shared_cpgs)
+tnbc_toadd <- subset_and_order(tnbc_toadd, shared_cpgs)
 ERpHER2n_toadd <- subset_and_order(ERpHER2n_toadd, shared_cpgs)
 
 dim(ERpHER2n_toadd)
-dim(tnbc_136_toadd)
+dim(tnbc_toadd)
 dim(MO_train)
 
-all.equal(MO_train$ID_REF, tnbc_136_toadd$ID_REF) #true
+all.equal(MO_train$ID_REF, tnbc_toadd$ID_REF) #true
 all.equal(MO_train$ID_REF, ERpHER2n_toadd$ID_REF) #true
 
 # Final combined data
 train_adjusted <- cbind(
     MO_train, 
-    tnbc_136_toadd[, -which(names(tnbc_136_toadd) == "ID_REF")], 
+    tnbc_toadd[, -which(names(tnbc_toadd) == "ID_REF")], 
     ERpHER2n_toadd[, -which(names(ERpHER2n_toadd) == "ID_REF")])
 
 dim(train_adjusted)
@@ -109,9 +111,11 @@ setDT(train_adjusted)
 setcolorder(train_adjusted, c("ID_REF", sort(setdiff(names(train_adjusted), "ID_REF"))))
 fwrite(train_adjusted, file=outfile.1, na = "NA")
 
-#x <- fread("./data/train/train_methylation_adjusted.csv", select = "ID_REF")
-#y <- fread("./data/train/train_methylation_unadjusted.csv", select = "ID_REF")
-#x <- fread("./data/train/train_methylation_adjusted.csv", nrows = 1)
-#x <- names(x)
-#y <- fread("./data/train/train_methylation_unadjusted.csv", nrows = 1)
-#y <- names(y)
+#x <- fread("./data/train/train_methylation_adjusted.csv")
+#dim(x)
+#y <- fread("./data/train/train_methylation_unadjusted.csv")
+#dim(y)
+
+#identical(colnames(x), colnames(y))
+#x[1:5,1:5]
+#y[1:5,1:5]
