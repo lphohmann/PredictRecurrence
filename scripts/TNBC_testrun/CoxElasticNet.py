@@ -1,7 +1,8 @@
+#/usr/bin/env python
 ################################################################################
 # Script: Fitting a penalized Cox model: Elastic Net
 # apporach from: https://scikit-survival.readthedocs.io/en/stable/user_guide/coxnet.html
-# Author: Lennart Hohmann /usr/bin/env python
+# Author: Lennart Hohmann 
 # Date: 22.05.2025
 ################################################################################
 
@@ -22,17 +23,16 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV, cross_val_score, KFold
 from sklearn.exceptions import FitFailedWarning
 
-#sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence")
-sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence\\src")
-#print("sys.path =", sys.path)
+sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
+#sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence")
+#sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence\\src")
 import src.utils
 importlib.reload(src.utils)
-from src.utils import beta2m, variance_filter, custom_scorer
+from src.utils import beta2m, variance_filter, cindex_scorer
 
 # set wd
-#os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
-os.chdir(os.path.expanduser("C:\\Users\\lhohmann\\PredictRecurrence"))
+os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
+#os.chdir(os.path.expanduser("C:\\Users\\lhohmann\\PredictRecurrence"))
 os.makedirs("output", exist_ok=True)
 
 start_time = time.time()  # Record start time
@@ -81,7 +81,7 @@ beta_matrix = beta_matrix.loc[train_ids]
 mval_matrix = beta2m(beta_matrix,beta_threshold=0.001)
 
 # 2. Apply variance filtering to retain top N most variable CpGs
-mval_matrix = variance_filter(mval_matrix, top_n=200) #200000
+mval_matrix = variance_filter(mval_matrix, top_n=200000) #200000
 
 ################################################################################
 # create Survival Object
@@ -98,7 +98,7 @@ X = mval_matrix
 # Note: Only need one value of l1_ratio here to get the alpha path
 initial_pipe = make_pipeline(
     StandardScaler(),
-    CoxnetSurvivalAnalysis(l1_ratio=0.9, alpha_min_ratio=0.01, n_alphas=30, max_iter=1000)
+    CoxnetSurvivalAnalysis(l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=30, max_iter=1000)
 )
 
 # Suppress convergence warnings
@@ -124,14 +124,14 @@ param_grid = {
 ################################################################################
 
 # Outer CV for performance estimation
-outer_cv = KFold(n_splits=2, shuffle=True, random_state=42) #10
+outer_cv = KFold(n_splits=10, shuffle=True, random_state=21) #10
 
 # Inner CV for hyperparameter tuning
-inner_cv = KFold(n_splits=2, shuffle=True, random_state=1) #5
+inner_cv = KFold(n_splits=5, shuffle=True, random_state=12) #5
 
 # Define the model and wrap in GridSearchCV (for the inner loop)
 inner_model = GridSearchCV(
-    estimator=make_pipeline(StandardScaler(), CoxnetSurvivalAnalysis(l1_ratio=0.9)),
+    estimator=make_pipeline(StandardScaler(), CoxnetSurvivalAnalysis(l1_ratio=0.9,max_iter=100000)),
     param_grid=param_grid,
     cv=inner_cv,
     error_score=0.5,
@@ -139,21 +139,25 @@ inner_model = GridSearchCV(
 )
 
 ################################################################################
-# Step 4: Run nested CV to evaluate performance of best inner model
+# Step 4: Run nested CV manually to evaluate performance
 ################################################################################
-from sklearn.metrics import make_scorer
-def dummy_scorer(estimator, X, y):
-    print("Dummy scorer called!")
-    return 0.5
-dummy_custom_scorer = make_scorer(dummy_scorer, greater_is_better=True)
 
-nested_scores = cross_val_score(inner_model, X, y, cv=outer_cv, scoring=dummy_custom_scorer)
+nested_scores = []
 
+for train_idx, test_idx in outer_cv.split(X):
+    X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+    y_train, y_test = y[train_idx], y[test_idx]
+    # Fit inner model with hyperparameter tuning on training data only
+    inner_model.fit(X_train, y_train)
 
+    # Get best model from inner tuning
+    best_model = inner_model.best_estimator_
 
-# Uses the inner model (which includes its own CV) for model selection in each fold#
+    # Evaluate best model on outer test fold using your custom scorer function directly
+    score = cindex_scorer(best_model, X_test, y_test)
+    nested_scores.append(score)
+
 #nested_scores = cross_val_score(inner_model, X, y, cv=outer_cv, scoring=custom_scorer)
-
 
 print(f"Nested CV Concordance Index: {np.mean(nested_scores):.3f} ± {np.std(nested_scores):.3f}")
 

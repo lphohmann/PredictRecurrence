@@ -76,6 +76,4 @@ def cindex_scorer(estimator, X, y):
     # If y is structured array, access like this:
     return concordance_index_censored(y['RFi_event'], y['RFi_years'], -risk)[0]
 
-
-
-custom_scorer = make_scorer(cindex_scorer, greater_is_better=True)
+#custom_scorer = make_scorer(cindex_scorer, greater_is_better=True)
