@@ -10,7 +10,7 @@ import os
 import sys
 import pandas as pd
 import numpy as np
-sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
+sys.path.append("C:\Users\lhohmann\PredictRecurrence\src")#"/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
 from src.utils import beta2m, m2beta, create_surv, variance_filter, unicox_filter, preprocess, train_cox_lasso
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,7 +31,7 @@ import time
 #set_config(display="text")  # displays text representation of estimators
 
 # set wd
-os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
+os.chdir(os.path.expanduser("C:\Users\lhohmann\PredictRecurrence"))#"~/PhD_Workspace/PredictRecurrence/"))
 
 start_time = time.time()  # Record start time
 
@@ -42,8 +42,8 @@ print(f"Script started at: {time.ctime(start_time)}")
 ################################################################################
 
 # input paths
-infile_1 = "./data/raw/tnbc235.csv" # replace with PC dat later
-infile_2 = "./data/raw/tnbc_anno.csv" # replace with tnbc dat
+infile_1 = "./data/train/train_methylation_adjusted.csv" # replace with PC dat later
+infile_2 = "./data/train/train_clinical.csv" # replace with tnbc dat
 
 # output paths
 #outfile_1 = 
@@ -109,7 +109,7 @@ coxnet_pipe.fit(X, y)
 
 # perform n=3 cross-validation to estimate the performance in terms of concordance index for each alpha
 estimated_alphas = coxnet_pipe.named_steps["coxnetsurvivalanalysis"].alphas_
-cv = KFold(n_splits=3, shuffle=True, random_state=0)
+cv = KFold(n_splits=2, shuffle=True, random_state=0)
 gcv = GridSearchCV(
     make_pipeline(StandardScaler(), CoxnetSurvivalAnalysis(l1_ratio=0.9)),
     param_grid={"coxnetsurvivalanalysis__alphas": [[v] for v in map(float, estimated_alphas)]},
