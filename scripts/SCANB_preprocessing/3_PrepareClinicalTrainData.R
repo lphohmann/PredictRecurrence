@@ -22,9 +22,10 @@ infile.1 <- "./data/raw/Summarized_SCAN_B_rel4_NPJbreastCancer_with_ExternalRevi
 output.path <- "./data/train/"
 dir.create(output.path, showWarnings = FALSE)
 outfile.1 <- paste0(output.path, "train_clinical.csv")
-dir.create("./data/set_definitions/train_subcohorts/", showWarnings = FALSE)
-outfile.2 <- "./data/set_definitions/train_subcohorts/ERpHER2n_train_ids.csv"
-outfile.3 <- "./data/set_definitions/train_subcohorts/TNBC_train_ids.csv"
+dir.create("./data/train/train_subcohorts/", showWarnings = FALSE)
+outfile.2 <- "./data/train/train_subcohorts/ERpHER2n_train_ids.csv"
+outfile.3 <- "./data/train/train_subcohorts/TNBC_train_ids.csv"
+outfile.4 <- "./data/train/train_subcohorts/All_train_ids.csv"
 
 #######################################################################
 # clinical data
@@ -70,7 +71,8 @@ clin.dat[clin.dat == ""] <- NA
 #######################################################################
 # save
 #######################################################################
-
+head(clin.dat)
+colnames(clin.dat)
 fwrite(clin.dat, file=outfile.1, na = "NA")
 
 ERpHER2n_train_ids <- clin.dat$Sample[clin.dat$Group=="ER+HER2-"]
@@ -80,3 +82,4 @@ TNBC_train_ids <- clin.dat$Sample[clin.dat$Group=="TNBC"]
 
 write.table(ERpHER2n_train_ids, file = outfile.2, row.names = FALSE, col.names = FALSE) #erp
 write.table(TNBC_train_ids, file = outfile.3, row.names = FALSE, col.names = FALSE) #tnbc
+write.table(train.ids, file = outfile.4, row.names = FALSE, col.names = FALSE) #all
