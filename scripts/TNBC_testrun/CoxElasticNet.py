@@ -1,8 +1,8 @@
-#/usr/bin/env python
+
 ################################################################################
 # Script: Fitting a penalized Cox model: Elastic Net
 # apporach from: https://scikit-survival.readthedocs.io/en/stable/user_guide/coxnet.html
-# Author: Lennart Hohmann 
+# Author: Lennart Hohmann #/usr/bin/env python
 # Date: 22.05.2025
 ################################################################################
 
@@ -23,16 +23,16 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV, cross_val_score, KFold
 from sklearn.exceptions import FitFailedWarning
 
-sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-#sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence")
-#sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence\\src")
+#sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
+sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence")
+sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence\\src")
 import src.utils
 importlib.reload(src.utils)
 from src.utils import beta2m, variance_filter, cindex_scorer
 
 # set wd
-os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
-#os.chdir(os.path.expanduser("C:\\Users\\lhohmann\\PredictRecurrence"))
+#os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
+os.chdir(os.path.expanduser("C:\\Users\\lhohmann\\PredictRecurrence"))
 os.makedirs("output", exist_ok=True)
 
 start_time = time.time()  # Record start time
@@ -112,7 +112,7 @@ estimated_alphas = initial_pipe.named_steps["coxnetsurvivalanalysis"].alphas_
 ################################################################################
 # Step 2: Set up full parameter grid for tuning
 ################################################################################
-
+print(estimated_alphas)
 # Define l1_ratios and use alpha values from the initial fit
 param_grid = {
     "coxnetsurvivalanalysis__alphas": [[v] for v in estimated_alphas]#,
@@ -144,17 +144,31 @@ inner_model = GridSearchCV(
 
 nested_scores = []
 
+#for train_idx, test_idx in outer_cv.split(X):
+#    X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+#    y_train, y_test = y[train_idx], y[test_idx]
+#    # Fit inner model with hyperparameter tuning on training data only
+#    inner_model.fit(X_train, y_train)#
+#
+#    # Get best model from inner tuning
+#    best_model = inner_model.best_estimator_
+#
+#    # Evaluate best model on outer test fold using your custom scorer function directly
+#    score = cindex_scorer(best_model, X_test, y_test)
+#    nested_scores.append(score)
+
 for train_idx, test_idx in outer_cv.split(X):
     X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
     y_train, y_test = y[train_idx], y[test_idx]
+
     # Fit inner model with hyperparameter tuning on training data only
-    inner_model.fit(X_train, y_train)
-
-    # Get best model from inner tuning
-    best_model = inner_model.best_estimator_
-
-    # Evaluate best model on outer test fold using your custom scorer function directly
-    score = cindex_scorer(best_model, X_test, y_test)
+    try:
+        inner_model.fit(X_train, y_train)
+        best_model = inner_model.best_estimator_
+        score = cindex_scorer(best_model, X_test, y_test)
+    except ArithmeticError as e:
+        print(f"Skipping fold due to numerical error: {e}")
+        score = np.nan
     nested_scores.append(score)
 
 #nested_scores = cross_val_score(inner_model, X, y, cv=outer_cv, scoring=custom_scorer)
