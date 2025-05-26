@@ -22,17 +22,17 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV, cross_val_score, KFold
 from sklearn.exceptions import FitFailedWarning
 
-sys.path.append(r"/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-#sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence")
-#sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence\\src")
+#sys.path.append(r"/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
+sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence")
+sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence\\src")
 import src.utils
 importlib.reload(src.utils)
 from src.utils import beta2m, variance_filter, cindex_scorer
 
 # set wd
-os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
-#os.chdir(os.path.expanduser("C:\\Users\\lhohmann\\PredictRecurrence"))
-#os.makedirs("output", exist_ok=True)
+#os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
+os.chdir(os.path.expanduser("C:\\Users\\lhohmann\\PredictRecurrence"))
+os.makedirs("output", exist_ok=True)
 start_time = time.time()  # Record start time
 
 print(f"Script started at: {time.ctime(start_time)}")
@@ -82,7 +82,7 @@ beta_matrix_df = pd.DataFrame(beta_matrix)
 mval_matrix = beta2m(beta_matrix,beta_threshold=0.001)
 
 # 2. Apply variance filtering to retain top N most variable CpGs
-mval_matrix = variance_filter(mval_matrix, top_n=1000)
+mval_matrix = variance_filter(mval_matrix, top_n=200000)
 mval_matrix.shape
 
 ################################################################################
@@ -105,7 +105,7 @@ X = mval_matrix
 # Build a pipeline: standardize features and fit Coxnet model with elastic net penalty
 coxnet_pipe = make_pipeline(
     StandardScaler(),
-    CoxnetSurvivalAnalysis(l1_ratio=0.9, alpha_min_ratio=0.01, n_alphas=10, max_iter=100)
+    CoxnetSurvivalAnalysis(l1_ratio=0.9, alpha_min_ratio=0.01, n_alphas=30)
 )
 # Suppress warnings from failed model fits during CV
 warnings.simplefilter("ignore", UserWarning)
@@ -118,7 +118,7 @@ coxnet_pipe.fit(X, y)
 estimated_alphas = coxnet_pipe.named_steps["coxnetsurvivalanalysis"].alphas_
 
 # Set up cross-validation strategy
-cv = KFold(n_splits=2, shuffle=True, random_state=0)
+cv = KFold(n_splits=5, shuffle=True, random_state=0)
 
 # Perform grid search over the estimated alphas using cross-validation
 gcv = GridSearchCV(
