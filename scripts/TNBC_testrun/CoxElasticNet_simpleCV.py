@@ -5,37 +5,34 @@
 # Date: 11.04.2025
 ################################################################################
 
-# import
+# Standard library imports
 import os
 import sys
+import time
+import importlib
+import warnings
 import pandas as pd
 import numpy as np
-import importlib
-sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-#sys.path.append("C:\Users\lhohmann\PredictRecurrence\src")
-import src.utils
-importlib.reload(src.utils)
-from src.utils import beta2m, m2beta, create_surv, variance_filter, unicox_filter, preprocess, train_cox_lasso
 import matplotlib.pyplot as plt
+import joblib
 from sksurv.util import Surv
-import warnings
-from sklearn.exceptions import FitFailedWarning
-from sklearn import set_config
-from sklearn.model_selection import GridSearchCV, KFold
+from sksurv.linear_model import CoxnetSurvivalAnalysis
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
-from sksurv.datasets import load_breast_cancer
-from sksurv.linear_model import CoxnetSurvivalAnalysis, CoxPHSurvivalAnalysis
-from sksurv.preprocessing import OneHotEncoder
-import joblib
-import time
+from sklearn.model_selection import GridSearchCV, cross_val_score, KFold
+from sklearn.exceptions import FitFailedWarning
 
-#set_config(display="text")  # displays text representation of estimators
+sys.path.append(r"/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
+#sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence")
+#sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence\\src")
+import src.utils
+importlib.reload(src.utils)
+from src.utils import beta2m, variance_filter, cindex_scorer
 
 # set wd
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
-#os.chdir(os.path.expanduser("C:\Users\lhohmann\PredictRecurrence"))
-
+#os.chdir(os.path.expanduser("C:\\Users\\lhohmann\\PredictRecurrence"))
+#os.makedirs("output", exist_ok=True)
 start_time = time.time()  # Record start time
 
 print(f"Script started at: {time.ctime(start_time)}")
@@ -45,16 +42,16 @@ print(f"Script started at: {time.ctime(start_time)}")
 ################################################################################
 
 # input paths
-infile_0 = "./data/train/train_subcohorts/TNBC_train_ids.csv" 
-infile_1 = "./data/train/train_methylation_adjusted.csv"
-infile_2 = "./data/train/train_clinical.csv"
+infile_0 = r"./data/train/train_subcohorts/TNBC_train_ids.csv" 
+infile_1 = r"./data/train/train_methylation_adjusted.csv"
+infile_2 = r"./data/train/train_clinical.csv"
 
 # output paths
-outfile_model = "output/best_cox_model.pkl"
-outfile_coefs = "output/non_zero_coefs.csv"
-outfile_cv = "output/cv_results.csv"
-outfile_plot_alpha = "output/concordance_vs_alpha.png"
-outfile_plot_model = "output/best_model.png"
+outfile_model = r"output/best_cox_model.pkl"
+outfile_coefs = r"output/non_zero_coefs.csv"
+outfile_cv = r"output/cv_results.csv"
+outfile_plot_alpha = r"output/concordance_vs_alpha.png"
+outfile_plot_model = r"output/best_model.png"
 
 ################################################################################
 # format data
@@ -85,7 +82,7 @@ beta_matrix_df = pd.DataFrame(beta_matrix)
 mval_matrix = beta2m(beta_matrix,beta_threshold=0.001)
 
 # 2. Apply variance filtering to retain top N most variable CpGs
-mval_matrix = variance_filter(mval_matrix, top_n=200000)
+mval_matrix = variance_filter(mval_matrix, top_n=1000)
 mval_matrix.shape
 
 ################################################################################
@@ -105,103 +102,35 @@ X = mval_matrix
 # finding the optimal alpha using cross-validation
 ################################################################################
 
-# tune both alpha and l1_ratio
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-from sksurv.linear_model import CoxnetSurvivalAnalysis
-from sklearn.model_selection import GridSearchCV, cross_val_score, KFold
-from sklearn.exceptions import FitFailedWarning
-
-# ----------------------------------------------
-# Step 1: Estimate alpha path from initial model
-# ----------------------------------------------
-
-# Fit a Coxnet model to extract reasonable alpha values for grid search
-# Note: Only need one value of l1_ratio here to get the alpha path
-initial_pipe = make_pipeline(
+# Build a pipeline: standardize features and fit Coxnet model with elastic net penalty
+coxnet_pipe = make_pipeline(
     StandardScaler(),
-    CoxnetSurvivalAnalysis(l1_ratio=0.5, alpha_min_ratio=0.01, n_alphas=30, max_iter=1000)
+    CoxnetSurvivalAnalysis(l1_ratio=0.9, alpha_min_ratio=0.01, n_alphas=10, max_iter=100)
 )
-
-# Suppress convergence warnings
+# Suppress warnings from failed model fits during CV
 warnings.simplefilter("ignore", UserWarning)
 warnings.simplefilter("ignore", FitFailedWarning)
 
-# Fit on full data just to estimate alphas (NOT for model evaluation!)
-initial_pipe.fit(X, y)
-estimated_alphas = initial_pipe.named_steps["coxnetsurvivalanalysis"].alphas_
-estimated_alphas.shape
-# ----------------------------------------------
-# Step 2: Set up full parameter grid for tuning
-# ----------------------------------------------
+# Fit model once to compute a range of alpha values (regularization strengths)
+coxnet_pipe.fit(X, y)
 
-# Define l1_ratios and use alpha values from the initial fit
-param_grid = {
-    "coxnetsurvivalanalysis__alphas": [[v] for v in estimated_alphas]#,
-    #"coxnetsurvivalanalysis__l1_ratio": [0.1, 0.5, 0.9]  # Elastic Net mixing
-}
+# Extract the alpha path computed during initial fit
+estimated_alphas = coxnet_pipe.named_steps["coxnetsurvivalanalysis"].alphas_
 
-# ----------------------------------------------
-# Step 3: Set up nested cross-validation
-# ----------------------------------------------
+# Set up cross-validation strategy
+cv = KFold(n_splits=2, shuffle=True, random_state=0)
 
-# Outer CV for performance estimation
-outer_cv = KFold(n_splits=5, shuffle=True, random_state=42)
-
-# Inner CV for hyperparameter tuning
-inner_cv = KFold(n_splits=5, shuffle=True, random_state=1)
-
-# Define the model and wrap in GridSearchCV (for the inner loop)
-inner_model = GridSearchCV(
-    estimator=make_pipeline(StandardScaler(), CoxnetSurvivalAnalysis(l1_ratio=0.9)),
-    param_grid=param_grid,
-    cv=inner_cv,
+# Perform grid search over the estimated alphas using cross-validation
+gcv = GridSearchCV(
+    make_pipeline(StandardScaler(), CoxnetSurvivalAnalysis(l1_ratio=0.9)),
+    param_grid={"coxnetsurvivalanalysis__alphas": [[v] for v in map(float, estimated_alphas)]},
+    cv=cv,
     error_score=0.5,
-    n_jobs=-1
-)
+    n_jobs=-1,
+).fit(X, y)
 
-# ----------------------------------------------
-# Step 4: Run nested CV to evaluate performance
-# ----------------------------------------------
-
-# Uses the inner model (which includes its own CV) for model selection in each fold
-nested_scores = cross_val_score(inner_model, X, y, cv=outer_cv, scoring="concordance_index")
-
-print(f"Nested CV Concordance Index: {np.mean(nested_scores):.3f} ± {np.std(nested_scores):.3f}")
-
-
-
-
-
-
-
-
-# # Build a pipeline: standardize features and fit Coxnet model with elastic net penalty
-# coxnet_pipe = make_pipeline(
-#     StandardScaler(),
-#     CoxnetSurvivalAnalysis(l1_ratio=0.9, alpha_min_ratio=0.01, max_iter=100)
-# )
-# # Suppress warnings from failed model fits during CV
-# warnings.simplefilter("ignore", UserWarning)
-# warnings.simplefilter("ignore", FitFailedWarning)
-# # Fit model once to compute a range of alpha values (regularization strengths)
-# coxnet_pipe.fit(X, y)
-# # Extract the alpha path computed during initial fit
-# estimated_alphas = coxnet_pipe.named_steps["coxnetsurvivalanalysis"].alphas_
-# # Set up cross-validation strategy
-# cv = KFold(n_splits=2, shuffle=True, random_state=0)
-# # Perform grid search over the estimated alphas using cross-validation
-# gcv = GridSearchCV(
-#     make_pipeline(StandardScaler(), CoxnetSurvivalAnalysis(l1_ratio=0.9)),
-#     param_grid={"coxnetsurvivalanalysis__alphas": [[v] for v in map(float, estimated_alphas)]},
-#     cv=cv,
-#     error_score=0.5,
-#     n_jobs=-1,
-# ).fit(X, y)
-# # Collect cross-validation results
-# cv_results = pd.DataFrame(gcv.cv_results_)
-
-
+# Collect cross-validation results
+cv_results = pd.DataFrame(gcv.cv_results_)
 
 # visualize mean concordance index + SD for each alpha
 alphas = cv_results.param_coxnetsurvivalanalysis__alphas.map(lambda x: x[0])
