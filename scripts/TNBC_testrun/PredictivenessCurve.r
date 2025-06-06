@@ -12,76 +12,52 @@ setwd("~/PhD_Workspace/PredictRecurrence/")
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(
   data.table, prodlim,
-  survival, Publish
+  survival, Publish, survival, survminer
 )
-source("./src/untils.R")
+source("./src/utils.R")
 #-------------------
 # set/create output directories
-output_path <- "./output/CoxNet_manual/"
+output_path <- "output/CoxNet_200k_simpleCV5/"
 dir.create(output_path, showWarnings = FALSE)
 #-------------------
 # input paths
-infile_1 <- "./data/raw/tnbc_anno.csv"
-#infile_2 <- "./data/raw/tnbc235.csv"
-infile_3 <- "./output/CoxNet_manual/risk_scores_from_loaded_model.csv"
+infile_3 = "output/CoxNet_200k_simpleCV5/SCANB_risk_scores.csv" 
+infile_1 = "./data/train/train_clinical.csv" # replace with tnbc dat
 #-------------------
 # output paths
 outfile_1 <- paste0(output_path, "PredictivenessCurve.pdf")
 pdf(onefile = TRUE, file = outfile_1, height = 10, width = 15)
 #-------------------
-# storing objects 
-#results <- list() # object to store results
-
-# delete
-
-# f1 = "./data/raw/TCGA_TNBC_betaAdj.RData"
-# f2 = "./data/raw/TCGA_TNBC_MergedAnnotations.RData"
-# f1 <- loadRData(f1)
-# write.csv(f1, file = "./data/raw/TCGA_TNBC_betaAdj.csv", row.names = TRUE)
-# f2 <- loadRData(f2)
-# str(f2)
-# f2$Cibersort.relative <- NULL
-# write.csv(f2, file = "./data/raw/TCGA_TNBC_MergedAnnotations.csv", row.names = TRUE)
-
-#-------------------
-# storing objects 
-#results <- list() # object to store results
-
 
 #######################################################################
 # load data
 #######################################################################
 
-clinical <- read.csv(infile_1)
-risk_scores <- read.csv(infile_3)
-names(risk_scores)[1] <- "PD_ID"
-comb <- merge(clinical, risk_scores, by = "PD_ID")
+# stratify patients by risk score tertiles
+risk_scores_df <- read.csv(infile_3)
+names(risk_scores_df)[1] <- "Sample"
 
-# molec dat
-#dat <- data.table::fread(infile_2)
-#dat <- as.data.frame(dat)
-# Move gene names to rownames
-#rownames(dat) <- dat$V1
-#dat <- dat[, -1]
-#dat[1:5,1:5]
-# Ensure clinical data has the same samples as dat
-#clinical <- clinical[clinical$PD_ID %in% colnames(dat), ]
-# Ensure the samples in clinical data are in the same order as in dat
-#clinical <- clinical[match(colnames(dat), clinical$PD_ID), ]
-#identical(clinical$PD_ID,colnames(dat))
+# rows are patient IDs and columns are features (CpGs)
+clinical_data_df <- read.csv(infile_1)
+clinical_data_df <- clinical_data_df[, c("Sample", "OS_event", "OS_years","RFi_event", "RFi_years")]
+head(risk_scores_df)
+# merge 
+comb <- merge(clinical_data_df, risk_scores_df, by="Sample")
+head(comb)
+
+# save
+write.csv(comb, file = "output/CoxNet_200k_simpleCV5/SCANB_risk_scores_comb.csv", row.names = FALSE)
 
 #######################################################################
 # script from aurelien
 #######################################################################
 
 # set var names 
-comb$time<-comb$RFI
+comb$time<-comb$RFi_years
 summary(comb$time)
-comb$status<-comb$RFIbin
+comb$status<-comb$RFi_event
 table(comb$status)
-
 hist(comb$risk_score)
-
 
 km0<-prodlim(Hist(time,status)~1,data=comb)
 plot(km0)
@@ -92,32 +68,69 @@ hist(comb$risk_score_scaled)
 risk_score<-coxph(Surv(time,status)~risk_score_scaled,data=comb)
 publish(risk_score)
 
+risk_score<-coxph(Surv(time,status)~risk_score,data=comb)
+publish(risk_score)
+
 # predictiveness of risk score
 res1<-get_risk(Surv(time,status)~risk_score_scaled,data=comb,prediction.time = 0)
-cutoffRFI <- plotpredictiveness(res1, comb$risk_score_scaled, comb$status)
+cutoffRFI_scaled <- plotpredictiveness(res1, comb$risk_score_scaled, comb$status)
 
-print(cutoffRFI)
-table(comb$risk_score_scaled>cutoffRFI)
+comb$risk_score_scaled <- scale(comb$risk_score)
+median(comb$risk_score_scaled)
+#cutoffRFI_scaled = -0.5326662
 
+#res1<-get_risk(Surv(time,status)~risk_score,data=comb,prediction.time = 0)
+#cutoffRFI <- plotpredictiveness(res1, comb$risk_score, comb$status)
+
+#median(comb$risk_score_scaled) #-0.3024001
+
+#cutoffRFI_scaled <- -0.3024001
+
+
+print(cutoffRFI_scaled)
+table(comb$risk_score_scaled>cutoffRFI_scaled)
 gof1<-cox.zph(risk_score)
-plot(gof1)
-
+#plot(gof1)
 
 # binarisation of risk score
-#
-comb$risk_score_scaled_binary<-ifelse(comb$risk_score_scaled>cutoffRFI,1,0)
-#
+comb$risk_score_scaled_binary<-ifelse(comb$risk_score_scaled>cutoffRFI_scaled,1,0)
+table(comb$risk_score_scaled_binary)
+
 comb$time <- as.numeric(comb$time)
 comb$status <- as.integer(comb$status)
 comb$risk_score_scaled_binary <- as.integer(comb$risk_score_scaled_binary)
 
+# Save the plot to a variable
 
-plot(prodlim(Hist(time, status) ~ risk_score_scaled_binary, data = comb))
+fit <- survfit(Surv(time, status) ~ risk_score_scaled_binary, data = comb)
 
-plot(
-  prodlim(Hist(time, status) ~ risk_score_scaled_binary, data = comb),
-  legend.x = "bottomright")
+# Save full ggsurvplot object
+km_plot <- ggsurvplot(fit,
+    data = comb,
+    risk.table = TRUE,
+    risk.table.y.text.col = TRUE,
+    risk.table.y.text = FALSE,
+    risk.table.position = "right",
+    font.main = c(18, "bold"),
+    font.x = c(16, "plain"),
+    font.y = c(16, "plain"),
+    font.tickslab = c(14, "plain"),
+    risk.table.fontsize = 5,
+    legend.title = "Risk Group",
+    legend.labs = c("Low risk", "High risk"),
+    font.legend = c(14, "plain"),
+    title = "SCAN-B: DNA-methylation risk stratification in TNBC",
+    palette = c("steelblue", "tomato"),
+    xlab = "RFI (years)", # custom x-axis label
+    ylab = "RFI probability",
+    pval = TRUE
+) # custom y-axis label)))
 
-title(main = "Stratified by cutoffRFI")
-
-dev.off()
+# Save to file — use arrange_ggsurvplots to combine main + table
+ggsave("output/CoxNet_200k_simpleCV5/SCANB_KMcurves_Median.png",
+  plot = arrange_ggsurvplots(list(km_plot)),
+  width = 12, height = 6, dpi = 300
+)
+ggsave("output/CoxNet_200k_simpleCV5/SCANB_KMcurves_Median.pdf",
+       plot = arrange_ggsurvplots(list(km_plot)),
+       width = 12, height = 6)

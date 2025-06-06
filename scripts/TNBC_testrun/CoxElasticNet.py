@@ -19,20 +19,17 @@ import joblib
 from sksurv.util import Surv
 from sksurv.linear_model import CoxnetSurvivalAnalysis
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV, cross_val_score, KFold
 from sklearn.exceptions import FitFailedWarning
+from sksurv.metrics import concordance_index_ipcw, cumulative_dynamic_auc, integrated_brier_score, brier_score
 
-#sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence")
-sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence\\src")
+sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
 import src.utils
 importlib.reload(src.utils)
-from src.utils import beta2m, variance_filter, cindex_scorer
+from src.utils import beta2m, variance_filter, cindex_scorer_sksurv
 
 # set wd
-#os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
-os.chdir(os.path.expanduser("C:\\Users\\lhohmann\\PredictRecurrence"))
+os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 os.makedirs("output", exist_ok=True)
 
 start_time = time.time()  # Record start time
@@ -81,7 +78,7 @@ beta_matrix = beta_matrix.loc[train_ids]
 mval_matrix = beta2m(beta_matrix,beta_threshold=0.001)
 
 # 2. Apply variance filtering to retain top N most variable CpGs
-mval_matrix = variance_filter(mval_matrix, top_n=200000) #200000
+mval_matrix = variance_filter(mval_matrix, top_n=100) #200,000
 
 ################################################################################
 # create Survival Object
@@ -97,7 +94,6 @@ X = mval_matrix
 # Fit a Coxnet model to extract reasonable alpha values for grid search
 # Note: Only need one value of l1_ratio here to get the alpha path
 initial_pipe = make_pipeline(
-    StandardScaler(),
     CoxnetSurvivalAnalysis(l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=30, max_iter=1000)
 )
 
@@ -124,16 +120,17 @@ param_grid = {
 ################################################################################
 
 # Outer CV for performance estimation
-outer_cv = KFold(n_splits=10, shuffle=True, random_state=21) #10
+outer_cv = KFold(n_splits=3, shuffle=True, random_state=21) #10
 
 # Inner CV for hyperparameter tuning
-inner_cv = KFold(n_splits=5, shuffle=True, random_state=12) #5
+inner_cv = KFold(n_splits=2, shuffle=True, random_state=12) #5
 
 # Define the model and wrap in GridSearchCV (for the inner loop)
 inner_model = GridSearchCV(
-    estimator=make_pipeline(StandardScaler(), CoxnetSurvivalAnalysis(l1_ratio=0.9,max_iter=100000)),
+    estimator=make_pipeline(CoxnetSurvivalAnalysis(l1_ratio=0.9, max_iter=100000)),
     param_grid=param_grid,
     cv=inner_cv,
+    scoring=cindex_scorer_sksurv, # use this or another scorer
     error_score=0.5,
     n_jobs=-1
 )
@@ -141,54 +138,195 @@ inner_model = GridSearchCV(
 ################################################################################
 # Step 4: Run nested CV manually to evaluate performance
 ################################################################################
+outer_models = []
 
-nested_scores = []
-
-#for train_idx, test_idx in outer_cv.split(X):
-#    X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
-#    y_train, y_test = y[train_idx], y[test_idx]
-#    # Fit inner model with hyperparameter tuning on training data only
-#    inner_model.fit(X_train, y_train)#
-#
-#    # Get best model from inner tuning
-#    best_model = inner_model.best_estimator_
-#
-#    # Evaluate best model on outer test fold using your custom scorer function directly
-#    score = cindex_scorer(best_model, X_test, y_test)
-#    nested_scores.append(score)
-
-for train_idx, test_idx in outer_cv.split(X):
+for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X)):
+    print(f"current outer cv fold: {fold_num}")    
     X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
     y_train, y_test = y[train_idx], y[test_idx]
 
-    # Fit inner model with hyperparameter tuning on training data only
     try:
         inner_model.fit(X_train, y_train)
         best_model = inner_model.best_estimator_
-        score = cindex_scorer(best_model, X_test, y_test)
+    
+        # Refit best model with fit_baseline_model=True for later eval
+        best_alpha = best_model.named_steps["coxnetsurvivalanalysis"].alphas_[0]
+        best_l1_ratio = best_model.named_steps["coxnetsurvivalanalysis"].l1_ratio
+        refit_model = make_pipeline(
+            CoxnetSurvivalAnalysis(
+                alphas=[best_alpha],
+                l1_ratio=best_l1_ratio,
+                fit_baseline_model=True,
+                max_iter=100000
+            )
+        )
+        refit_model.fit(X_train, y_train)
+
+        outer_models.append({
+            "fold": fold_num,
+            "model": refit_model,  # Save the refitted model
+            "test_idx": test_idx,
+            "train_idx": train_idx,
+            "cv_results": inner_model.cv_results_,
+            "error": None
+        })
+
     except ArithmeticError as e:
-        print(f"Skipping fold due to numerical error: {e}")
-        score = np.nan
-    nested_scores.append(score)
-
-#nested_scores = cross_val_score(inner_model, X, y, cv=outer_cv, scoring=custom_scorer)
-
-print(f"Nested CV Concordance Index: {np.mean(nested_scores):.3f} ± {np.std(nested_scores):.3f}")
+        print(f"Skipping fold {fold_num} due to numerical error: {e}")
+        outer_models.append({
+            "fold": fold_num,
+            "model": None,
+            "test_idx": test_idx,
+            "train_idx": train_idx,
+            "cv_results": None,
+            "error": str(e)
+        })
 
 ################################################################################
-# Visualize nested CV performance across folds
+# define time grid for evaluation
 ################################################################################
 
-plt.figure(figsize=(8, 5))
-plt.plot(range(1, len(nested_scores) + 1), nested_scores, marker="o")
-plt.axhline(np.mean(nested_scores), color="r", linestyle="--", label="Mean CI")
-plt.title("Nested CV Concordance Index per Fold")
-plt.xlabel("Outer CV Fold")
-plt.ylabel("Concordance Index")
-plt.grid(True)
-plt.legend()
+# Define evaluation times
+max_test_times = []
+min_test_times = []
+for train_idx, test_idx in outer_cv.split(X):
+    y_test_fold = y[test_idx]
+    max_test_times.append(y_test_fold['RFi_years'].max())
+    min_test_times.append(y_test_fold['RFi_years'].min())
+global_min_time = max(min_test_times)  # max of mins ensures all test sets have that minimum time
+global_max_time = min(max_test_times)  # min of maxes ensures all test sets have that max time
+# Create time grid with 10 points between global_min_time and global_max_time
+# Round to nearest 0.5
+start = np.ceil(global_min_time * 2) / 2  
+end = np.floor(global_max_time * 2) / 2
+time_grid = np.arange(start, end + 0.1, 0.5)  # add small epsilon to include 'end'
+print("Consistent time grid:")
+print(time_grid)
+
+################################################################################
+# Assess performance of each model across folds
+################################################################################
+
+# evalulation
+performance = []
+#entry = outer_models[0]
+
+for entry in outer_models:
+    if entry["model"] is None:
+        continue  # skip failed folds
+    model = entry["model"]
+    test_idx = entry["test_idx"]
+    train_idx = entry["train_idx"]
+
+    X_test = X.iloc[test_idx]
+    X_train = X.iloc[train_idx]
+    y_test = y[test_idx]
+    y_train = y[train_idx]
+
+    # Compute AUC(t)
+    auc, mean_auc = cumulative_dynamic_auc( # this stuff reutnr not an array for auc which iswrong
+        y_train, y_test,
+        model.predict(X_test),
+        times=time_grid
+    )
+
+    # Compute Brier score and integrated Brier score
+    surv_funcs = model.predict_survival_function(X_test)
+    preds = np.row_stack([
+        [fn(t) for t in time_grid] for fn in surv_funcs
+    ])
+
+    brier_scores = brier_score(y_train, y_test, preds, time_grid)[1]
+    ibs = integrated_brier_score(y_train, y_test, preds, time_grid)
+
+    performance.append({
+        "fold": entry["fold"],
+        "model": model,
+        "auc": auc,      
+        "mean_auc": mean_auc,     
+        "brier_t": brier_scores,
+        "ibs": ibs
+    })
+
+################################################################################
+# Visualize Brier score for each best model (1 per outer fold)
+################################################################################
+
+# Extract data from performance
+folds = [p["fold"] for p in performance]
+brier_array = np.array([p["brier_t"] for p in performance])  # (n_folds, n_times)
+ibs_array = np.array([p["ibs"] for p in performance])        # (n_folds,)
+
+plt.style.use('seaborn-whitegrid')
+
+fig, axs = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]})
+
+# 1) Plot Brier Score(t) curves per fold + mean
+for i, brier in enumerate(brier_array):
+    axs[0].plot(time_grid, brier, label=f'Fold {folds[i]}', alpha=0.6)
+axs[0].plot(time_grid, brier_array.mean(axis=0), color='black', lw=3, label='Mean Brier Score(t)')
+
+axs[0].set_title("Time-dependent Brier Score", fontsize=16, fontweight='bold')
+axs[0].set_xlabel("Time", fontsize=14)
+axs[0].set_ylabel("Brier Score(t)", fontsize=14)
+axs[0].legend(title='Folds', loc='upper right', fontsize=10)
+axs[0].set_ylim(0, 0.5)
+axs[0].grid(True, linestyle='--', alpha=0.7)
+
+# 2) Plot Integrated Brier Score (IBS) per fold (bar plot)
+bar_colors = plt.cm.Paired(np.linspace(0, 1, len(folds)))
+bars = axs[1].bar(folds, ibs_array, color=bar_colors, edgecolor='black', alpha=0.85)
+
+axs[1].set_title("Integrated Brier Score (IBS) per Fold", fontsize=16, fontweight='bold')
+axs[1].set_xlabel("Fold", fontsize=14)
+axs[1].set_ylabel("IBS", fontsize=14)
+axs[1].set_ylim(0, max(ibs_array)*1.15)
+axs[1].grid(axis='y', linestyle='--', alpha=0.7)
+
+# Add value labels on top of each bar for clarity
+for bar in bars:
+    height = bar.get_height()
+    axs[1].annotate(f'{height:.3f}',
+                    xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 4),
+                    textcoords='offset points',
+                    ha='center', va='bottom', fontsize=10)
+
 plt.tight_layout()
-plt.savefig(outfile_plot_cv, dpi=300)
+plt.show()
+
+
+################################################################################
+# Visualize AUC
+################################################################################
+
+# Collect all auc curves from folds into an array (shape: n_folds x n_times)
+auc_curves = np.array([p["auc"] for p in performance])
+
+# time_grid should be the same for all folds
+# if needed, verify length matches auc curve length:
+assert all(len(p["auc"]) == len(time_grid) for p in performance), "Mismatch in auc curve lengths!"
+
+# Plotting setup
+plt.style.use('seaborn-whitegrid')
+plt.figure(figsize=(10, 6))
+
+# Plot each fold's AUC(t) curve
+for i, p in enumerate(performance):
+    plt.plot(time_grid, p["auc"], label=f'Fold {p["fold"]}', alpha=0.5)
+
+# Plot mean AUC(t) across folds
+mean_auc_curve = auc_curves.mean(axis=0)
+plt.plot(time_grid, mean_auc_curve, color='black', linewidth=2.5, label='Mean AUC(t)')
+
+# Labels and legend
+plt.title("Time-dependent AUC(t) per Fold")
+plt.xlabel("Time")
+plt.ylabel("AUC(t)")
+plt.ylim(0, 1)
+plt.legend(loc='lower right')
+plt.tight_layout()
+plt.show()
 
 ################################################################################
 # Best model (refit on full data after nested CV)

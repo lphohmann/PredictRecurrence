@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
+
 ################################################################################
-# Script: make prediction with model in TCGA and plot survival curves
+# Script: calculate risk score with trained model in TCGA 
 # Author: Lennart Hohmann
 # Date: 29.04.2025
 ################################################################################
@@ -11,20 +12,10 @@ import sys
 import pandas as pd
 import numpy as np
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import beta2m, m2beta, create_surv, variance_filter, unicox_filter, preprocess, train_cox_lasso
+from src.utils import beta2m
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sksurv.util import Surv
-import warnings
-from sklearn.exceptions import FitFailedWarning
-from sklearn import set_config
-from sklearn.model_selection import GridSearchCV, KFold
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-from sksurv.datasets import load_breast_cancer
-from sksurv.linear_model import CoxnetSurvivalAnalysis, CoxPHSurvivalAnalysis
-from sksurv.preprocessing import OneHotEncoder
 import joblib
 import time
 
@@ -41,52 +32,96 @@ print(f"Script started at: {time.ctime(start_time)}")
 # load and preprocess data
 ################################################################################
 
-# load model to make predicitons with
-# Load pipeline
-loaded_pipeline = joblib.load("./output/CoxNet_manual/manual_cox_pipeline.pkl")
-
-# input paths
+infile_0 = "./data/raw/TCGA_TNBC_MergedAnnotations.csv"
 infile_1 = "./data/raw/TCGA_TNBC_betaAdj.csv"
-infile_2 = "./data/raw/TCGA_TNBC_MergedAnnotations.csv"
 
-# rows are patient IDs and columns are features (CpGs)
-clinical_data_df = pd.read_csv(infile_2)
-clinical_data_df = clinical_data_df.set_index("PD_ID")
-# Drop rows with NaN in 'RFIbin' or 'RFI' columns
-clinical_data_df = clinical_data_df.dropna(subset=['RFIbin', 'RFI'])
-beta_matrix_df = pd.read_csv(infile_1,index_col=0).T
+# clinical dat
+clinical = pd.read_csv(infile_0)
+clinical.rename(columns={clinical.columns[0]: "Sample"}, inplace=True)
+clinical = clinical.loc[:,["Sample","PFI","PFIbin","OS","OSbin"]]
+clinical.head()
 
+# full pipeline (which includes StandardScaler + CoxnetSurvivalAnalysis)
+pipeline = joblib.load("output/CoxNet_200k_simpleCV5/best_cox_model.pkl")
 
-# filter
-beta_matrix_df = variance_filter(beta_matrix_df, 150000) # 200000
-X = beta_matrix_df
+# methyl dat
+methyl = pd.read_csv(infile_1, index_col=0).T
+methyl = methyl.loc[clinical["Sample"]]
+methyl.shape
+################################################################################
+# approcah 1 calc risk scores usign dot product
+################################################################################
+
+# # 3. Load the 108 non-zero coefficients
+# non_zero_coefs = pd.read_csv("output/CoxNet_200k_simpleCV5/non_zero_coefs.csv", index_col=0)
+# features_108 = non_zero_coefs.index.tolist()
+# coefs_108 = non_zero_coefs["coefficient"].values
+
+# # 4. Prepare your test data (e.g., TCGA samples)
+# methyl_108 = methyl.loc[:, methyl.columns.intersection(features_108)]  # keep only 108 features
+# methyl_108 = beta2m(methyl_108, beta_threshold=0.001)
+
+# missing_features = [feat for feat in features_108 if feat not in methyl_108.columns]
+# print(f"Number of missing features in test data: {len(missing_features)}")
+
+# # 5. Reindex to match order and fill missing with 0 if needed
+# X_test_108 = methyl_108.reindex(columns=features_108).fillna(0)
+
+# # 6. Manually scale using the trained data parameters
+# scaler = joblib.load("output/CoxNet_200k_simpleCV5/scaler_108_features.pkl")
+# X_test_scaled = scaler.transform(X_test_108)
+
+# # 7. Ensure the feature order matches between the model and the test data
+# assert list(X_test_108.columns) == features_108, "Feature order mismatch!"
+# assert len(coefs_108) == X_test_scaled.shape[1], "Coefficient and feature count mismatch!"
+
+# # 8. Predict risk scores using the model directly
+# risk_scores = np.dot(X_test_scaled, coefs_108)
+
 
 ################################################################################
-# Predictions: Risk Score, Survival Function, Cumulative Hazard Function
+# apporach 2 calc risk scores usign full pipeline and .predict()
 ################################################################################
 
-# 1. risk score 
-risk_scores = loaded_pipeline.predict(X)  # X must be same features, same format
-#risk_scores = model.predict(X)
-# Save risk scores to CSV
-risk_scores_df = pd.DataFrame(risk_scores, columns=["risk_score"], index=X.index)
-risk_scores_df.head()
-risk_scores_df.to_csv("output/risk_scores_from_loaded_model.csv")
-print("Saved patient risk scores to: output/risk_scores_from_loaded_model.csv")
+print(pipeline.named_steps)  # see the steps
 
-# need re-fit the model with fit_baseline_model enabled for survival or cumulative hazard function
-#coxnet_pred = make_pipeline(StandardScaler(), CoxnetSurvivalAnalysis(l1_ratio=0.9, #fit_baseline_model=True))
-#coxnet_pred.set_params(**gcv.best_params_)
-#coxnet_pred.fit(X, y)
+# Load train features (columns only)
+train_methyl = pd.read_csv("./output/CoxNet_200k_simpleCV5/input_filtered_trainMethyl.csv", index_col=0)
+all_features = train_methyl.columns.tolist()
 
-# 2. Survival Function
+# Load test methylation data
+test_methyl = pd.read_csv(infile_1, index_col=0).T # methyl
+test_methyl= test_methyl.loc[clinical["Sample"]]
+test_methyl = beta2m(test_methyl, beta_threshold=0.001)
+test_methyl.shape
 
-# survival probability curve for each patient
-#surv_funcs = coxnet_pred.named_steps["coxnetsurvivalanalysis"].predict_survival_function(X)
+# Keep only features in training data
+test_methyl = test_methyl.loc[:, test_methyl.columns.intersection(all_features)]
 
-# 3. Cumulative Hazard Function
+# Find features missing in test but present in training
+missing_feats = [f for f in all_features if f not in test_methyl.columns]
 
-# shows how the risk accumulates over time
-#cumhaz_funcs = coxnet_pred.named_steps["coxnetsurvivalanalysis"].predict_cumulative_hazard_function(X)
+# Add missing features with zero values
+missing_df = pd.DataFrame(0, index=test_methyl.index, columns=missing_feats)
+test_methyl = pd.concat([test_methyl, missing_df], axis=1)
 
+# Reorder columns to exact training feature order
+test_methyl = test_methyl[all_features]
 
+print(test_methyl.shape)  # Should be (number of test samples, 200000)
+
+# Now pass test_methyl to pipeline.predict()
+risk_scores = pipeline.predict(test_methyl)
+
+####
+
+# Assume risk_scores is a numpy array
+# test_methyl.index contains the sample IDs in the same order as risk_scores
+risk_df = pd.DataFrame({'Sample': test_methyl.index, 'risk_score': risk_scores})
+
+# Merge on Sample ID
+clinical_with_risk = clinical.merge(risk_df, on='Sample', how='left')
+
+print(clinical_with_risk.head())
+
+clinical_with_risk.to_csv("output/CoxNet_200k_simpleCV5/TCGA_risk_scores.csv")

@@ -11,7 +11,7 @@ import sys
 import pandas as pd
 import numpy as np
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import beta2m, m2beta, create_surv, variance_filter, unicox_filter, preprocess, train_cox_lasso
+#from src.utils import beta2m, m2beta, create_surv, variance_filter, unicox_filter, preprocess, train_cox_lasso
 import matplotlib.pyplot as plt
 from sksurv.util import Surv
 import warnings
@@ -40,8 +40,8 @@ print(f"Script started at: {time.ctime(start_time)}")
 ################################################################################
 
 # input paths
-infile_1 = "./output/risk_scores_from_loaded_model.csv" 
-infile_2 = "./data/raw/tnbc_anno.csv" # replace with tnbc dat
+infile_1 = "output/CoxNet_200k_simpleCV5/risk_scores_from_loaded_model.csv" 
+infile_2 = "./data/train/train_clinical.csv" # replace with tnbc dat
 
 # stratify patients by risk score tertiles
 risk_scores_df = pd.read_csv(infile_1)
@@ -52,15 +52,16 @@ risk_scores_df["risk_score_tert"] = pd.qcut(risk_scores_df["risk_score"], q=3, l
 #print(tertile_boundaries) #  -0.411048 , 0.164139
 # rows are patient IDs and columns are features (CpGs)
 clinical_data_df = pd.read_csv(infile_2)
-clinical_data_df = clinical_data_df.loc[:, ["PD_ID","RFIbin","RFI"]]
-risk_scores_df.columns.values[0] = "PD_ID"
-
+clinical_data_df = clinical_data_df.loc[:, ["Sample","RFi_event","RFi_years"]]
+risk_scores_df.columns.values[0] = "Sample"
+risk_scores_df.head()
+clinical_data_df.head()
 # merge 
-merged_clinical_df = pd.merge(clinical_data_df, risk_scores_df, on="PD_ID", how="inner")
-merged_clinical_df["RFIbin"] = merged_clinical_df["RFIbin"].astype(bool)
+merged_clinical_df = pd.merge(clinical_data_df, risk_scores_df, on="Sample", how="inner")
+merged_clinical_df["RFi_event"] = merged_clinical_df["RFi_event"].astype(bool)
 merged_clinical_df.head()
 
-print(pd.crosstab(merged_clinical_df['risk_score_tert'], merged_clinical_df['RFIbin']))
+print(pd.crosstab(merged_clinical_df['risk_score_tert'], merged_clinical_df['RFi_event']))
 merged_clinical_df['risk_score_tert'].value_counts()
 
 # simple hist
@@ -71,7 +72,7 @@ plt.title('Histogram of Risk Score')
 plt.xlabel('Risk Score')
 plt.ylabel('Frequency')
 plt.grid(True)
-plt.savefig('KM_RiskHist.png', dpi=300, bbox_inches='tight')
+plt.savefig('output/CoxNet_200k_simpleCV5/KM_RiskHist.png', dpi=300, bbox_inches='tight')
 plt.close()
 ###############################################################################
 # simple surv analysis
@@ -83,8 +84,8 @@ from sksurv.nonparametric import kaplan_meier_estimator
 for group in (0,1,2):
     mask_treat = merged_clinical_df["risk_score_tert"] == group
     time_treatment, survival_prob_treatment, conf_int = kaplan_meier_estimator(
-        merged_clinical_df["RFIbin"][mask_treat],
-        merged_clinical_df["RFI"][mask_treat],
+        merged_clinical_df["RFi_event"][mask_treat],
+        merged_clinical_df["RFi_years"][mask_treat],
         conf_type="log-log",
     )
 
@@ -95,4 +96,4 @@ plt.ylim(0, 1)
 plt.ylabel(r"est. probability of survival $\hat{S}(t)$")
 plt.xlabel("time $t$")
 plt.legend(loc="best")
-plt.savefig('KM_TertRiskStrat.png', dpi=300, bbox_inches='tight')
+plt.savefig('output/CoxNet_200k_simpleCV5/KM_TertRiskStrat.png', dpi=300, bbox_inches='tight')

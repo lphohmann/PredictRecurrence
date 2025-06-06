@@ -1,0 +1,34 @@
+Script started at: Fri Jun  6 17:16:44 2025
+current outer cv fold: 0
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+current outer cv fold: 1
+current outer cv fold: 2
+Saved refitted best model per outer fold  to: output/CoxNet/outer_cv_models.pkl
+Script ended at: Fri Jun  6 17:17:42 2025
+Script executed in 58.83 seconds.
+Script started at: Fri Jun  6 17:23:05 2025
+current outer cv fold: 0
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+current outer cv fold: 1
+current outer cv fold: 2
+Saved refitted best model per outer fold  to: output/CoxNet/outer_cv_models.pkl
+Script ended at: Fri Jun  6 17:24:04 2025
+Script executed in 59.40 seconds.

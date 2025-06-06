@@ -11,20 +11,12 @@ import sys
 import pandas as pd
 import numpy as np
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import beta2m, m2beta, create_surv, variance_filter, unicox_filter, preprocess, train_cox_lasso
-import matplotlib.pyplot as plt
+from src.utils import beta2m, variance_filter
 import numpy as np
 import pandas as pd
-from sksurv.util import Surv
-import warnings
-from sklearn.exceptions import FitFailedWarning
-from sklearn import set_config
-from sklearn.model_selection import GridSearchCV, KFold
-from sklearn.pipeline import make_pipeline
+
 from sklearn.preprocessing import StandardScaler
-from sksurv.datasets import load_breast_cancer
-from sksurv.linear_model import CoxnetSurvivalAnalysis, CoxPHSurvivalAnalysis
-from sksurv.preprocessing import OneHotEncoder
+
 import joblib
 import time
 
@@ -43,27 +35,62 @@ print(f"Script started at: {time.ctime(start_time)}")
 
 # load model to make predicitons with
 # Load pipeline
-loaded_pipeline = joblib.load("./output/manual_cox_pipeline.pkl")
+loaded_pipeline = joblib.load("./output/CoxNet_200k_simpleCV5/best_cox_model.pkl")
+
+
+cox_model = loaded_pipeline.named_steps["coxnetsurvivalanalysis"]
+print("Alpha used in best model:", cox_model.alphas_[0])
+non_zero = (cox_model.coef_ != 0).sum()
+print("Number of non-zero coefficients:", non_zero)
+feature_names = loaded_pipeline.named_steps["standardscaler"].get_feature_names_out()
+selected_features = feature_names[cox_model.coef_.flatten() != 0]
+print(selected_features)
+
+
+#loaded_pipeline = joblib.load("./output/manual_cox_pipeline.pkl")
 
 # input paths
-infile_1 = "./data/raw/tnbc235.csv" # replace with PC dat later
-infile_2 = "./data/raw/tnbc_anno.csv" # replace with tnbc dat
+infile_0 = r"./data/train/train_subcohorts/TNBC_train_ids.csv" 
 
-# rows are patient IDs and columns are features (CpGs)
-clinical_data_df = pd.read_csv(infile_2)
-clinical_data_df = clinical_data_df.set_index("PD_ID")
-# Drop rows with NaN in 'RFIbin' or 'RFI' columns
-clinical_data_df = clinical_data_df.dropna(subset=['RFIbin', 'RFI'])
-beta_matrix_df = pd.read_csv(infile_1,index_col=0).T
+infile_1 = r"./data/train/train_methylation_adjusted.csv"
+infile_2 = r"./data/train/train_clinical.csv"
 
-# align dataframes by shared samples
-shared_samples = clinical_data_df.index.intersection(beta_matrix_df.index)
-clinical_data_df = clinical_data_df.loc[shared_samples]
-beta_matrix_df = beta_matrix_df.loc[shared_samples]
 
-# filter
-beta_matrix_df = variance_filter(beta_matrix_df, 150000) # 200000
-X = beta_matrix_df
+# sample training set
+train_ids = pd.read_csv(infile_0, header=None).iloc[:, 0].tolist()
+
+# load clin data
+clinical_data = pd.read_csv(infile_2)
+clinical_data = clinical_data.set_index("Sample")
+clinical_data = clinical_data.loc[train_ids]
+clinical_data.shape
+
+# load beta values
+beta_matrix = pd.read_csv(infile_1,index_col=0).T
+# align dataframes
+beta_matrix = beta_matrix.loc[train_ids]
+beta_matrix.shape
+#beta_matrix.iloc[1:5,1:5]
+# 1. Convert beta values to M-values with a threshold 
+mval_matrix = beta2m(beta_matrix,beta_threshold=0.001)
+
+# 2. Apply variance filtering to retain top N most variable CpGs
+mval_matrix = variance_filter(mval_matrix, top_n=200000)
+mval_matrix.shape
+
+X = mval_matrix
+
+# save scaler for test set
+# Select only the 108 features with non-zero coefficients
+non_zero_coefs = pd.read_csv("./output/CoxNet_200k_simpleCV5/non_zero_coefs.csv", index_col=0)
+features_108 = non_zero_coefs.index.tolist()
+X_for_scaler = mval_matrix[features_108]
+X_for_scaler.shape
+# Fit a StandardScaler on these features
+scaler = StandardScaler().fit(X_for_scaler)
+
+# Save the scaler
+joblib.dump(scaler, "output/CoxNet_200k_simpleCV5/scaler_108_features.pkl")
 
 ################################################################################
 # Predictions: Risk Score, Survival Function, Cumulative Hazard Function
@@ -75,8 +102,9 @@ risk_scores = loaded_pipeline.predict(X)  # X must be same features, same format
 # Save risk scores to CSV
 risk_scores_df = pd.DataFrame(risk_scores, columns=["risk_score"], index=X.index)
 risk_scores_df.head()
-risk_scores_df.to_csv("output/risk_scores_from_loaded_model.csv")
-print("Saved patient risk scores to: output/risk_scores_from_loaded_model.csv")
+risk_scores_df.to_csv("output/CoxNet_200k_simpleCV5/risk_scores_from_loaded_model.csv")
+risk_scores_df.to_csv("output/CoxNet_200k_simpleCV5/SCANB_risk_scores.csv")
+print("Saved patient risk scores to: output/CoxNet_200k_simpleCV5/risk_scores_from_loaded_model.csv")
 
 # need re-fit the model with fit_baseline_model enabled for survival or cumulative hazard function
 #coxnet_pred = make_pipeline(StandardScaler(), CoxnetSurvivalAnalysis(l1_ratio=0.9, #fit_baseline_model=True))

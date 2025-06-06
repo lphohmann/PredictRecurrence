@@ -22,17 +22,17 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV, cross_val_score, KFold
 from sklearn.exceptions import FitFailedWarning
 
-#sys.path.append(r"/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence")
-sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence\\src")
+sys.path.append(r"/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
+#sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence")
+#sys.path.append("C:\\Users\\lhohmann\\PredictRecurrence\\src")
 import src.utils
 importlib.reload(src.utils)
 from src.utils import beta2m, variance_filter, cindex_scorer
 
 # set wd
-#os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
-os.chdir(os.path.expanduser("C:\\Users\\lhohmann\\PredictRecurrence"))
-os.makedirs("output", exist_ok=True)
+os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
+#os.chdir(os.path.expanduser("C:\\Users\\lhohmann\\PredictRecurrence"))
+#os.makedirs("output", exist_ok=True)
 start_time = time.time()  # Record start time
 
 print(f"Script started at: {time.ctime(start_time)}")
@@ -78,12 +78,14 @@ beta_matrix.iloc[1:5,1:5]
 ################################################################################
 
 # 1. Convert beta values to M-values with a threshold 
-beta_matrix_df = pd.DataFrame(beta_matrix)
 mval_matrix = beta2m(beta_matrix,beta_threshold=0.001)
 
 # 2. Apply variance filtering to retain top N most variable CpGs
 mval_matrix = variance_filter(mval_matrix, top_n=200000)
 mval_matrix.shape
+
+mval_matrix.to_csv("./output/CoxNet_200k_simpleCV5/input_filtered_trainMethyl.csv")
+mval_matrix.iloc[1:5,1:5]
 
 ################################################################################
 # create Survival Object
