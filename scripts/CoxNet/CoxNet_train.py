@@ -38,7 +38,15 @@ os.makedirs("output/CoxNet/", exist_ok=True)
 
 start_time = time.time()  # Record start time
 
-print(f"Script started at: {time.ctime(start_time)}")
+print(f"Script started at: {time.ctime(start_time)}",flush=True)
+
+################################################################################
+# PARAMS
+################################################################################
+
+top_n_cpgs = 100000
+outer_cv_folds = 5
+inner_cv_folds = 3
 
 ################################################################################
 # SET FILE PATHS
@@ -78,7 +86,7 @@ beta_matrix = beta_matrix.loc[train_ids]
 mval_matrix = beta2m(beta_matrix,beta_threshold=0.001)
 
 # 2. Apply variance filtering to retain top N most variable CpGs
-mval_matrix = variance_filter(mval_matrix, top_n=100) #200,000
+mval_matrix = variance_filter(mval_matrix, top_n=top_n_cpgs) 
 
 ################################################################################
 # CREATE SURVIVAL OBJECT
@@ -94,7 +102,7 @@ X = mval_matrix
 # tune alpha
 # fit a Coxnet model to estimate reasonable alpha values for grid search
 initial_pipe = make_pipeline(
-    CoxnetSurvivalAnalysis(l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=30, max_iter=1000)
+    CoxnetSurvivalAnalysis(l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=20)
 )
 
 # Suppress convergence warnings
@@ -117,10 +125,10 @@ param_grid = {
 ################################################################################
 
 # Outer CV for performance estimation
-outer_cv = KFold(n_splits=3, shuffle=True, random_state=21) #10
+outer_cv = KFold(n_splits=outer_cv_folds, shuffle=True, random_state=21) #10
 
 # Inner CV for hyperparameter tuning
-inner_cv = KFold(n_splits=2, shuffle=True, random_state=12) #5
+inner_cv = KFold(n_splits=inner_cv_folds, shuffle=True, random_state=12) #5
 
 # Define the model and wrap in GridSearchCV (for the inner loop)
 inner_model = GridSearchCV(
@@ -139,7 +147,7 @@ inner_model = GridSearchCV(
 outer_models = []
 
 for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X)):
-    print(f"current outer cv fold: {fold_num}")    
+    print(f"current outer cv fold: {fold_num}",flush=True)    
     X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
     y_train, y_test = y[train_idx], y[test_idx]
 
@@ -170,7 +178,7 @@ for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X)):
         })
 
     except ArithmeticError as e:
-        print(f"Skipping fold {fold_num} due to numerical error: {e}")
+        print(f"Skipping fold {fold_num} due to numerical error: {e}",flush=True)
         outer_models.append({
             "fold": fold_num,
             "model": None,
@@ -186,7 +194,7 @@ for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X)):
 
 # Save outer_models list with model objects, train/test idx, etc.
 joblib.dump(outer_models, outfile_1)
-print(f"Saved refitted best model per outer fold  to: {outfile_1}")
+print(f"Saved refitted best model per outer fold  to: {outfile_1}",flush=True)
 
 end_time = time.time()  # Record end time
 print(f"Script ended at: {time.ctime(end_time)}")

@@ -33,7 +33,13 @@ os.makedirs("output", exist_ok=True)
 
 start_time = time.time()  # Record start time
 
-print(f"Script started at: {time.ctime(start_time)}")
+print(f"Script started at: {time.ctime(start_time)}",flush=True)
+
+################################################################################
+# PARAMS
+################################################################################
+
+top_n_cpgs = 100000
 
 ################################################################################
 # SET FILE PATHS
@@ -46,11 +52,6 @@ infile_2 = r"./data/train/train_clinical.csv"
 infile_3 = r"./output/CoxNet/outer_cv_models.pkl"
 
 # output paths
-#outfile_1 = 
-#outfile_2 = 
-#outfile_3 = 
-#outfile_4 = 
-
 outfile_brier_plot = r"./output/CoxNet/brier_scores.png"
 outfile_auc_plot = r"./output/CoxNet/auc_curves.png"
 outfile_perf_csv = r"./output/CoxNet/performance_summary.csv"
@@ -85,7 +86,7 @@ beta_matrix = beta_matrix.loc[train_ids]
 mval_matrix = beta2m(beta_matrix,beta_threshold=0.001)
 
 # 2. Apply variance filtering to retain top N most variable CpGs
-mval_matrix = variance_filter(mval_matrix, top_n=100) #200,000
+mval_matrix = variance_filter(mval_matrix, top_n=top_n_cpgs) #200,000
 
 ################################################################################
 # CREATE SURVIVAL OBJECT
@@ -119,8 +120,8 @@ start = np.ceil(global_min_time * 2) / 2
 end = np.floor(global_max_time * 2) / 2
 time_grid = np.arange(start, end + 0.1, 0.5)  # add epsilon to include end
 
-print("Consistent evaluation time grid across folds:")
-print(time_grid)
+print("Consistent evaluation time grid across folds:",flush=True)
+print(time_grid,flush=True)
 
 ################################################################################
 # Assess performance of each model across folds
@@ -131,6 +132,9 @@ performance = []
 #entry = outer_models[0]
 
 for entry in outer_models:
+
+    print(f"current outer cv fold model: {entry['fold']}", flush=True)
+
     if entry["model"] is None:
         continue  # skip failed folds
     model = entry["model"]
@@ -260,8 +264,6 @@ df_perf = pd.DataFrame({
     "ibs": [p["ibs"] for p in performance]
 })
 df_perf.to_csv(outfile_perf_csv, index=False)
-
-
 
 ################################################################################
 # Select Best Model Based on Lowest IBS or Highest Mean AUC
