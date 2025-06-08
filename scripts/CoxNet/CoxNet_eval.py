@@ -39,7 +39,7 @@ print(f"Script started at: {time.ctime(start_time)}",flush=True)
 # PARAMS
 ################################################################################
 
-top_n_cpgs = 100000
+top_n_cpgs = 100000 # has to match n used in training
 
 ################################################################################
 # SET FILE PATHS
@@ -124,19 +124,45 @@ print("Consistent evaluation time grid across folds:",flush=True)
 print(time_grid,flush=True)
 
 ################################################################################
-# Assess performance of each model across folds
+# print outer fold model info to output
 ################################################################################
 
 # evalulation
 performance = []
 #entry = outer_models[0]
 
+for i, entry in enumerate(outer_models):
+    print(f"\n--- Fold {i} ---")
+    print(f"Fold number: {entry.get('fold')}")
+    print(f"Model type: {type(entry.get('model'))}")
+    print(f"Train indices: {len(entry.get('train_idx', []))} samples")
+    print(f"Test indices: {len(entry.get('test_idx', []))} samples")
+    
+    cv_results = entry.get("cv_results")
+    if cv_results:
+        print(f"CV results keys: {list(cv_results.keys())[:5]}...")  # show a few keys
+        print(f"Mean test score (first 3): {cv_results['mean_test_score'][:3]}")
+    
+    error = entry.get("error")
+    if error:
+        print(f"Error: {error}")
+    else:
+        print("Error: None")
+
+################################################################################
+# Assess performance of each model across folds
+################################################################################
+
+#entry = outer_models[3]
+
 for entry in outer_models:
 
     print(f"current outer cv fold model: {entry['fold']}", flush=True)
 
     if entry["model"] is None:
+        print(f"skipping: {entry['fold']}", flush=True)
         continue  # skip failed folds
+
     model = entry["model"]
     test_idx = entry["test_idx"]
     train_idx = entry["train_idx"]
@@ -146,8 +172,17 @@ for entry in outer_models:
     y_test = y[test_idx]
     y_train = y[train_idx]
 
+    # Compute linear predictor manually to check if this fold is stable
+    coefs = model.named_steps["coxnetsurvivalanalysis"].coef_
+    linear_predictor = X_test @ coefs
+
+    # Detect dangerous folds
+    if linear_predictor.max().item() > 700 or linear_predictor.min().item() < -700:
+        print(f"⚠️ Fold {entry['fold']} skipped due to overflow risk.")
+        continue
+
     # Compute AUC(t)
-    auc, mean_auc = cumulative_dynamic_auc( # this stuff reutnr not an array for auc which iswrong
+    auc, mean_auc = cumulative_dynamic_auc(
         y_train, y_test,
         model.predict(X_test),
         times=time_grid
@@ -155,6 +190,7 @@ for entry in outer_models:
 
     # Compute Brier score and integrated Brier score
     surv_funcs = model.predict_survival_function(X_test)
+
     preds = np.row_stack([
         [fn(t) for t in time_grid] for fn in surv_funcs
     ])
@@ -220,7 +256,6 @@ for bar in bars:
 plt.tight_layout()
 plt.savefig(outfile_brier_plot, dpi=300, bbox_inches='tight')
 plt.close()
-
 
 ################################################################################
 # Visualize AUC
