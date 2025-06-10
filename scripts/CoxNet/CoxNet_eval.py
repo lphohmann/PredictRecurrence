@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 ################################################################################
-# Script: Fitting a penalized Cox model: Elastic Net
+# Script: Evaluating the best model in each outer CV fold
 # apporach from: https://scikit-survival.readthedocs.io/en/stable/user_guide/coxnet.html
 # Author: Lennart Hohmann #/usr/bin/env python
 # Date: 22.05.2025
@@ -39,7 +39,7 @@ print(f"Script started at: {time.ctime(start_time)}",flush=True)
 # PARAMS
 ################################################################################
 
-top_n_cpgs = 100000 # has to match n used in training
+top_n_cpgs = 200000 # has to match n used in training
 
 ################################################################################
 # SET FILE PATHS

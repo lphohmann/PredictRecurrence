@@ -48,6 +48,18 @@ pipeline = joblib.load("output/CoxNet_200k_simpleCV5/best_cox_model.pkl")
 methyl = pd.read_csv(infile_1, index_col=0).T
 methyl = methyl.loc[clinical["Sample"]]
 methyl.shape
+
+methyl.head()
+
+# checking if there are any missing values in methyl data
+methyl.isnull()
+
+# also check if all outomce dat is there for outcome smaples (OS)
+clinical["OSbin"].value_counts()
+clinical["PFIbin"].value_counts()
+
+clinical.shape
+
 ################################################################################
 # approcah 1 calc risk scores usign dot product
 ################################################################################
