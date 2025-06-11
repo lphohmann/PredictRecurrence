@@ -152,6 +152,7 @@ event_labels = clinical_data["RFi_event"].values  # or y["RFi_event"]
 
 outer_models = []
 
+# for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X)): # way with simple outer cv
 for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X, event_labels)):
     X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
     y_train, y_test = y[train_idx], y[test_idx]
@@ -195,55 +196,6 @@ for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X, event_labels)
             "cv_results": None,
             "error": str(e)
         })
-
-
-################################################################################
-# RUN NESTED CV AND SAVE BEST MODEL PER OUTER FOLD; wihtout stratified outer cv
-################################################################################
-
-# outer_models = []
-
-# for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X)):
-#     print(f"current outer cv fold: {fold_num}",flush=True)    
-#     X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
-#     y_train, y_test = y[train_idx], y[test_idx]
-
-#     try:
-#         inner_model.fit(X_train, y_train)
-#         best_model = inner_model.best_estimator_
-    
-#         # Refit best model with fit_baseline_model=True for later eval
-#         best_alpha = best_model.named_steps["coxnetsurvivalanalysis"].alphas_[0]
-#         best_l1_ratio = best_model.named_steps["coxnetsurvivalanalysis"].l1_ratio
-#         refit_best_model = make_pipeline(
-#             CoxnetSurvivalAnalysis(
-#                 alphas=[best_alpha],
-#                 l1_ratio=best_l1_ratio,
-#                 fit_baseline_model=True,
-#                 max_iter=100000
-#             )
-#         )
-#         refit_best_model.fit(X_train, y_train)
-
-#         outer_models.append({
-#             "fold": fold_num,
-#             "model": refit_best_model,  # Save the refitted model
-#             "test_idx": test_idx,
-#             "train_idx": train_idx,
-#             "cv_results": inner_model.cv_results_,
-#             "error": None
-#         })
-
-#     except ArithmeticError as e:
-#         print(f"Skipping fold {fold_num} due to numerical error: {e}",flush=True)
-#         outer_models.append({
-#             "fold": fold_num,
-#             "model": None,
-#             "test_idx": test_idx,
-#             "train_idx": train_idx,
-#             "cv_results": None,
-#             "error": str(e)
-#         })
 
 ################################################################################
 # SAVE OUTER CV MODELS

@@ -19,6 +19,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import joblib
+import math
 from sksurv.util import Surv
 from sksurv.metrics import cumulative_dynamic_auc, integrated_brier_score, brier_score
 
@@ -127,8 +128,7 @@ print(time_grid,flush=True)
 # print outer fold model info to output
 ################################################################################
 
-# evalulation
-performance = []
+
 #entry = outer_models[0]
 
 for i, entry in enumerate(outer_models):
@@ -152,6 +152,8 @@ for i, entry in enumerate(outer_models):
 ################################################################################
 # Assess performance of each model across folds
 ################################################################################
+# evalulation
+performance = []
 
 #entry = outer_models[3]
 
@@ -198,13 +200,27 @@ for entry in outer_models:
     brier_scores = brier_score(y_train, y_test, preds, time_grid)[1]
     ibs = integrated_brier_score(y_train, y_test, preds, time_grid)
 
+    from sksurv.metrics import concordance_index_censored
+
+    # Predict risk scores
+    pred_scores = model.predict(X_test)
+
+    # Compute C-index
+    cindex = concordance_index_censored(y_test["RFi_event"], y_test["RFi_years"], pred_scores)[0]
+
+    # Get AUC at 5 years (find closest time point in grid)
+    time_5y_idx = np.argmin(np.abs(time_grid - 5.0))
+    auc_at_5y = auc[time_5y_idx]
+
     performance.append({
         "fold": entry["fold"],
         "model": model,
-        "auc": auc,      
-        "mean_auc": mean_auc,     
+        "auc": auc,
+        "mean_auc": mean_auc,
         "brier_t": brier_scores,
-        "ibs": ibs
+        "ibs": ibs,
+        "cindex": cindex,
+        "auc_at_5y": auc_at_5y
     })
     
 #print("eval done")
@@ -291,14 +307,42 @@ plt.tight_layout()
 plt.savefig(outfile_auc_plot, dpi=300, bbox_inches='tight')
 plt.close()
 
-
-# Save summary table (AUC, IBS per fold)
+# Save summary table
 df_perf = pd.DataFrame({
     "fold": [p["fold"] for p in performance],
     "mean_auc": [p["mean_auc"] for p in performance],
-    "ibs": [p["ibs"] for p in performance]
+    "auc_at_5y": [p["auc_at_5y"] for p in performance],
+    "ibs": [p["ibs"] for p in performance],
+    "cindex": [p["cindex"] for p in performance],
 })
 df_perf.to_csv(outfile_perf_csv, index=False)
+
+################################################################################
+# print metrics
+################################################################################
+
+# Compute means and stds
+mean_cindex = np.mean([p["cindex"] for p in performance])
+std_cindex = np.std([p["cindex"] for p in performance])
+
+mean_auc_5y = np.mean([p["auc_at_5y"] for p in performance])
+std_auc_5y = np.std([p["auc_at_5y"] for p in performance])
+
+mean_ibs = np.mean([p["ibs"] for p in performance])
+std_ibs = np.std([p["ibs"] for p in performance])
+
+# Compute overall mean AUC across all folds (mean of mean_auc)
+valid_mean_aucs = [p["mean_auc"] for p in performance if p["mean_auc"] is not None and not math.isnan(p["mean_auc"])]
+mean_auc_avg = np.mean(valid_mean_aucs)
+mean_auc_std = np.std(valid_mean_aucs)
+
+print("\n============================")
+print("Model Evaluation Summary")
+print("============================")
+print(f"Mean Concordance Index (C-index): {mean_cindex:.2f} (±{std_cindex:.2f})")
+print(f"Time-dependent AUC at 5 years:    {mean_auc_5y:.2f} (±{std_auc_5y:.2f})")
+print(f"Mean AUC over all times:           {mean_auc_avg:.2f} (±{mean_auc_std:.2f})")
+print(f"Integrated Brier Score (IBS):     {mean_ibs:.2f} (±{std_ibs:.2f})")
 
 ################################################################################
 # Select Best Model Based on Lowest IBS or Highest Mean AUC

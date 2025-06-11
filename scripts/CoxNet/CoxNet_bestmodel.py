@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import joblib
 from sksurv.util import Surv
 from sksurv.metrics import cumulative_dynamic_auc, integrated_brier_score, brier_score
+from lifelines import KaplanMeierFitter, CoxPHFitter
 
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
 import src.utils
@@ -61,9 +62,10 @@ infile_4 = r"./output/CoxNet/outer_cv_models.pkl"
 # load best model
 best_model = joblib.load(infile_3)
 
-# load corresponsing outfer fold 2 data
+# load corresponsing outer cv model dat
 outer_models = joblib.load(infile_4)
-fold2_testidx = outer_models[2]["test_idx"].tolist()
+bm_testidx = outer_models[0]["test_idx"].tolist() # check which fold was best 
+bm_trainidx = outer_models[0]["train_idx"].tolist() # check which fold was best 
 
 # sample training set
 train_ids = pd.read_csv(infile_0, header=None).iloc[:, 0].tolist()
@@ -72,6 +74,18 @@ train_ids = pd.read_csv(infile_0, header=None).iloc[:, 0].tolist()
 clinical_data = pd.read_csv(infile_2)
 clinical_data = clinical_data.set_index("Sample")
 clinical_data = clinical_data.loc[train_ids]
+
+# calc median follow up time
+clin_mf = clinical_data.copy()
+#clinical_data['RFi_years'].median()
+clin_mf['reverse_event'] = 1 - clin_mf['RFi_event']
+kmf = KaplanMeierFitter()
+kmf.fit(durations=clin_mf['RFi_years'], event_observed=clin_mf['reverse_event'])
+median_followup = kmf.median_survival_time_
+
+print(f"Median follow-up time (Reverse KM): {median_followup:.2f} years")
+
+
 
 # load beta values
 beta_matrix = pd.read_csv(infile_1,index_col=0).T
@@ -95,17 +109,15 @@ mval_matrix = variance_filter(mval_matrix, top_n=top_n_cpgs) #200,000
 
 #y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 X = mval_matrix
-X_test = X.iloc[fold2_testidx,:].copy()
-X_test.shape
-clin_test = clinical_data.iloc[fold2_testidx,:].copy()
-clin_test.shape
+X_test = X.iloc[bm_testidx,:].copy()
+clin_test = clinical_data.iloc[bm_testidx,:].copy()
+
+X_train = X.iloc[bm_trainidx,:].copy()
+clin_train = clinical_data.iloc[bm_trainidx,:].copy()
+
 ################################################################################
 # Define consistent evaluation time grid based on test sets across outer folds
 ################################################################################
-
-from sksurv.linear_model import CoxnetSurvivalAnalysis
-from lifelines import KaplanMeierFitter, CoxPHFitter
-import seaborn as sns
 
 # ------------------------------------------------------------------------------
 # 1. Inspect model hyperparameters and coefficients
@@ -127,7 +139,15 @@ nonzero_features.shape
 print(f"Number of non-zero coefficients: {np.sum(nonzero_mask)}")
 
 # ------------------------------------------------------------------------------
-# 2. Compute risk scores on training set
+# 2. Compute risk scores on training set to get cutoffs
+# ------------------------------------------------------------------------------
+
+risk_scores_train = best_model.predict(X_train)
+risk_scores_train = pd.Series(risk_scores_train, index=X_train.index)
+median_cutoff = risk_scores_train.median()  # define median cutoff from training risk scores
+
+# ------------------------------------------------------------------------------
+# 2. Compute risk scores on test set
 # ------------------------------------------------------------------------------
 
 risk_scores = best_model.predict(X_test)
@@ -139,21 +159,11 @@ risk_scores = pd.Series(risk_scores, index=X_test.index)
 
 clin_test["risk_score"] = risk_scores
 
-# median cutoff
-clin_test["risk_group"] = pd.qcut(risk_scores, q=2, labels=["low", "high"])
+# Use the median cutoff from training to assign risk groups in test set
+clin_test["risk_group"] = pd.Series(["high" if x > median_cutoff else "low" for x in risk_scores], index=risk_scores.index)
+
 summary = clin_test.groupby("risk_group")["RFi_event"].value_counts().unstack()
 print(summary)
-
-# # tertile cutoff
-# low_cutoff = risk_scores.quantile(1/3)
-# high_cutoff = risk_scores.quantile(2/3)
-# clinical_data["risk_group"] = pd.cut(
-#     risk_scores,
-#     bins=[-np.inf, low_cutoff, high_cutoff, np.inf],
-#     labels=["low", "medium", "high"]
-# )
-# summary = clinical_data.groupby("risk_group")["RFi_event"].value_counts().unstack()
-# print(summary)
 
 # Basic matplotlib histogram
 plt.figure(figsize=(8, 6))
@@ -169,15 +179,35 @@ plt.show()
 # 4. Kaplan-Meier Plot
 # ------------------------------------------------------------------------------
 
+from lifelines import KaplanMeierFitter
+from lifelines.statistics import logrank_test
+import matplotlib.pyplot as plt
+
+# Assuming clin_test has columns "risk_group", "RFi_years", "RFi_event"
 kmf = KaplanMeierFitter()
 
 plt.figure(figsize=(8,6))
+
+# Fit and plot KM curves
 for group in ["low", "high"]:
-    mask = clinical_data["risk_group"] == group
-    kmf.fit(clinical_data.loc[mask, "RFi_years"], clinical_data.loc[mask, "RFi_event"], label=group)
+    mask = clin_test["risk_group"] == group
+    kmf.fit(clin_test.loc[mask, "RFi_years"], clin_test.loc[mask, "RFi_event"], label=group)
     kmf.plot(ci_show=True)
 
-plt.title("Kaplan-Meier: High vs. Low Risk Groups")
+# Compute log-rank test between low and high risk groups
+mask_low = clin_test["risk_group"] == "low"
+mask_high = clin_test["risk_group"] == "high"
+
+results = logrank_test(
+    clin_test.loc[mask_low, "RFi_years"],
+    clin_test.loc[mask_high, "RFi_years"],
+    event_observed_A=clin_test.loc[mask_low, "RFi_event"],
+    event_observed_B=clin_test.loc[mask_high, "RFi_event"]
+)
+
+p_value = results.p_value
+
+plt.title(f"Kaplan-Meier: High vs. Low Risk Groups\nLog-rank p-value = {p_value:.4f}")
 plt.xlabel("Time (years)")
 plt.ylabel("Survival Probability")
 plt.grid(True, linestyle='--', alpha=0.6)
@@ -198,3 +228,5 @@ cph.fit(df_lifelines, duration_col="time", event_col="event")
 
 print("\nUnivariate Cox regression (risk score):")
 cph.print_summary()
+
+clin_test["RFi_event"].value_counts()

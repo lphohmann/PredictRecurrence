@@ -436,3 +436,490 @@ Script started at: Tue Jun 10 10:24:30 2025
 Fold 0 has 35 events.
 /Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
   self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+Fold 1 has 35 events.
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+Fold 2 has 34 events.
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+Skipping fold 2 due to numerical error: Numerical error, because weights are too large. Consider increasing alpha.
+Fold 3 has 34 events.
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+Fold 4 has 34 events.
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+Saved refitted best model per outer fold  to: output/CoxNet/outer_cv_models.pkl
+Script ended at: Tue Jun 10 11:16:38 2025
+Script executed in 3128.23 seconds.
+Script started at: Tue Jun 10 11:17:33 2025
+Consistent evaluation time grid across folds:
+[ 1.   1.5  2.   2.5  3.   3.5  4.   4.5  5.   5.5  6.   6.5  7.   7.5
+  8.   8.5  9.   9.5 10. ]
+
+--- Fold 0 ---
+Fold number: 0
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.54130044 0.54056575 0.54588889]
+Error: None
+
+--- Fold 1 ---
+Fold number: 1
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.49588132 0.48984766 0.47879236]
+Error: None
+
+--- Fold 2 ---
+Fold number: 2
+Model type: <class 'NoneType'>
+Train indices: 176 samples
+Test indices: 44 samples
+Error: Numerical error, because weights are too large. Consider increasing alpha.
+
+--- Fold 3 ---
+Fold number: 3
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.51621413 0.51586604 0.50032019]
+Error: None
+
+--- Fold 4 ---
+Fold number: 4
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.48318551 0.48903983 0.49834008]
+Error: None
+current outer cv fold model: 0
+current outer cv fold model: 1
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+current outer cv fold model: 2
+skipping: 2
+current outer cv fold model: 3
+current outer cv fold model: 4
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/CoxNet/CoxNet_eval.py:235: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/CoxNet/CoxNet_eval.py:286: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+
+============================
+Model Evaluation Summary
+============================
+Mean Concordance Index (C-index): 0.55 (±0.06)
+Time-dependent AUC at 5 years:    0.56 (±0.05)
+Integrated Brier Score (IBS):     0.23 (±0.04)
+
+Best model by lowest IBS:
+  Fold: 0
+  IBS: 0.1898
+  Mean AUC(t): 0.7015
+
+Best model by highest mean AUC(t):
+  Fold: 0
+  Mean AUC(t): 0.7015
+  IBS: 0.1898
+
+Best model saved to: ./output/CoxNet/best_model.pkl
+Script started at: Tue Jun 10 11:25:03 2025
+Consistent evaluation time grid across folds:
+[ 1.   1.5  2.   2.5  3.   3.5  4.   4.5  5.   5.5  6.   6.5  7.   7.5
+  8.   8.5  9.   9.5 10. ]
+
+--- Fold 0 ---
+Fold number: 0
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.54130044 0.54056575 0.54588889]
+Error: None
+
+--- Fold 1 ---
+Fold number: 1
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.49588132 0.48984766 0.47879236]
+Error: None
+
+--- Fold 2 ---
+Fold number: 2
+Model type: <class 'NoneType'>
+Train indices: 176 samples
+Test indices: 44 samples
+Error: Numerical error, because weights are too large. Consider increasing alpha.
+
+--- Fold 3 ---
+Fold number: 3
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.51621413 0.51586604 0.50032019]
+Error: None
+
+--- Fold 4 ---
+Fold number: 4
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.48318551 0.48903983 0.49834008]
+Error: None
+current outer cv fold model: 0
+current outer cv fold model: 1
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+current outer cv fold model: 2
+skipping: 2
+current outer cv fold model: 3
+current outer cv fold model: 4
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/CoxNet/CoxNet_eval.py:235: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/CoxNet/CoxNet_eval.py:286: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+
+============================
+Model Evaluation Summary
+============================
+Mean Concordance Index (C-index): 0.55 (±0.06)
+Time-dependent AUC at 5 years:    0.56 (±0.05)
+Mean AUC over all times:           nan (±nan)
+Integrated Brier Score (IBS):     0.23 (±0.04)
+
+Best model by lowest IBS:
+  Fold: 0
+  IBS: 0.1898
+  Mean AUC(t): 0.7015
+
+Best model by highest mean AUC(t):
+  Fold: 0
+  Mean AUC(t): 0.7015
+  IBS: 0.1898
+
+Best model saved to: ./output/CoxNet/best_model.pkl
+Script started at: Tue Jun 10 11:35:07 2025
+Consistent evaluation time grid across folds:
+[ 1.   1.5  2.   2.5  3.   3.5  4.   4.5  5.   5.5  6.   6.5  7.   7.5
+  8.   8.5  9.   9.5 10. ]
+
+--- Fold 0 ---
+Fold number: 0
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.54130044 0.54056575 0.54588889]
+Error: None
+
+--- Fold 1 ---
+Fold number: 1
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.49588132 0.48984766 0.47879236]
+Error: None
+
+--- Fold 2 ---
+Fold number: 2
+Model type: <class 'NoneType'>
+Train indices: 176 samples
+Test indices: 44 samples
+Error: Numerical error, because weights are too large. Consider increasing alpha.
+
+--- Fold 3 ---
+Fold number: 3
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.51621413 0.51586604 0.50032019]
+Error: None
+
+--- Fold 4 ---
+Fold number: 4
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.48318551 0.48903983 0.49834008]
+Error: None
+current outer cv fold model: 0
+current outer cv fold model: 1
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+current outer cv fold model: 2
+skipping: 2
+current outer cv fold model: 3
+current outer cv fold model: 4
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/CoxNet/CoxNet_eval.py:237: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/CoxNet/CoxNet_eval.py:288: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+
+============================
+Model Evaluation Summary
+============================
+Mean Concordance Index (C-index): 0.55 (±0.06)
+Time-dependent AUC at 5 years:    0.56 (±0.05)
+Traceback (most recent call last):
+  File "/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/CoxNet/CoxNet_eval.py", line 344, in <module>
+    print(f"Mean AUC over all times:           {mean_auc:.2f} (±{std_auc:.2f})")
+NameError: name 'std_auc' is not defined
+Script started at: Tue Jun 10 11:37:13 2025
+Consistent evaluation time grid across folds:
+[ 1.   1.5  2.   2.5  3.   3.5  4.   4.5  5.   5.5  6.   6.5  7.   7.5
+  8.   8.5  9.   9.5 10. ]
+
+--- Fold 0 ---
+Fold number: 0
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.54130044 0.54056575 0.54588889]
+Error: None
+
+--- Fold 1 ---
+Fold number: 1
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.49588132 0.48984766 0.47879236]
+Error: None
+
+--- Fold 2 ---
+Fold number: 2
+Model type: <class 'NoneType'>
+Train indices: 176 samples
+Test indices: 44 samples
+Error: Numerical error, because weights are too large. Consider increasing alpha.
+
+--- Fold 3 ---
+Fold number: 3
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.51621413 0.51586604 0.50032019]
+Error: None
+
+--- Fold 4 ---
+Fold number: 4
+Model type: <class 'sklearn.pipeline.Pipeline'>
+Train indices: 176 samples
+Test indices: 44 samples
+CV results keys: ['mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time', 'param_coxnetsurvivalanalysis__alphas']...
+Mean test score (first 3): [0.48318551 0.48903983 0.49834008]
+Error: None
+current outer cv fold model: 0
+current outer cv fold model: 1
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+current outer cv fold model: 2
+skipping: 2
+current outer cv fold model: 3
+current outer cv fold model: 4
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/CoxNet/CoxNet_eval.py:237: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/CoxNet/CoxNet_eval.py:288: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+
+============================
+Model Evaluation Summary
+============================
+Mean Concordance Index (C-index): 0.55 (±0.06)
+Time-dependent AUC at 5 years:    0.56 (±0.05)
+Mean AUC over all times:           0.60 (±0.08)
+Integrated Brier Score (IBS):     0.23 (±0.04)
+
+Best model by lowest IBS:
+  Fold: 0
+  IBS: 0.1898
+  Mean AUC(t): 0.7015
+
+Best model by highest mean AUC(t):
+  Fold: 0
+  Mean AUC(t): 0.7015
+  IBS: 0.1898
+
+Best model saved to: ./output/CoxNet/best_model.pkl
