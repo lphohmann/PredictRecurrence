@@ -365,8 +365,14 @@ print(f"  Fold: {best_by_auc['fold']}")
 print(f"  Mean AUC(t): {best_by_auc['mean_auc']:.4f}")
 print(f"  IBS: {best_by_auc['ibs']:.4f}")
 
-# Save best model to file (choose which strategy)
-best_model = best_by_auc["model"] # best_by_ibs["model"]
+# Find and save the full outer fold entry that had the best mean AUC(t)
+best_fold_number = best_by_auc['fold']
+best_outer_entry = None
+for entry in outer_models:
+    if entry['fold'] == best_fold_number:
+        best_outer_entry = entry
+        break
 
-joblib.dump(best_model, outfile_best_model)
-print(f"\nBest model saved to: {outfile_best_model}")
+# Save the complete outer fold data (model, test_idx, etc.)
+joblib.dump(best_outer_entry, outfile_best_model)
+print(f"\nBest fold ({best_fold_number}) saved to: {outfile_best_model}")
