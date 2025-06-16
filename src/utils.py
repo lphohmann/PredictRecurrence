@@ -22,6 +22,11 @@ import joblib
 # FUNCTIONS
 # ==============================================================================
 
+def log(msg):
+    print(f"\n=== {msg} ===\n", flush=True)
+
+# ==============================================================================
+
 def beta2m(beta, beta_threshold=1e-3):
     """
     Convert beta-values to M-values safely.
@@ -116,6 +121,9 @@ def preprocess_data(beta_matrix, top_n_cpgs):
     Returns:
         DataFrame: Preprocessed M-values matrix.
     """
+
+    print(f"\n=== Preprocessing: Converting to M-values and selecting top {top_n_cpgs} most variable CpGs ===\n", flush=True)
+
     # Convert beta values to M-values with a threshold 
     mvals = beta2m(beta_matrix, beta_threshold=0.001)
     # Apply variance filtering to retain top N most variable CpGs
@@ -136,6 +144,9 @@ def define_param_grid(X, y, n_alphas=30):
     Returns:
         dict: Parameter grid dictionary for GridSearchCV.
     """
+
+    print(f"\n=== Defining grid of {n_alphas} alpha values for Coxnet hyperparameter tuning ===\n", flush=True)
+
     # fit a Coxnet model to estimate reasonable alpha values for grid search
     initial_pipe = make_pipeline(
         CoxnetSurvivalAnalysis(l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=n_alphas)
@@ -170,6 +181,9 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds):
     Returns:
         list: Dictionary for each outer fold containing model, results, indices, and errors.
     """
+
+    print(f"\n=== Running nested cross-validation with {outer_cv_folds} outer folds and {inner_cv_folds} inner folds ===\n", flush=True)
+
     # stratified outer cv for performance est
     event_labels = y["RFi_event"]
     outer_cv = StratifiedKFold(n_splits=outer_cv_folds, shuffle=True, random_state=21)
@@ -245,6 +259,9 @@ def summarize_outer_models(outer_models):
         outer_models (list): List of dictionaries, one per outer CV fold,
                              containing model, indices, cv_results, and error info.
     """
+    
+    print("\n=== Summarizing outer models ===\n", flush=True)
+
     for i, entry in enumerate(outer_models):
         print(f"\n--- Fold {i} ---")
         print(f"Fold number: {entry.get('fold')}")
@@ -283,12 +300,15 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
     Returns:
         list of dicts: One dictionary per fold with performance metrics.
     """
+
+    print("\n=== Evaluating outer models ===\n", flush=True)
+
     performance = []
 
     for entry in outer_models:
-        print(f"current outer cv fold model: {entry['fold']}", flush=True)
+        print(f"\n--- Model of outer cv fold {entry['fold']} ---", flush=True)
         if entry["model"] is None:
-            print(f"skipping: {entry['fold']}", flush=True)
+            print(f"Skipping fold {entry['fold']} due to model failure (None)", flush=True)
             continue  # skip failed folds
         
         # for this fold
@@ -357,6 +377,9 @@ def plot_brier_scores(brier_array, ibs_array, folds, time_grid, outfile):
     """
     Plot time-dependent Brier Score(t) per fold and integrated Brier Score (IBS).
     """
+
+    print(f"Plotting time-dependent Brier Score(t) per fold and integrated Brier Score (IBS)",flush=True)
+
     plt.style.use('seaborn-whitegrid')
     fig, axs = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 1]})
 
@@ -394,6 +417,8 @@ def plot_brier_scores(brier_array, ibs_array, folds, time_grid, outfile):
     plt.tight_layout()
     plt.savefig(outfile, dpi=300, bbox_inches='tight')
     plt.close()
+    print(f"Plot saved to: {outfile}",flush=True)
+
 
 # ==============================================================================
 
@@ -401,6 +426,9 @@ def plot_auc_curves(performance, time_grid, outfile):
     """
     Plot time-dependent AUC(t) curves for all folds and the mean curve.
     """
+
+    print(f"Plotting time-dependent AUC(t) curves",flush=True)
+
     plt.style.use('seaborn-whitegrid')
     plt.figure(figsize=(10, 6))
 
@@ -425,6 +453,8 @@ def plot_auc_curves(performance, time_grid, outfile):
     plt.tight_layout()
     plt.savefig(outfile, dpi=300, bbox_inches='tight')
     plt.close()
+    print(f"Plot saved to: {outfile}",flush=True)
+
 
 # ==============================================================================
 
@@ -432,6 +462,9 @@ def summarize_performance(performance):
     """
     Compute and print summary statistics (mean ± std) for model evaluation metrics across folds.
     """
+
+    print(f"\n=== Model Evaluation Summary ===\n", flush=True)
+
     mean_cindex = np.mean([p["cindex"] for p in performance])
     std_cindex = np.std([p["cindex"] for p in performance])
     mean_auc_5y = np.mean([p["auc_at_5y"] for p in performance])
@@ -445,14 +478,11 @@ def summarize_performance(performance):
     ]
     mean_auc_avg = np.mean(valid_mean_aucs)
     mean_auc_std = np.std(valid_mean_aucs)
-
-    print("\n============================")
-    print("Model Evaluation Summary")
-    print("============================")
-    print(f"Mean Concordance Index (C-index): {mean_cindex:.2f} (±{std_cindex:.2f})")
-    print(f"Time-dependent AUC at 5 years:    {mean_auc_5y:.2f} (±{std_auc_5y:.2f})")
-    print(f"Mean AUC over all times:           {mean_auc_avg:.2f} (±{mean_auc_std:.2f})")
-    print(f"Integrated Brier Score (IBS):     {mean_ibs:.2f} (±{std_ibs:.2f})")
+    
+    print(f"Mean Concordance Index (C-index): {mean_cindex:.2f} (±{std_cindex:.2f})", flush=True)
+    print(f"Time-dependent AUC at 5 years:    {mean_auc_5y:.2f} (±{std_auc_5y:.2f})", flush=True)
+    print(f"Mean AUC over all times:           {mean_auc_avg:.2f} (±{mean_auc_std:.2f})", flush=True)
+    print(f"Integrated Brier Score (IBS):     {mean_ibs:.2f} (±{std_ibs:.2f})", flush=True)
 
 # ==============================================================================
 
@@ -469,6 +499,8 @@ def select_best_model(performance, outer_models, metric):
     Returns:
         dict: The best model's performance dictionary.
     """
+    print(f"\n=== Selecting the best model based on {metric}. ===\n", flush=True)
+
     assert metric in {"ibs", "mean_auc", "auc_at_5y"}, f"Unsupported metric: {metric}"
 
     if metric == "ibs":
