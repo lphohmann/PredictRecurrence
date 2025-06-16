@@ -17,6 +17,11 @@ from sksurv.linear_model import CoxnetSurvivalAnalysis
 from sksurv.metrics import cumulative_dynamic_auc, concordance_index_censored, brier_score, integrated_brier_score
 import matplotlib.pyplot as plt
 import joblib
+from sksurv.metrics import (
+    as_concordance_index_ipcw_scorer,
+    as_cumulative_dynamic_auc_scorer,
+    as_integrated_brier_score_scorer,
+)
 
 # ==============================================================================
 # FUNCTIONS
@@ -160,9 +165,10 @@ def define_param_grid(X, y, n_alphas=30):
 
     # Set up full parameter grid for tuning
     param_grid = {
-        "coxnetsurvivalanalysis__alphas": [[v] for v in estimated_alphas]#,
+        "estimator__coxnetsurvivalanalysis__alphas": [[v] for v in estimated_alphas]#, # depends if i use a pipe in the trinaing or the estimator directly
         #"coxnetsurvivalanalysis__l1_ratio": [0.1, 0.5, 0.9]  # Elastic Net mixing
     }
+    print(param_grid)
     return param_grid
 
 # ==============================================================================
@@ -191,10 +197,14 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds):
     # Inner CV for hyperparameter tuning
     inner_cv = KFold(n_splits=inner_cv_folds, shuffle=True, random_state=12)
 
+    # Wrap Coxnet to use IPCW C-index as its score method
+    pipe = make_pipeline(CoxnetSurvivalAnalysis(l1_ratio=0.9))
+    ipcw_pipe = as_concordance_index_ipcw_scorer(pipe)
+
     # Define the model and wrap in GridSearchCV (for the inner loop)
     inner_model = GridSearchCV(
-        estimator=make_pipeline(CoxnetSurvivalAnalysis(l1_ratio=0.9)),
-        param_grid=param_grid,
+        ipcw_pipe,
+        param_grid=param_grid, # the name has to match depdeing if use din pipeline, also for custom wrapper needs estimator__ prefix
         cv=inner_cv,
         error_score=0.5,
         n_jobs=-1
@@ -212,8 +222,10 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds):
         try:
             inner_model.fit(X_train, y_train)
             best_model = inner_model.best_estimator_
-            best_alpha = best_model.named_steps["coxnetsurvivalanalysis"].alphas_[0]
-            best_l1_ratio = best_model.named_steps["coxnetsurvivalanalysis"].l1_ratio
+            #best_alpha = best_model.named_steps["coxnetsurvivalanalysis"].alphas_[0] # when using default c-index scorer in gridserach; w/o pipe it would look liek htis: best_model.estimator_.alphas_[0]
+            #best_l1_ratio = best_model.named_steps["coxnetsurvivalanalysis"].l1_ratio # default
+            best_alpha = best_model.estimator_.named_steps["coxnetsurvivalanalysis"].alphas_[0]
+            best_l1_ratio = best_model.estimator_.named_steps["coxnetsurvivalanalysis"].l1_ratio
 
             # Refit best model with fit_baseline_model=True for later eval
             refit_best_model = make_pipeline(

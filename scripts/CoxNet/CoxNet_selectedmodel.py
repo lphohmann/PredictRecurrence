@@ -19,6 +19,7 @@ import joblib
 import matplotlib.pyplot as plt
 from lifelines import KaplanMeierFitter, CoxPHFitter
 from lifelines.statistics import logrank_test
+from lifelines.plotting import add_at_risk_counts
 
 # Import custom CoxNet functions
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
@@ -68,7 +69,7 @@ log(f"Script started at: {time.ctime(start_time)}")
 
 # Load and prepare data
 selected_fold = joblib.load(infile_outerfold)
-print(selected_fold.keys())
+#print(selected_fold.keys())
 selected_model = selected_fold['model']
 bm_testidx = selected_fold["test_idx"].tolist() 
 bm_trainidx = selected_fold["train_idx"].tolist()
@@ -88,6 +89,7 @@ log("Finished preprocessing of training data!")
 ################################################################################
 # calc median follow up time
 ################################################################################
+log("Calculating median follow up time!")
 
 clin_mf = clinical_data.copy()
 #clinical_data['RFi_years'].median()
@@ -103,6 +105,7 @@ print(f"Median follow-up time (Reverse KM): {median_followup:.2f} years")
 ################################################################################
 # define clin test and train data of that outer fold
 ################################################################################
+log("Defining clinical test and train data of selected outer fold!")
 
 X_test = X.iloc[bm_testidx,:].copy()
 clin_test = clinical_data.iloc[bm_testidx,:].copy()
@@ -113,6 +116,7 @@ clin_train = clinical_data.iloc[bm_trainidx,:].copy()
 ################################################################################
 # inspect model hyperparameters and coefficients
 ################################################################################
+log("Inspecting outer foldmodel hyperparameters and coefficients!")
 
 # Unpack estimator from pipeline
 coxnet = selected_model.named_steps["coxnetsurvivalanalysis"]
@@ -129,13 +133,32 @@ nonzero_features = X.columns[nonzero_mask]
 nonzero_features.shape
 print(f"Number of non-zero coefficients: {np.sum(nonzero_mask)}")
 
+# plot
+coefs_df = pd.DataFrame(coefs, index=X.columns, columns=["coefficient"])
+non_zero_coefs = coefs_df[coefs_df["coefficient"] != 0]
+# Sort by absolute coefficient size for plotting
+coef_order = non_zero_coefs["coefficient"].abs().sort_values().index
+non_zero_coefs = non_zero_coefs.loc[coef_order]
+
+fig, ax = plt.subplots(figsize=(6, 8))
+non_zero_coefs.plot.barh(ax=ax, legend=False)
+ax.set_xlabel("Coefficient")
+ax.set_title("Non-zero CoxNet Coefficients")
+ax.grid(True)
+plt.tight_layout()
+plt.savefig(os.path.join(output_dir, "coxnet_nonzero_coefficients.png"), dpi=300, bbox_inches="tight")
+plt.close()
+print(f"Saved coefficient plot with {len(non_zero_coefs)} non-zero features.")
+
 ################################################################################
 # Compute risk scores on training set to get cutoffs
 ################################################################################
+log("Computing risk scores on training set to get cutoffs!")
 
 risk_scores_train = selected_model.predict(X_train)
 risk_scores_train = pd.Series(risk_scores_train, index=X_train.index)
 median_cutoff = risk_scores_train.median()  # define median cutoff from training risk scores
+print(f"Median-based cutoff: {median_cutoff:.4f}")
 
 ################################################################################
 # Compute predictiveness-based cutoff
@@ -152,15 +175,17 @@ print(f"Predictiveness-based cutoff: {predictiveness_cutoff:.4f}")
 ################################################################################
 # 2. Compute risk scores on test set
 ################################################################################
+log("Computing risk scores on test set!")
 
 risk_scores = selected_model.predict(X_test)
 risk_scores = pd.Series(risk_scores, index=X_test.index)
+clin_test["risk_score"] = risk_scores
 
 ################################################################################
 # 3. Stratify into high/low risk using median
 ################################################################################
 
-clin_test["risk_score"] = risk_scores
+log("Plotting Histogram of Risk Scores!")
 
 # Basic matplotlib histogram
 plt.figure(figsize=(8, 6))
@@ -176,7 +201,11 @@ plt.close()
 # 4. Kaplan-Meier Plot
 ################################################################################
 
+log("Plotting Kaplan-Meier curves for high/low risk groups defined by median and predictiveness cutoffs!")
+
 for cutoff in [median_cutoff, predictiveness_cutoff]:
+
+    print(f"\nCutoff = {cutoff:.4f}\n",flush=True)
 
     # Use the median cutoff from training to assign risk groups in test set
     clin_test["risk_group"] = pd.Series(["high" if x > cutoff else "low" for x in risk_scores], index=risk_scores.index)
@@ -184,20 +213,29 @@ for cutoff in [median_cutoff, predictiveness_cutoff]:
     summary = clin_test.groupby("risk_group")["RFi_event"].value_counts().unstack()
     print(summary)
 
-    # Assuming clin_test has columns "risk_group", "RFi_years", "RFi_event"
-    kmf = KaplanMeierFitter()
+    # Initialize KM fitters
+    kmf_low = KaplanMeierFitter()
+    kmf_high = KaplanMeierFitter()
 
-    plt.figure(figsize=(8,6))
-
-    # Fit and plot KM curves
-    for group in ["low", "high"]:
-        mask = clin_test["risk_group"] == group
-        kmf.fit(clin_test.loc[mask, "RFi_years"], clin_test.loc[mask, "RFi_event"], label=group)
-        kmf.plot(ci_show=True)
-
-    # Compute log-rank test between low and high risk groups
+    # Masks
     mask_low = clin_test["risk_group"] == "low"
     mask_high = clin_test["risk_group"] == "high"
+
+    # Fit
+    kmf_low.fit(clin_test.loc[mask_low, "RFi_years"], clin_test.loc[mask_low, "RFi_event"], label="Low risk")
+    kmf_high.fit(clin_test.loc[mask_high, "RFi_years"], clin_test.loc[mask_high, "RFi_event"], label="High risk")
+
+    # plot
+    # Allocate space for KM plot + risk table
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    kmf_low.plot(ax=ax, ci_show=True)
+    kmf_high.plot(ax=ax, ci_show=True)
+
+    # Add risk table
+    add_at_risk_counts(kmf_low, kmf_high, ax=ax,rows_to_show= ["At risk"])
+    ax.set_xlabel("Time (years)")
+    ax.set_ylabel("Survival Probability")
 
     results = logrank_test(
         clin_test.loc[mask_low, "RFi_years"],
@@ -213,12 +251,14 @@ for cutoff in [median_cutoff, predictiveness_cutoff]:
     plt.ylabel("Survival Probability")
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f"KM_risk_groups_{cutoff}.png"), dpi=300) 
+    plt.savefig(os.path.join(output_dir, f"KM_risk_groups_{cutoff:.4f}.png"), dpi=300) 
     plt.close()
 
 ################################################################################
 # 5. Univariate Cox regression with risk score
 ################################################################################
+
+log("Calculating univariate Cox regression and plotting hazard ratio for risk score!")
 
 # Prepare dataframe for lifelines
 df_lifelines = clin_test[["RFi_event", "RFi_years", "risk_score"]].copy()

@@ -42,7 +42,9 @@ clinical = clinical.loc[:,["Sample","PFI","PFIbin","OS","OSbin"]]
 clinical.head()
 
 # full pipeline (which includes StandardScaler + CoxnetSurvivalAnalysis)
-pipeline = joblib.load("output/CoxNet_200k_simpleCV5/best_cox_model.pkl")
+pipeline = joblib.load("./output/CoxNet_unadjusted/best_outer_fold.pkl")
+pipeline = pipeline['model']
+
 
 # methyl dat
 methyl = pd.read_csv(infile_1, index_col=0).T
