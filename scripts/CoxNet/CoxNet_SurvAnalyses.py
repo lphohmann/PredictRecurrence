@@ -39,7 +39,7 @@ os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 infile_train_ids = "./data/train/train_subcohorts/TNBC_train_ids.csv" # sample ids of training cohort
 infile_betavalues = "./data/train/train_methylation_unadjusted.csv" # adjusted/unadjusted
 infile_clinical = "./data/train/train_clinical.csv"
-infile_outerfold = "./output/CoxNet/best_outer_fold.pkl"
+infile_outerfold = "./output/CoxNet_unadjusted/best_outer_fold.pkl"
 
 ################################################################################
 # PARAMS
@@ -67,6 +67,13 @@ start_time = time.time()
 log(f"Script started at: {time.ctime(start_time)}")
 
 # Load and prepare data
+selected_fold = joblib.load(infile_outerfold)
+print(selected_fold.keys())
+selected_model = selected_fold['model']
+bm_testidx = selected_fold["test_idx"].tolist() 
+bm_trainidx = selected_fold["train_idx"].tolist()
+log("Loaded selected outer fold!")
+
 train_ids = pd.read_csv(infile_train_ids, header=None).iloc[:, 0].tolist()
 log("Loaded training ids!")
 
@@ -78,45 +85,10 @@ log("Finished preprocessing of training data!")
 
 #y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 
-
-
-
-
-
 ################################################################################
-# SET FILE PATHS
-################################################################################
-
-# input paths
-infile_0 = r"./data/train/train_subcohorts/TNBC_train_ids.csv" # subcohort ids
-infile_1 = r"./data/train/train_methylation_adjusted.csv"
-infile_2 = r"./data/train/train_clinical.csv"
-infile_3 = r"./output/CoxNet/best_model.pkl"
-
-# output paths
-# log path defined above
-
-################################################################################
-# LOAD AND SUBSET TRAINING DATA
-################################################################################
-
-# load best model
-best_model_fold = joblib.load(infile_3)
-print(best_model_fold.keys())
-best_model = best_model_fold['model']
-# load corresponsing outer cv model dat
-bm_testidx = best_model_fold["test_idx"].tolist() # check which fold was best 
-bm_trainidx = best_model_fold["train_idx"].tolist() # check which fold was best 
-
-# sample training set
-train_ids = pd.read_csv(infile_0, header=None).iloc[:, 0].tolist()
-
-# load clin data
-clinical_data = pd.read_csv(infile_2)
-clinical_data = clinical_data.set_index("Sample")
-clinical_data = clinical_data.loc[train_ids]
-
 # calc median follow up time
+################################################################################
+
 clin_mf = clinical_data.copy()
 #clinical_data['RFi_years'].median()
 clin_mf['reverse_event'] = 1 - clin_mf['RFi_event']
@@ -125,28 +97,13 @@ kmf.fit(durations=clin_mf['RFi_years'], event_observed=clin_mf['reverse_event'])
 median_followup = kmf.median_survival_time_
 print(f"Median follow-up time (Reverse KM): {median_followup:.2f} years")
 
-# load beta values
-beta_matrix = pd.read_csv(infile_1,index_col=0).T
-
-# align dataframes
-beta_matrix = beta_matrix.loc[train_ids]
-
-################################################################################
-# PREPROCESSING
-################################################################################
-
-# 1. Convert beta values to M-values with a threshold 
-mval_matrix = beta2m(beta_matrix,beta_threshold=0.001)
-
-# 2. Apply variance filtering to retain top N most variable CpGs
-mval_matrix = variance_filter(mval_matrix, top_n=top_n_cpgs) #200,000
-
-################################################################################
-# CREATE SURVIVAL OBJECT
-################################################################################
-
+# survival analyses
 #y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
-X = mval_matrix
+
+################################################################################
+# define clin test and train data of that outer fold
+################################################################################
+
 X_test = X.iloc[bm_testidx,:].copy()
 clin_test = clinical_data.iloc[bm_testidx,:].copy()
 
@@ -154,15 +111,15 @@ X_train = X.iloc[bm_trainidx,:].copy()
 clin_train = clinical_data.iloc[bm_trainidx,:].copy()
 
 ################################################################################
-# 1. Inspect model hyperparameters and coefficients
+# inspect model hyperparameters and coefficients
 ################################################################################
 
 # Unpack estimator from pipeline
-coxnet = best_model.named_steps["coxnetsurvivalanalysis"]
+coxnet = selected_model.named_steps["coxnetsurvivalanalysis"]
 
 # Now access alpha and coefficients
-best_alpha_used = coxnet.alphas_[0]  # or simply: coxnet.alphas_[0]
-print("alpha =", best_alpha_used)
+alpha_used = coxnet.alphas_[0]  # or simply: coxnet.alphas_[0]
+print("alpha =", alpha_used)
 print("L1 ratio:", coxnet.l1_ratio)
 
 # Get non-zero coefficients
@@ -173,14 +130,17 @@ nonzero_features.shape
 print(f"Number of non-zero coefficients: {np.sum(nonzero_mask)}")
 
 ################################################################################
-# 2. Compute risk scores on training set to get cutoffs
+# Compute risk scores on training set to get cutoffs
 ################################################################################
 
-risk_scores_train = best_model.predict(X_train)
+risk_scores_train = selected_model.predict(X_train)
 risk_scores_train = pd.Series(risk_scores_train, index=X_train.index)
 median_cutoff = risk_scores_train.median()  # define median cutoff from training risk scores
 
+################################################################################
 # Compute predictiveness-based cutoff
+################################################################################
+
 sorted_scores = np.sort(risk_scores_train.values)
 event_rate = clin_train["RFi_event"].mean()  # prevalence of event
 # Find percentile where predicted risk is closest to event rate
@@ -193,7 +153,7 @@ print(f"Predictiveness-based cutoff: {predictiveness_cutoff:.4f}")
 # 2. Compute risk scores on test set
 ################################################################################
 
-risk_scores = best_model.predict(X_test)
+risk_scores = selected_model.predict(X_test)
 risk_scores = pd.Series(risk_scores, index=X_test.index)
 
 ################################################################################
@@ -209,7 +169,7 @@ plt.title("Histogram of Risk Scores")
 plt.xlabel("Risk Score")
 plt.ylabel("Number of Patients")
 plt.grid(True)
-plt.savefig(f"./output/CoxNet/Hist_riskscores.png", dpi=300)
+plt.savefig(os.path.join(output_dir, "Hist_riskscores.png"), dpi=300)  
 plt.close()
 
 ################################################################################
@@ -253,7 +213,7 @@ for cutoff in [median_cutoff, predictiveness_cutoff]:
     plt.ylabel("Survival Probability")
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.tight_layout()
-    plt.savefig(f"./output/CoxNet/KM_risk_groups_{cutoff}.png", dpi=300)
+    plt.savefig(os.path.join(output_dir, f"KM_risk_groups_{cutoff}.png"), dpi=300) 
     plt.close()
 
 ################################################################################
@@ -264,10 +224,20 @@ for cutoff in [median_cutoff, predictiveness_cutoff]:
 df_lifelines = clin_test[["RFi_event", "RFi_years", "risk_score"]].copy()
 df_lifelines.columns = ["event", "time", "risk_score"]  # lifelines naming
 
+# Fit univariate Cox model
 cph = CoxPHFitter()
 cph.fit(df_lifelines, duration_col="time", event_col="event")
 
+# Print summary
 print("\nUnivariate Cox regression (risk score):")
 cph.print_summary()
 
-clin_test["RFi_event"].value_counts()
+# Optional: check event distribution
+print("\nEvent value counts:")
+print(clin_test["RFi_event"].value_counts())
+
+# Generate the forest plot
+ax = cph.plot(hazard_ratios=True)
+plt.tight_layout()
+plt.savefig(os.path.join(output_dir, "cox_forest_plot.png"), dpi=300, bbox_inches="tight")  
+plt.close()

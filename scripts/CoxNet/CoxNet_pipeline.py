@@ -50,7 +50,7 @@ infile_clinical = "./data/train/train_clinical.csv"
 ################################################################################
 
 # Output directory and files
-output_dir = "output/CoxNet_unadjusted"
+output_dir = "output/CoxNet_unadjusted" # adjusted/unadjusted
 os.makedirs(output_dir, exist_ok=True)
 outfile_outermodels = os.path.join(output_dir, "outer_cv_models.pkl")
 outfile_brierplot = os.path.join(output_dir, "brier_scores.png")
