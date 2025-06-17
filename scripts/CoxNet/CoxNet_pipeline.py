@@ -44,7 +44,7 @@ os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 
 # Input files
 infile_train_ids = "./data/train/train_subcohorts/TNBC_train_ids.csv" # sample ids of training cohort
-infile_betavalues = "./data/train/train_methylation_unadjusted.csv" # adjusted/unadjusted
+infile_betavalues = "./data/train/train_methylation_adjusted.csv" # ----------ADAPT: adjusted/unadjusted
 infile_clinical = "./data/train/train_clinical.csv"
 
 ################################################################################
@@ -52,7 +52,7 @@ infile_clinical = "./data/train/train_clinical.csv"
 ################################################################################
 
 # Output directory and files
-output_dir = "output/CoxNet_unadjusted" # adjusted/unadjusted
+output_dir = "output/CoxNet_adjusted" # ---------------------------------------ADAPT: adjusted/unadjusted
 os.makedirs(output_dir, exist_ok=True)
 outfile_outermodels = os.path.join(output_dir, "outer_cv_models.pkl")
 outfile_brierplot = os.path.join(output_dir, "brier_scores.png")
@@ -94,7 +94,8 @@ y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 param_grid = define_param_grid(X, y, n_alphas=30)
 
 # Run nested cross-validation
-outer_models = run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds)
+outer_models = run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
+                             inner_scorer="concordance_index_ipcw")  #inner_scorer="cumulative_dynamic_auc", auc_scorer_times=eval_time_grid
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved refitted best model per outer fold to: {outfile_outermodels}")
 

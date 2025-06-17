@@ -63,7 +63,7 @@ def define_param_grid(X, y, n_alphas=30):
 
 # ==============================================================================
 
-def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds):
+def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds, inner_scorer="concordance_index_ipcw", auc_scorer_times=None):
     """
     Runs nested cross-validation to tune CoxNet model and assess generalization.
 
@@ -73,12 +73,19 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds):
         param_grid (dict): Grid of hyperparameters for inner CV.
         outer_cv_folds (int): Number of outer CV folds.
         inner_cv_folds (int): Number of inner CV folds.
+        inner_scorer (str): Scoring method to use during inner CV. 
+                            Options: 'concordance_index_ipcw', 'cumulative_dynamic_auc'.
+        auc_scorer_times (array-like, optional): Time points at which to evaluate cumulative dynamic AUC. 
+                                                 Required if inner_scorer is 'cumulative_dynamic_auc'.
 
     Returns:
         list: Dictionary for each outer fold containing model, results, indices, and errors.
+
+    Raises:
+        ValueError: If inner_scorer is 'cumulative_dynamic_auc' and auc_scorer_times is not specified.
     """
 
-    print(f"\n=== Running nested cross-validation with {outer_cv_folds} outer folds and {inner_cv_folds} inner folds ===\n", flush=True)
+    print(f"\n=== Running nested cross-validation with {outer_cv_folds} outer folds and {inner_cv_folds} inner folds (GridSearchCV scorer: {inner_scorer}) ===\n", flush=True)
 
     # stratified outer cv for performance est
     event_labels = y["RFi_event"]
@@ -87,9 +94,18 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds):
     # Inner CV for hyperparameter tuning
     inner_cv = KFold(n_splits=inner_cv_folds, shuffle=True, random_state=12)
 
-    # Wrap Coxnet to use IPCW C-index as its score method
+    # Wrap Coxnet to use IPCW C-index or AUC as its score method
     pipe = make_pipeline(CoxnetSurvivalAnalysis(l1_ratio=0.9))
-    scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
+    if inner_scorer == "concordance_index_ipcw":
+        scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
+    elif inner_scorer == "cumulative_dynamic_auc":
+        if auc_scorer_times is None:
+            raise ValueError("When using 'cumulative_dynamic_auc' as the inner_scorer, 'auc_scorer_times' must be specified.")
+        scorer_pipe = as_cumulative_dynamic_auc_scorer(pipe, times=auc_scorer_times)
+    else:
+        raise ValueError(f"Unsupported inner_scorer: {inner_scorer}")
+
+    #scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
     #scorer_pipe = as_cumulative_dynamic_auc_scorer(pipe,times=np.arange(1, 10.1, 0.5))
     
     # Define the model and wrap in GridSearchCV (for the inner loop)
