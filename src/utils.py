@@ -199,11 +199,12 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds):
 
     # Wrap Coxnet to use IPCW C-index as its score method
     pipe = make_pipeline(CoxnetSurvivalAnalysis(l1_ratio=0.9))
-    ipcw_pipe = as_concordance_index_ipcw_scorer(pipe)
-
+    scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
+    #scorer_pipe = as_cumulative_dynamic_auc_scorer(pipe,times=np.arange(1, 10.1, 0.5))
+    
     # Define the model and wrap in GridSearchCV (for the inner loop)
     inner_model = GridSearchCV(
-        ipcw_pipe,
+        scorer_pipe,
         param_grid=param_grid, # the name has to match depdeing if use din pipeline, also for custom wrapper needs estimator__ prefix
         cv=inner_cv,
         error_score=0.5,

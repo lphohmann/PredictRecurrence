@@ -382,3 +382,1270 @@ SyntaxError: invalid syntax
   self._final_estimator.fit(Xt, y, **last_step_params["fit"])
 /Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
   self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py:484: RuntimeWarning: invalid value encountered in divide
+  true_pos = cumsum_tp / cumsum_tp[-1]
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py:982: UserWarning: Scoring failed. The score on this train-test partition for these parameters will be set to 0.5. Details: 
+Traceback (most recent call last):
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/model_selection/_validation.py", line 971, in _score
+    scores = scorer(estimator, X_test, y_test, **score_params)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/metrics/_scorer.py", line 455, in __call__
+    return estimator.score(*args, **kwargs)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 805, in score
+    score = self._score_func(
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 449, in cumulative_dynamic_auc
+    estimate, times = _check_estimate_2d(estimate, test_time, times, estimator="cumulative_dynamic_auc")
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 77, in _check_estimate_2d
+    time_points = _check_times(test_time, time_points)
+  File "/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py", line 68, in _check_times
+    raise ValueError(
+ValueError: all times must be within follow-up time of test data: [1.06849315068493; 10.4767123287671[
+
+  warnings.warn(
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
