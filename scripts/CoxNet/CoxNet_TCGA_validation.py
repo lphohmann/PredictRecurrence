@@ -26,7 +26,8 @@ sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
 from src.utils import (
     log,
     load_training_data,
-    preprocess_data
+    preprocess_data,
+    beta2m
 )
 
 # Set working directory
@@ -63,6 +64,11 @@ sys.stderr = logfile
 # Parameters
 top_n_cpgs = 200000
 
+# cutoffs to stratify by
+median_cutoff = -0.0387
+predictiveness_cutoff = 0.1988
+cutoff_list = [median_cutoff, predictiveness_cutoff]
+
 ################################################################################
 # load data
 ################################################################################
@@ -81,38 +87,69 @@ log("Loaded training ids!")
 beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, infile_clinical)
 log("Loaded training data!")
 
-X = preprocess_data(beta_matrix, top_n_cpgs=top_n_cpgs)
+X_train = preprocess_data(beta_matrix, top_n_cpgs=top_n_cpgs)
 log("Finished preprocessing of training data!")
 
+#tcga dat
 
 tcga_clinical_data = pd.read_csv(infile_tcga_clinical)
-print(tcga_clinical_data.head())
-tcga_betavalues_data = pd.read_csv(infile_tcga_betavalues)
-log("Loaded TCGA data!")
+tcga_clinical_data.rename(columns={tcga_clinical_data.columns[0]: "Sample"}, inplace=True)
+tcga_clinical_data = tcga_clinical_data.loc[:,["Sample","PFI","PFIbin","OS","OSbin"]]
+tcga_clinical_data = tcga_clinical_data.set_index("Sample")
+clin_test = tcga_clinical_data
+tcga_betavalues_data = pd.read_csv(infile_tcga_betavalues,index_col=0).T
+tcga_betavalues_data = tcga_betavalues_data.loc[clin_test.index]
+X_test = beta2m(tcga_betavalues_data, beta_threshold=0.001)
+log("Finished loading TCGA data!")
 
-#y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 
 ################################################################################
 # inspect model hyperparameters and coefficients
 ################################################################################
-log("Inspecting outer foldmodel hyperparameters and coefficients!")
 
 # Unpack estimator from pipeline
 coxnet = selected_model.named_steps["coxnetsurvivalanalysis"]
-
 # Get non-zero coefficients
 coefs = coxnet.coef_.flatten()
 nonzero_mask = coefs != 0
-nonzero_features = X.columns[nonzero_mask]
-print(f"Number of non-zero coefficients: {np.sum(nonzero_mask)}")
-coefs_df = pd.DataFrame(coefs, index=X.columns, columns=["coefficient"])
+nonzero_features = X_train.columns[nonzero_mask]
+print(f"Number of non-zero coefficients in the model: {np.sum(nonzero_mask)}")
+coefs_df = pd.DataFrame(coefs, index=X_train.columns, columns=["coefficient"])
 non_zero_coefs = coefs_df[coefs_df["coefficient"] != 0]
+print(f"Number of model coefficients being in the TCGA dataset: {np.sum(nonzero_mask)}")
+
+num_present = len(X_test.columns.intersection(nonzero_features.to_list()))
+print(f"{num_present} out of {len(nonzero_features)} non-zero features are present in X_test.")
+
+################################################################################
+# prep TCGA data
+################################################################################
+
+# Load train features (columns only)
+train_features = X_train.columns.tolist()
+
+# Keep only features in training data
+X_test = X_test.loc[:, X_test.columns.intersection(train_features)]
+X_test.shape
+
+# Find features missing in test but present in training
+missing_feats = [f for f in train_features if f not in X_test.columns]
+len(missing_feats)
+
+# Add missing features with zero values
+missing_df = pd.DataFrame(0, index=X_test.index, columns=missing_feats)
+X_test = pd.concat([X_test, missing_df], axis=1)
+
+# Reorder columns to exact training feature order
+X_test = X_test[train_features]
+
+print(X_test.shape)  # Should be (number of test samples, 200000)
 
 ################################################################################
 # Compute risk scores in TCGA
 ################################################################################
-log("Computing risk scores on test set!")
 
+# Now pass X_test to pipeline.predict()
 risk_scores = selected_model.predict(X_test)
 risk_scores = pd.Series(risk_scores, index=X_test.index)
 clin_test["risk_score"] = risk_scores
@@ -132,19 +169,16 @@ plt.close()
 # Kaplan-Meier Plot
 ################################################################################
 
-#median_cutoff= 
-#predictiveness_cutoff=
-
 log("Plotting Kaplan-Meier curves for high/low risk groups defined by median and predictiveness cutoffs!")
 
-for cutoff in [median_cutoff, predictiveness_cutoff]:
+for cutoff in cutoff_list:
 
     print(f"\nCutoff = {cutoff:.4f}\n",flush=True)
 
     # Use the median cutoff from training to assign risk groups in test set
     clin_test["risk_group"] = pd.Series(["high" if x > cutoff else "low" for x in risk_scores], index=risk_scores.index)
 
-    summary = clin_test.groupby("risk_group")["RFi_event"].value_counts().unstack()
+    summary = clin_test.groupby("risk_group")["OSbin"].value_counts().unstack()
     print(summary)
 
     # Initialize KM fitters
@@ -156,8 +190,8 @@ for cutoff in [median_cutoff, predictiveness_cutoff]:
     mask_high = clin_test["risk_group"] == "high"
 
     # Fit
-    kmf_low.fit(clin_test.loc[mask_low, "RFi_years"], clin_test.loc[mask_low, "RFi_event"], label="Low risk")
-    kmf_high.fit(clin_test.loc[mask_high, "RFi_years"], clin_test.loc[mask_high, "RFi_event"], label="High risk")
+    kmf_low.fit(clin_test.loc[mask_low, "OS"], clin_test.loc[mask_low, "OSbin"], label="Low risk")
+    kmf_high.fit(clin_test.loc[mask_high, "OS"], clin_test.loc[mask_high, "OSbin"], label="High risk")
 
     # plot
     # Allocate space for KM plot + risk table
@@ -172,10 +206,10 @@ for cutoff in [median_cutoff, predictiveness_cutoff]:
     ax.set_ylabel("Survival Probability")
 
     results = logrank_test(
-        clin_test.loc[mask_low, "RFi_years"],
-        clin_test.loc[mask_high, "RFi_years"],
-        event_observed_A=clin_test.loc[mask_low, "RFi_event"],
-        event_observed_B=clin_test.loc[mask_high, "RFi_event"]
+        clin_test.loc[mask_low, "OS"],
+        clin_test.loc[mask_high, "OS"],
+        event_observed_A=clin_test.loc[mask_low, "OSbin"],
+        event_observed_B=clin_test.loc[mask_high, "OSbin"]
     )
 
     p_value = results.p_value
@@ -195,7 +229,7 @@ for cutoff in [median_cutoff, predictiveness_cutoff]:
 log("Calculating univariate Cox regression and plotting hazard ratio for risk score!")
 
 # Prepare dataframe for lifelines
-df_lifelines = clin_test[["RFi_event", "RFi_years", "risk_score"]].copy()
+df_lifelines = clin_test[["OSbin", "OS", "risk_score"]].copy()
 df_lifelines.columns = ["event", "time", "risk_score"]  # lifelines naming
 
 # Fit univariate Cox model
@@ -208,7 +242,7 @@ cph.print_summary()
 
 # Optional: check event distribution
 print("\nEvent value counts:")
-print(clin_test["RFi_event"].value_counts())
+print(clin_test["OSbin"].value_counts())
 
 # Generate the forest plot
 ax = cph.plot(hazard_ratios=True)

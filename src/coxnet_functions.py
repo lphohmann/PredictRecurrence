@@ -438,3 +438,44 @@ def select_best_model(performance, outer_models, metric):
     best_outer_fold = next((e for e in outer_models if e['fold'] == fold_number), None)
 
     return best_outer_fold
+
+
+
+
+# ==============================================================================
+# untested function, care
+
+from sksurv.metrics import cumulative_dynamic_auc, roc_curve
+import matplotlib.pyplot as plt
+
+def plot_roc_at_time(model, X_test, y_test, eval_time, outfile):
+    """
+    Plot and save ROC curve at a specific evaluation time for a survival model.
+    
+    Parameters:
+    - model: fitted survival model with predict_survival_function or predict_risk
+    - X_test: test features (DataFrame)
+    - y_test: structured array with dtype=[('event', bool), ('time', float)]
+    - eval_time: time at which to evaluate the ROC (e.g., 5 for 5 years)
+    - outfile: path to save the ROC plot
+    """
+    print(f"Plotting ROC curve at {eval_time} years...", flush=True)
+
+    # Estimate risk scores
+    risk_scores = -model.predict(X_test)  # or model.predict_risk(X_test)
+
+    # Get FPR, TPR, thresholds at eval_time
+    fpr, tpr, _ = roc_curve(y_test, risk_scores, eval_time)
+
+    # Plot ROC curve
+    plt.figure(figsize=(6, 6))
+    plt.plot(fpr, tpr, label=f"ROC at {eval_time} years", color="blue")
+    plt.plot([0, 1], [0, 1], linestyle='--', color='gray')
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title(f"ROC Curve at {eval_time} Years")
+    plt.legend(loc="lower right")
+    plt.tight_layout()
+    plt.savefig(outfile, dpi=300, bbox_inches="tight")
+    plt.close()
+    print(f"ROC plot saved to: {outfile}", flush=True)
