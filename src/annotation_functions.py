@@ -14,6 +14,8 @@ from pathlib import Path
 import mygene
 import gseapy as gp
 from matplotlib.backends.backend_pdf import PdfPages
+from lifelines import CoxPHFitter
+from statsmodels.stats.multitest import multipletests
 
 # ==============================================================================
 # FUNCTIONS
@@ -136,7 +138,8 @@ def enrich_and_plot(cpg_anno: pd.DataFrame,
     """
 
     # 1. Extract gene names
-    gene_names = set(cpg_anno.loc[cpg_anno["hasUCSCknownGeneOverlap"] == 1, "nameUCSCknownGeneOverlap"].to_list())
+    gene_names = set(cpg_anno.loc[(cpg_anno["hasUCSCknownGeneOverlap"] == 1) & 
+        (cpg_anno["featureClass"] == "promoter"), "nameUCSCknownGeneOverlap"].to_list())
     print(f"Gene names ({len(gene_names)}): {sorted(gene_names)}", flush=True)
 
     # 2. Convert to Entrez IDs
@@ -162,9 +165,6 @@ def enrich_and_plot(cpg_anno: pd.DataFrame,
     print(f"Enrichment plots saved to: {outfile}", flush=True)
 
 # ==============================================================================
-
-from lifelines import CoxPHFitter
-from statsmodels.stats.multitest import multipletests
 
 def run_univariate_cox_for_cpgs(mval_matrix: pd.DataFrame,
                                  clin_data: pd.DataFrame,

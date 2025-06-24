@@ -39,11 +39,11 @@ os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 ################################################################################
 
 # Input files
-infile_cpg_set = "./output/CoxNet_unadjusted/Selected_model/selected_cpgs.txt"# ⚠️ ADAPT
+infile_cpg_set = "./output/CoxNet_adjusted/Selected_model/selected_cpgs.txt"# ⚠️ ADAPT
 infile_cpg_anno = "./data/raw/EPIC_probeAnnoObj.csv"
 
 infile_train_ids = "./data/train/train_subcohorts/TNBC_train_ids.csv" # sample ids of training cohort
-infile_betavalues = "./data/train/train_methylation_unadjusted.csv" # ⚠️ ADAPT
+infile_betavalues = "./data/train/train_methylation_adjusted.csv" # ⚠️ ADAPT
 infile_clinical = "./data/train/train_clinical.csv"
 
 ################################################################################
@@ -51,7 +51,7 @@ infile_clinical = "./data/train/train_clinical.csv"
 ################################################################################
 
 # Output directory and files
-output_dir = "output/CpG_set_annotation/CoxNet_unadjusted" # ⚠️ ADAPT
+output_dir = "output/CpG_set_annotation/CoxNet_adjusted" # ⚠️ ADAPT
 os.makedirs(output_dir, exist_ok=True)
 outfile_correlation = os.path.join(output_dir, "correlation_matrix.png")
 outfile_posbarplot = os.path.join(output_dir, "position_barplot.png")
@@ -85,7 +85,7 @@ with open(infile_cpg_set) as f:
 
 # load cpg annotation file
 cpg_anno = pd.read_csv(infile_cpg_anno)
-cpg_anno.head()
+cpg_anno = cpg_anno[cpg_anno['illuminaID'].isin(cpg_list)]
 
 #df=cpg_anno
 #df.shape
@@ -123,28 +123,16 @@ plot_beta_histograms(beta_matrix, cpg_list, outfile_betahist,cox_results_df=cox_
 # position barplot
 ################################################################################
 
-cpg_anno = cpg_anno[cpg_anno['illuminaID'].isin(cpg_list)]
-
-# Get counts
 counts = cpg_anno["featureClass"].value_counts()
-
-# Create new figure
 plt.figure(figsize=(6, 4))  # Adjust size as needed
-
-# Bar plot
 counts.plot(kind='bar', color='skyblue', edgecolor='black')
-
-# Labels and title
 plt.xlabel("Feature Class")
 plt.ylabel("Count")
 plt.title("CpG Annotation Feature Classes")
 plt.xticks(rotation=45)
 plt.tight_layout()
-
-# Save figure
 plt.savefig(outfile_posbarplot, dpi=300, bbox_inches="tight")
 plt.close()
-
 print(f"Position bar plot saved to: {outfile_posbarplot}", flush=True)
 
 ################################################################################
