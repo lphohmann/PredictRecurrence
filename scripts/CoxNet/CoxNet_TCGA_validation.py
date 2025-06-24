@@ -39,19 +39,19 @@ os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 
 # Input files
 infile_train_ids = "./data/train/train_subcohorts/TNBC_train_ids.csv" # sample ids of training cohort
-infile_betavalues = "./data/train/train_methylation_adjusted.csv" # ⚠️ ADAPT
+infile_betavalues = "./data/train/train_methylation_unadjusted.csv" # ⚠️ ADAPT
 infile_clinical = "./data/train/train_clinical.csv"
-infile_outerfold = "./output/CoxNet_adjusted/best_outer_fold.pkl" # ⚠️ ADAPT
+infile_outerfold = "./output/CoxNet_unadjusted/best_outer_fold.pkl" # ⚠️ ADAPT
 
 infile_tcga_clinical = "./data/raw/TCGA_TNBC_MergedAnnotations.csv"
-infile_tcga_betavalues = "./data/raw/TCGA_TNBC_betaAdj.csv" # ⚠️ ADAPT
-
+infile_tcga_betavalues = "./data/raw/TCGA_n645_unadjustedBeta.csv" # ⚠️ ADAPT
+#"./data/raw/TCGA_TNBC_betaAdj.csv"
 ################################################################################
 # PARAMS
 ################################################################################
 
 # Output directory and files
-output_dir = "output/CoxNet_adjusted/Selected_model/" # ⚠️ ADAPT
+output_dir = "output/CoxNet_unadjusted/Selected_model/" # ⚠️ ADAPT
 os.makedirs(output_dir, exist_ok=True)
 #outfile_brierplot = os.path.join(output_dir, "brier_scores.png")
 
@@ -120,6 +120,9 @@ print(f"Number of model coefficients being in the TCGA dataset: {np.sum(nonzero_
 
 num_present = len(X_test.columns.intersection(nonzero_features.to_list()))
 print(f"{num_present} out of {len(nonzero_features)} non-zero features are present in X_test.")
+
+missing_features = nonzero_features.difference(X_test.columns)
+print(f"Features NOT present in TCGA dataset ({len(missing_features)}): {missing_features.to_list()}")
 
 ################################################################################
 # prep TCGA data
