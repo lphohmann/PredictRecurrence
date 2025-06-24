@@ -39,19 +39,19 @@ os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 
 # Input files
 infile_train_ids = "./data/train/train_subcohorts/TNBC_train_ids.csv" # sample ids of training cohort
-infile_betavalues = "./data/train/train_methylation_adjusted.csv" # adjusted/unadjusted
+infile_betavalues = "./data/train/train_methylation_adjusted.csv" # ⚠️ ADAPT
 infile_clinical = "./data/train/train_clinical.csv"
-infile_outerfold = "./output/CoxNet_adjusted/best_outer_fold.pkl"#------------------------ADAPT
+infile_outerfold = "./output/CoxNet_adjusted/best_outer_fold.pkl" # ⚠️ ADAPT
 
 infile_tcga_clinical = "./data/raw/TCGA_TNBC_MergedAnnotations.csv"
-infile_tcga_betavalues = "./data/raw/TCGA_TNBC_betaAdj.csv"#------------------------ADAPT TCGA_TNBC_betaAdj.csv
+infile_tcga_betavalues = "./data/raw/TCGA_TNBC_betaAdj.csv" # ⚠️ ADAPT
 
 ################################################################################
 # PARAMS
 ################################################################################
 
 # Output directory and files
-output_dir = "output/CoxNet_adjusted/Selected_model/"#-------------------------------------ADAPT
+output_dir = "output/CoxNet_adjusted/Selected_model/" # ⚠️ ADAPT
 os.makedirs(output_dir, exist_ok=True)
 #outfile_brierplot = os.path.join(output_dir, "brier_scores.png")
 

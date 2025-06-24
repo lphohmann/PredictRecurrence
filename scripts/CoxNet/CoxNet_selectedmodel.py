@@ -38,7 +38,7 @@ os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 
 # Input files
 infile_train_ids = "./data/train/train_subcohorts/TNBC_train_ids.csv" # sample ids of training cohort
-infile_betavalues = "./data/train/train_methylation_unadjusted.csv" # adjusted/unadjusted
+infile_betavalues = "./data/train/train_methylation_unadjusted.csv" # ⚠️ ADAPT
 infile_clinical = "./data/train/train_clinical.csv"
 infile_outerfold = "./output/CoxNet_unadjusted/best_outer_fold.pkl"
 
@@ -47,9 +47,9 @@ infile_outerfold = "./output/CoxNet_unadjusted/best_outer_fold.pkl"
 ################################################################################
 
 # Output directory and files
-output_dir = "output/CoxNet_unadjusted/Selected_model/"
+output_dir = "output/CoxNet_unadjusted/Selected_model/" # ⚠️ ADAPT
 os.makedirs(output_dir, exist_ok=True)
-#outfile_brierplot = os.path.join(output_dir, "brier_scores.png")
+outfile_cpg_set = os.path.join(output_dir, "selected_cpgs.txt")
 
 # log file
 path_logfile = os.path.join(output_dir, "selectedmodel_run.log")
@@ -132,6 +132,11 @@ nonzero_mask = coefs != 0
 nonzero_features = X.columns[nonzero_mask]
 nonzero_features.shape
 print(f"Number of non-zero coefficients: {np.sum(nonzero_mask)}")
+
+# save for later annotation
+with open(outfile_cpg_set, "w") as f:
+    for cpg in nonzero_features.to_list():
+        f.write(f"{cpg}\n")
 
 # plot
 coefs_df = pd.DataFrame(coefs, index=X.columns, columns=["coefficient"])
