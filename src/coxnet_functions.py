@@ -55,15 +55,16 @@ def define_param_grid(X, y, n_alphas=30):
 
     # Set up full parameter grid for tuning
     param_grid = {
-        "estimator__coxnetsurvivalanalysis__alphas": [[v] for v in estimated_alphas]#, # depends if i use a pipe in the trinaing or the estimator directly
-        #"coxnetsurvivalanalysis__l1_ratio": [0.1, 0.5, 0.9]  # Elastic Net mixing
+        "estimator__coxnetsurvivalanalysis__alphas": [[v] for v in estimated_alphas], # depends if i use a pipe in the trinaing or the estimator directly
+        "estimator__coxnetsurvivalanalysis__l1_ratio": [0.7,0.8,0.9]  # Elastic Net mixing
     }
     print(param_grid)
     return param_grid
 
 # ==============================================================================
 
-def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds, inner_scorer="concordance_index_ipcw", auc_scorer_times=None):
+def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds, 
+                  inner_scorer="concordance_index_ipcw", auc_scorer_times=None):
     """
     Runs nested cross-validation to tune CoxNet model and assess generalization.
 
@@ -95,7 +96,8 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds, inner_scorer
     inner_cv = KFold(n_splits=inner_cv_folds, shuffle=True, random_state=12)
 
     # Wrap Coxnet to use IPCW C-index or AUC as its score method
-    pipe = make_pipeline(CoxnetSurvivalAnalysis(l1_ratio=0.9))
+    pipe = make_pipeline(CoxnetSurvivalAnalysis()) #l1_ratio=0.9
+
     if inner_scorer == "concordance_index_ipcw":
         scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
     elif inner_scorer == "cumulative_dynamic_auc":
@@ -108,6 +110,10 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds, inner_scorer
     #scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
     #scorer_pipe = as_cumulative_dynamic_auc_scorer(pipe,times=np.arange(1, 10.1, 0.5))
     
+    # See all available params you can tune
+    print("Parameters exposed by scorer_pipe:")
+    print(scorer_pipe.get_params().keys())
+
     # Define the model and wrap in GridSearchCV (for the inner loop)
     inner_model = GridSearchCV(
         scorer_pipe,
@@ -153,6 +159,12 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds, inner_scorer
                 "cv_results": inner_model.cv_results_,
                 "error": None
             })
+
+            # Extract best RSF parameters
+            best_cn = best_model.estimator_.named_steps["coxnetsurvivalanalysis"]
+            best_params = best_cn.get_params()
+
+            print(f"\n\t--> Fold {fold_num}: Best params {best_params}\n", flush=True)
 
         except ArithmeticError as e:
             print(f"Skipping fold {fold_num} due to numerical error: {e}", flush=True)
@@ -445,6 +457,7 @@ def select_best_model(performance, outer_models, metric):
 # ==============================================================================
 # untested function, care
 
+'''
 from sksurv.metrics import cumulative_dynamic_auc, roc_curve
 import matplotlib.pyplot as plt
 
@@ -479,3 +492,4 @@ def plot_roc_at_time(model, X_test, y_test, eval_time, outfile):
     plt.savefig(outfile, dpi=300, bbox_inches="tight")
     plt.close()
     print(f"ROC plot saved to: {outfile}", flush=True)
+'''

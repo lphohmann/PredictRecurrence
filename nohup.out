@@ -3352,3 +3352,569 @@ ValueError: all times must be within follow-up time of test data: [1.06849315068
   self._final_estimator.fit(Xt, y, **last_step_params["fit"])
 /Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
   self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+Traceback (most recent call last):
+  File "/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/CoxNet/CoxNet_pipeline.py", line 27, in <module>
+    from src.coxnet_functions import (
+  File "/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/coxnet_functions.py", line 450, in <module>
+    from sksurv.metrics import cumulative_dynamic_auc, roc_curve
+ImportError: cannot import name 'roc_curve' from 'sksurv.metrics' (/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sksurv/metrics.py)
+Traceback (most recent call last):
+  File "/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/CoxNet/CoxNet_pipeline.py", line 27, in <module>
+    from src.coxnet_functions import (
+  File "/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/coxnet_functions.py", line 456
+    Plot and save ROC curve at a specific evaluation time for a survival model.
+IndentationError: unexpected indent
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])

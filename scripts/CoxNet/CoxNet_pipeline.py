@@ -44,7 +44,7 @@ os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 
 # Input files
 infile_train_ids = "./data/train/train_subcohorts/TNBC_train_ids.csv" # sample ids of training cohort
-infile_betavalues = "./data/train/train_methylation_adjusted.csv" # ⚠️ ADAPT
+infile_betavalues = "./data/train/train_methylation_unadjusted.csv" # ⚠️ ADAPT
 infile_clinical = "./data/train/train_clinical.csv"
 
 ################################################################################
@@ -52,7 +52,7 @@ infile_clinical = "./data/train/train_clinical.csv"
 ################################################################################
 
 # Output directory and files
-output_dir = "output/CoxNet_adjusted" # ⚠️ ADAPT: adjusted/unadjusted
+output_dir = "output/CoxNet_unadjusted" # ⚠️ ADAPT: adjusted/unadjusted
 os.makedirs(output_dir, exist_ok=True)
 outfile_outermodels = os.path.join(output_dir, "outer_cv_models.pkl")
 outfile_brierplot = os.path.join(output_dir, "brier_scores.png")
