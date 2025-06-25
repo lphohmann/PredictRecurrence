@@ -18,6 +18,7 @@ from sksurv.metrics import (cumulative_dynamic_auc, concordance_index_censored,
                              as_concordance_index_ipcw_scorer,
                              as_cumulative_dynamic_auc_scorer)
 import matplotlib.pyplot as plt
+from sklearn.inspection import permutation_importance
 
 # ==============================================================================
 # FUNCTIONS
@@ -88,7 +89,7 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
             inner_model.fit(X_train, y_train)
             best_model = inner_model.best_estimator_  # pipeline with RSF fitted on X_train
             
-            #
+            print(f"  Fold {fold_num}: Best params {best_model.get_params()['estimator__randomsurvivalforest']}", flush=True)
 
             # Extract best RSF parameters
             best_rsf = best_model.estimator_.named_steps["randomsurvivalforest"]
@@ -105,7 +106,8 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
             )
             refit_pipe = make_pipeline(refit_rsf)
             refit_pipe.fit(X_train, y_train)
-
+            
+            # We can use best_model directly; RandomSurvivalForest is already fitted on X_train.
             outer_models.append({
                 "fold": fold_num,
                 "model": refit_pipe,
@@ -115,18 +117,6 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
                 "error": None
             })
 
-            print(f"  Fold {fold_num}: Best params {best_params}", flush=True)
-            # We can use best_model directly; RandomSurvivalForest is already fitted on X_train.
-            #outer_models.append({
-            #    "fold": fold_num,
-            #    "model": best_model,
-            #    "train_idx": train_idx,
-            #    "test_idx": test_idx,
-            #    "cv_results": inner_model.cv_results_,
-            #    "error": None
-            #})
-            #print(f"  Fold {fold_num}: Best params {best_model.get_params()
-            # ['estimator__randomsurvivalforest']}", flush=True)
 
         except Exception as e:
             print(f"Skipping fold {fold_num} due to error: {e}", flush=True)
@@ -305,3 +295,46 @@ def select_best_model(performance, outer_models, metric):
     print(f"Best fold: {best['fold']}, {metric}={best[metric]:.3f}")
     best_outer = next((e for e in outer_models if e['fold']==best['fold']), None)
     return best_outer
+
+
+
+'''
+           # Compute permutation-based feature importance on outer test set
+
+            # Choose scoring method for inner CV
+            #if inner_scorer == "concordance_index_ipcw":
+                #refit_pipe = as_concordance_index_ipcw_scorer(refit_pipe)
+            #elif inner_scorer == "cumulative_dynamic_auc":
+                #if auc_scorer_times is None:
+                    #raise ValueError("Specify auc_scorer_times when using cumulative_dynamic_auc scorer.")
+                #refit_pipe = as_cumulative_dynamic_auc_scorer(refit_pipe, times=auc_scorer_times)
+            #else:
+                #raise ValueError(f"Unsupported inner_scorer: {inner_scorer}")
+
+            result = permutation_importance(
+                refit_pipe,  # Your pipeline with refit RSF
+                X_test,
+                y_test,
+                n_repeats=15,
+                random_state=42,
+                n_jobs=-1
+            )
+
+            importances_df = pd.DataFrame({
+                "importances_mean": result["importances_mean"],
+                "importances_std": result["importances_std"]
+            }, index=X.columns).sort_values(by="importances_mean", ascending=False)
+
+            # Store importances per fold
+            outer_models.append({
+                "fold": fold_num,
+                "model": refit_pipe,
+                "train_idx": train_idx,
+                "test_idx": test_idx,
+                "cv_results": inner_model.cv_results_,
+                "feature_importances": importances_df,
+                "error": None
+            })
+
+            print(f"  Fold {fold_num}: Best params {best_params}", flush=True)
+'''

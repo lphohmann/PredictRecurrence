@@ -102,6 +102,11 @@ plot_brier_scores(brier_array, ibs_array, folds, eval_time_grid, outfile_brierpl
 plot_auc_curves(model_performances, eval_time_grid, outfile_aucplot)
 summarize_performance(model_performances)
 
+# Average importances_mean across folds
+#importances_all_folds = [m["feature_importances"]["importances_mean"] for m in outer_models]
+#mean_importances = pd.concat(importances_all_folds, axis=1).mean(axis=1)
+#mean_importances.sort_values(ascending=False).head(20)
+
 # Select and save the best model (by chosen metric)
 metric = "mean_auc"  # could be "ibs" or "auc_at_5y"
 best_outer_fold = select_best_model(model_performances, outer_models, metric)

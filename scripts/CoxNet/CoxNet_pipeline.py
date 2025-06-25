@@ -91,7 +91,7 @@ log("Finished preprocessing of training data!")
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 
 # Define hyperparameter grid
-param_grid = define_param_grid(X, y, n_alphas=30)
+param_grid = define_param_grid(X, y, n_alphas=10)
 
 # Run nested cross-validation
 outer_models = run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
