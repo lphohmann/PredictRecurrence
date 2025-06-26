@@ -25,6 +25,7 @@ from src.utils import (
     preprocess_data
 )
 from src.coxnet_functions import (
+    estimate_alpha_grid,
     define_param_grid,
     run_nested_cv,
     summarize_outer_models,
@@ -71,6 +72,10 @@ inner_cv_folds = 3
 outer_cv_folds = 5
 eval_time_grid = np.arange(1, 10.1, 0.5)  # 1 to 10 in steps of 0.5
 
+# type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
+alphas_estimation_l1ratio = 1#0.9 
+param_grid_l1ratios = 1#[0.9]
+
 ################################################################################
 # MAIN PIPELINE
 ################################################################################
@@ -91,7 +96,9 @@ log("Finished preprocessing of training data!")
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 
 # Define hyperparameter grid
-param_grid = define_param_grid(X, y, n_alphas=10)
+alphas = estimate_alpha_grid(X, y, l1_ratio=alphas_estimation_l1ratio, 
+                             alpha_min_ratio=0.1, n_alphas=30)
+param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=param_grid_l1ratios)
 
 # Run nested cross-validation
 outer_models = run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
@@ -126,5 +133,5 @@ log(f"Best fold ({best_outer_fold['fold']}) saved to: {outfile_bestCVfold}")
 
 end_time = time.time()  # Record end time
 log(f"Script ended at: {time.ctime(end_time)}")
-log(f"Script executed in {end_time - start_time:.2f} seconds.")
+log(f"Total execution time: {(end_time - start_time) / 60:.2f} minutes.")
 logfile.close()

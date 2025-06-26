@@ -27,38 +27,52 @@ from sksurv.metrics import (
 # FUNCTIONS
 # ==============================================================================
 
-def define_param_grid(X, y, n_alphas=30):
+def estimate_alpha_grid(X, y, l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=30):
     """
-    Estimates a suitable grid of alpha values for Coxnet hyperparameter tuning.
+    Estimate a suitable grid of alpha values for Coxnet hyperparameter tuning.
 
     Args:
         X (DataFrame): Feature matrix.
         y (structured array): Survival labels (from sksurv).
-        n_alphas (int): Number of alpha values to generate.
+        l1_ratio (float): Elastic net mixing parameter for alpha estimation.
+        alpha_min_ratio (float): Minimum ratio of alpha_max for grid.
+        n_alphas (int): Number of alphas to generate.
 
     Returns:
-        dict: Parameter grid dictionary for GridSearchCV.
+        np.array: Array of alpha values.
     """
+    print(f"\n=== Estimating {n_alphas} alpha values for Coxnet tuning ===\n", flush=True)
 
-    print(f"\n=== Defining grid of {n_alphas} alpha values for Coxnet hyperparameter tuning ===\n", flush=True)
-
-    # fit a Coxnet model to estimate reasonable alpha values for grid search
-    initial_pipe = make_pipeline(
-        CoxnetSurvivalAnalysis(l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=n_alphas)
-    )
     warnings.simplefilter("ignore", FitFailedWarning)
     warnings.simplefilter("ignore", UserWarning)
 
-    # Fit on full data just to estimate alphas
-    initial_pipe.fit(X, y)
-    estimated_alphas = initial_pipe.named_steps["coxnetsurvivalanalysis"].alphas_
+    pipe = make_pipeline(
+        CoxnetSurvivalAnalysis(l1_ratio=l1_ratio, alpha_min_ratio=alpha_min_ratio, n_alphas=n_alphas)
+    )
 
-    # Set up full parameter grid for tuning
+    pipe.fit(X, y)
+    alphas = pipe.named_steps["coxnetsurvivalanalysis"].alphas_
+
+    return alphas
+
+# ==============================================================================
+
+def define_param_grid(grid_alphas, grid_l1ratio=[0.9]):
+    """
+    Define the final parameter grid for GridSearchCV using estimated alphas.
+
+    Args:
+        estimated_alphas (array-like): Array of alpha values.
+        param_grid_l1ratio (list): List of l1_ratio values to try.
+
+    Returns:
+        dict: Parameter grid for GridSearchCV.
+    """
     param_grid = {
-        "estimator__coxnetsurvivalanalysis__alphas": [[v] for v in estimated_alphas], # depends if i use a pipe in the trinaing or the estimator directly
-        "estimator__coxnetsurvivalanalysis__l1_ratio": [0.7,0.8,0.9]  # Elastic Net mixing
+        "estimator__coxnetsurvivalanalysis__alphas": [[alpha] for alpha in grid_alphas], # diff string if i dont use a pipe (remove estimator__)
+        "estimator__coxnetsurvivalanalysis__l1_ratio": grid_l1ratio
     }
-    print(param_grid)
+    print(f"\nDefined parameter grid:\n{param_grid}\n", flush=True)
     return param_grid
 
 # ==============================================================================
@@ -86,7 +100,7 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
         ValueError: If inner_scorer is 'cumulative_dynamic_auc' and auc_scorer_times is not specified.
     """
 
-    print(f"\n=== Running nested cross-validation with {outer_cv_folds} outer folds and {inner_cv_folds} inner folds (GridSearchCV scorer: {inner_scorer}) ===\n", flush=True)
+    print(f"\n=== Running nested CV for CoxNet with {outer_cv_folds} outer folds and {inner_cv_folds} inner folds (scorer: {inner_scorer}) ===\n", flush=True)
 
     # stratified outer cv for performance est
     event_labels = y["RFi_event"]
@@ -98,18 +112,18 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
     # Wrap Coxnet to use IPCW C-index or AUC as its score method
     pipe = make_pipeline(CoxnetSurvivalAnalysis()) #l1_ratio=0.9
 
+    # Choose scoring method for inner CV
     if inner_scorer == "concordance_index_ipcw":
         scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
     elif inner_scorer == "cumulative_dynamic_auc":
         if auc_scorer_times is None:
-            raise ValueError("When using 'cumulative_dynamic_auc' as the inner_scorer, 'auc_scorer_times' must be specified.")
+            raise ValueError("Specify auc_scorer_times when using cumulative_dynamic_auc scorer.")
         scorer_pipe = as_cumulative_dynamic_auc_scorer(pipe, times=auc_scorer_times)
+    #elif inner_scorer is None:
+    #    scorer_pipe = pipe  # use default scoring (Harrell’s C-index)
     else:
         raise ValueError(f"Unsupported inner_scorer: {inner_scorer}")
 
-    #scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
-    #scorer_pipe = as_cumulative_dynamic_auc_scorer(pipe,times=np.arange(1, 10.1, 0.5))
-    
     # See all available params you can tune
     print("Parameters exposed by scorer_pipe:")
     print(scorer_pipe.get_params().keys())
@@ -130,11 +144,12 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
     for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X, event_labels)):
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train, y_test = y[train_idx], y[test_idx]
-        print(f"Fold {fold_num} has {sum(y_train['RFi_event'])} events.", flush=True)
+        print(f"\nFold {fold_num} has {sum(y_train['RFi_event'])} events.", flush=True)
 
         try:
             inner_model.fit(X_train, y_train)
             best_model = inner_model.best_estimator_
+            best_params = inner_model.best_params_ # best performing paramters (match best model)
             #best_alpha = best_model.named_steps["coxnetsurvivalanalysis"].alphas_[0] # when using default c-index scorer in gridserach; w/o pipe it would look liek htis: best_model.estimator_.alphas_[0]
             #best_l1_ratio = best_model.named_steps["coxnetsurvivalanalysis"].l1_ratio # default
             best_alpha = best_model.estimator_.named_steps["coxnetsurvivalanalysis"].alphas_[0]
@@ -160,14 +175,10 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
                 "error": None
             })
 
-            # Extract best RSF parameters
-            best_cn = best_model.estimator_.named_steps["coxnetsurvivalanalysis"]
-            best_params = best_cn.get_params()
-
-            print(f"\n\t--> Fold {fold_num}: Best params {best_params}\n", flush=True)
+            print(f"\n\t--> Fold {fold_num}: Best hyperparams from GridSearchCV:\n{best_params}\n", flush=True)
 
         except ArithmeticError as e:
-            print(f"Skipping fold {fold_num} due to numerical error: {e}", flush=True)
+            print(f"\n\nSkipping fold {fold_num} due to numerical error: {e}\n\n", flush=True)
             outer_models.append({
                 "fold": fold_num,
                 "model": None,

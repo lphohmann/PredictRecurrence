@@ -2,7 +2,7 @@
 
 ################################################################################
 # Script: RSF Pipeline
-# Author: (Your Name)
+# Author: lennart hohmann
 ################################################################################
 
 ################################################################################
@@ -26,7 +26,7 @@ from src.rsf_functions import (
     plot_brier_scores,
     plot_auc_curves,
     summarize_performance,
-    select_best_model
+    select_best_model#,compute_permutation_importance
 )
 
 # Set working directory
@@ -37,19 +37,20 @@ os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 ################################################################################
 
 infile_train_ids = "./data/train/train_subcohorts/TNBC_train_ids.csv"
-infile_betavalues = "./data/train/train_methylation_unadjusted.csv"  # ⚠️ ADAPT: adjusted/unadjusted
+infile_betavalues = "./data/train/train_methylation_adjusted.csv"  # ⚠️ ADAPT: adjusted/unadjusted
 infile_clinical = "./data/train/train_clinical.csv"
 
 ################################################################################
 # PARAMS
 ################################################################################
 
-output_dir = "output/RSF_unadjusted" # ⚠️ ADAPT: adjusted/unadjusted
+output_dir = "output/RSF_adjusted" # ⚠️ ADAPT: adjusted/unadjusted
 os.makedirs(output_dir, exist_ok=True)
 outfile_outermodels = os.path.join(output_dir, "outer_cv_models.pkl")
 outfile_brierplot = os.path.join(output_dir, "brier_scores.png")
 outfile_aucplot = os.path.join(output_dir, "auc_curves.png")
 outfile_bestfold = os.path.join(output_dir, "best_outer_fold.pkl")
+outfile_importancebyfold = os.path.join(output_dir, "importances_by_fold.pkl")
 
 logfile = open(os.path.join(output_dir, "pipeline_run.log"), "w")
 sys.stdout = logfile
@@ -103,6 +104,9 @@ plot_auc_curves(model_performances, eval_time_grid, outfile_aucplot)
 summarize_performance(model_performances)
 
 # Average importances_mean across folds
+#outer_models = joblib.load(outfile_outermodels)
+#importances_by_fold = compute_permutation_importance(outer_models, X, y)
+#joblib.dump(importances_by_fold, outfile_importancebyfold)
 #importances_all_folds = [m["feature_importances"]["importances_mean"] for m in outer_models]
 #mean_importances = pd.concat(importances_all_folds, axis=1).mean(axis=1)
 #mean_importances.sort_values(ascending=False).head(20)
@@ -116,5 +120,5 @@ if best_outer_fold:
 
 end_time = time.time()
 log(f"RSF pipeline ended at: {time.ctime(end_time)}")
-log(f"Total execution time: {end_time - start_time:.2f} seconds.")
+log(f"Total execution time: {(end_time - start_time) / 60:.2f} minutes.")
 logfile.close()

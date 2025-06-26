@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Script: Functions for Random Survival Forest pipeline
-# Author: (Your Name)
+# Author: lennart hohmann
 
 # ==============================================================================
 # IMPORTS
@@ -31,11 +31,13 @@ def define_param_grid(X=None, y=None):
     """
     # Example grid: tune number of trees, min_samples_split/leaf, max_features
     param_grid = {
-        "estimator__randomsurvivalforest__n_estimators": [100, 300, 500],
-        "estimator__randomsurvivalforest__max_features": [50, 100, 300, "log2"], #"sqrt",
-        "estimator__randomsurvivalforest__min_samples_split": [2, 5, 10],
-        "estimator__randomsurvivalforest__min_samples_leaf": [1, 3, 5, 10]
+        "estimator__randomsurvivalforest__n_estimators": [100, 300],
+        "estimator__randomsurvivalforest__max_features": [0.2, 0.5, "sqrt", "log2"],
+        "estimator__randomsurvivalforest__min_samples_split": [5, 10],
+        "estimator__randomsurvivalforest__min_samples_leaf": [5, 10],
+        "estimator__randomsurvivalforest__max_depth": [3, 5, None]  # added
     }
+
     print(f"Defined RSF parameter grid: {param_grid}")
     return param_grid
 
@@ -47,8 +49,8 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
     Run nested cross-validation for RSF. 
     Outer loop estimates performance, inner loop tunes hyperparameters.
     """
-    print(f"\n=== Running nested CV for RSF with {outer_cv_folds} outer folds "
-          f"and {inner_cv_folds} inner folds (scorer: {inner_scorer}) ===\n", flush=True)
+    
+    print(f"\n=== Running nested CV for CoxNet with {outer_cv_folds} outer folds and {inner_cv_folds} inner folds (scorer: {inner_scorer}) ===\n", flush=True)
 
     # Stratify outer folds by event indicator to maintain event proportion
     event_labels = y["RFi_event"]
@@ -66,6 +68,8 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
         if auc_scorer_times is None:
             raise ValueError("Specify auc_scorer_times when using cumulative_dynamic_auc scorer.")
         scorer_pipe = as_cumulative_dynamic_auc_scorer(pipe, times=auc_scorer_times)
+    #elif inner_scorer is None:
+    #    scorer_pipe = pipe  # use default scoring (Harrell’s C-index)
     else:
         raise ValueError(f"Unsupported inner_scorer: {inner_scorer}")
 
@@ -75,51 +79,36 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
         param_grid=param_grid,
         cv=inner_cv,
         error_score=0.5,
-        n_jobs=-1
+        n_jobs=-1,
+        refit=True #Refit an estimator using the best found parameters on the whole dataset
     )
 
     outer_models = []
     for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X, event_labels)):
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train, y_test = y[train_idx], y[test_idx]
-        print(f"Outer fold {fold_num}: {sum(y_train['RFi_event'])} events in training set.", flush=True)
+        print(f"\nOuter fold {fold_num}: {sum(y_train['RFi_event'])} events in training set.", flush=True)
 
         try:
             # Inner CV for hyperparameter tuning
             inner_model.fit(X_train, y_train)
             best_model = inner_model.best_estimator_  # pipeline with RSF fitted on X_train
-            
-            print(f"  Fold {fold_num}: Best params {best_model.get_params()['estimator__randomsurvivalforest']}", flush=True)
+            best_params = inner_model.best_params_
 
-            # Extract best RSF parameters
-            best_rsf = best_model.estimator_.named_steps["randomsurvivalforest"]
-            best_params = best_rsf.get_params()
+            print(f"\n\t--> Fold {fold_num}: Best grid-search parameters {best_params}\n", flush=True)
 
-            # Refit RSF with best parameters on full outer training data
-            refit_rsf = RandomSurvivalForest(
-                n_estimators=best_params["n_estimators"],
-                max_features=best_params["max_features"],
-                min_samples_split=best_params["min_samples_split"],
-                min_samples_leaf=best_params["min_samples_leaf"],
-                #bootstrap=best_params["bootstrap"],
-                random_state=42
-            )
-            refit_pipe = make_pipeline(refit_rsf)
-            refit_pipe.fit(X_train, y_train)
-            
             # We can use best_model directly; RandomSurvivalForest is already fitted on X_train.
             outer_models.append({
                 "fold": fold_num,
-                "model": refit_pipe,
+                "model": best_model,
                 "train_idx": train_idx,
                 "test_idx": test_idx,
                 "cv_results": inner_model.cv_results_,
                 "error": None
             })
 
-
         except Exception as e:
-            print(f"Skipping fold {fold_num} due to error: {e}", flush=True)
+            print(f"\n\nSkipping fold {fold_num} due to error: {e}\n\n", flush=True)
             outer_models.append({
                 "fold": fold_num,
                 "model": None,
@@ -296,27 +285,48 @@ def select_best_model(performance, outer_models, metric):
     best_outer = next((e for e in outer_models if e['fold']==best['fold']), None)
     return best_outer
 
+# ==============================================================================
 
+def compute_permutation_importance(outer_models, X, y, n_repeats=15, random_state=42):
+    """
+    Compute permutation feature importance on the test set for each outer fold model.
 
-'''
-           # Compute permutation-based feature importance on outer test set
+    Args:
+        outer_models (list): List of dicts with trained models and test indices from outer CV.
+        X (DataFrame): Full feature matrix.
+        y (structured array): Full survival outcome.
+        n_repeats (int): Number of permutation repeats.
+        random_state (int): Random seed for reproducibility.
 
-            # Choose scoring method for inner CV
-            #if inner_scorer == "concordance_index_ipcw":
-                #refit_pipe = as_concordance_index_ipcw_scorer(refit_pipe)
-            #elif inner_scorer == "cumulative_dynamic_auc":
-                #if auc_scorer_times is None:
-                    #raise ValueError("Specify auc_scorer_times when using cumulative_dynamic_auc scorer.")
-                #refit_pipe = as_cumulative_dynamic_auc_scorer(refit_pipe, times=auc_scorer_times)
-            #else:
-                #raise ValueError(f"Unsupported inner_scorer: {inner_scorer}")
+    Returns:
+        dict: Mapping from fold number to feature importances DataFrame (or None if failed).
+    """
+    print("\n=== Computing permutation feature importances for outer models ===\n", flush=True)
 
+    importances_by_fold = {}
+
+    for entry in outer_models:
+        fold = entry['fold']
+        model = entry.get('model')
+        test_idx = entry.get('test_idx')
+
+        if model is None:
+            print(f"Skipping fold {fold} (no trained model).", flush=True)
+            importances_by_fold[fold] = None
+            continue
+
+        X_test = X.iloc[test_idx]
+        y_test = y[test_idx]
+
+        print(f"Computing permutation importance for fold {fold}...", flush=True)
+
+        try:
             result = permutation_importance(
-                refit_pipe,  # Your pipeline with refit RSF
+                model,
                 X_test,
                 y_test,
-                n_repeats=15,
-                random_state=42,
+                n_repeats=n_repeats,
+                random_state=random_state,
                 n_jobs=-1
             )
 
@@ -325,16 +335,11 @@ def select_best_model(performance, outer_models, metric):
                 "importances_std": result["importances_std"]
             }, index=X.columns).sort_values(by="importances_mean", ascending=False)
 
-            # Store importances per fold
-            outer_models.append({
-                "fold": fold_num,
-                "model": refit_pipe,
-                "train_idx": train_idx,
-                "test_idx": test_idx,
-                "cv_results": inner_model.cv_results_,
-                "feature_importances": importances_df,
-                "error": None
-            })
+            importances_by_fold[fold] = importances_df
+            print(f"Fold {fold} - Top features:\n{importances_df.head()}\n", flush=True)
 
-            print(f"  Fold {fold_num}: Best params {best_params}", flush=True)
-'''
+        except Exception as e:
+            print(f"Error computing permutation importance for fold {fold}: {e}", flush=True)
+            importances_by_fold[fold] = None
+
+    return importances_by_fold
