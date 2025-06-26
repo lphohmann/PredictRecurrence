@@ -74,7 +74,7 @@ eval_time_grid = np.arange(1, 10.1, 0.5)  # 1 to 10 in steps of 0.5
 
 # type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
 alphas_estimation_l1ratio = 1#0.9 
-param_grid_l1ratios = 1#[0.9]
+param_grid_l1ratios = [1]#[0.9]
 
 ################################################################################
 # MAIN PIPELINE
@@ -97,7 +97,7 @@ y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 
 # Define hyperparameter grid
 alphas = estimate_alpha_grid(X, y, l1_ratio=alphas_estimation_l1ratio, 
-                             alpha_min_ratio=0.1, n_alphas=30)
+                             alpha_min_ratio=0.05, n_alphas=20)
 param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=param_grid_l1ratios)
 
 # Run nested cross-validation

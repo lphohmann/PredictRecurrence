@@ -150,11 +150,12 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
             inner_model.fit(X_train, y_train)
             best_model = inner_model.best_estimator_
             best_params = inner_model.best_params_ # best performing paramters (match best model)
+            print(f"\n\t--> Fold {fold_num}: Best hyperparams from GridSearchCV:\n{best_params}\n", flush=True)
             #best_alpha = best_model.named_steps["coxnetsurvivalanalysis"].alphas_[0] # when using default c-index scorer in gridserach; w/o pipe it would look liek htis: best_model.estimator_.alphas_[0]
             #best_l1_ratio = best_model.named_steps["coxnetsurvivalanalysis"].l1_ratio # default
             best_alpha = best_model.estimator_.named_steps["coxnetsurvivalanalysis"].alphas_[0]
             best_l1_ratio = best_model.estimator_.named_steps["coxnetsurvivalanalysis"].l1_ratio
-
+            
             # Refit best model with fit_baseline_model=True for later eval
             refit_best_model = make_pipeline(
                 CoxnetSurvivalAnalysis(
@@ -165,6 +166,14 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
                 )
             )
             refit_best_model.fit(X_train, y_train)
+            
+            # Get coefficients and selected features (non-zero coeffs)
+            coxnet = refit_best_model.named_steps["coxnetsurvivalanalysis"]
+            coefs = coxnet.coef_.flatten()
+            nonzero_mask = coefs != 0
+            selected_features = X_train.columns[nonzero_mask]
+            selected_coefs = coefs[nonzero_mask]
+            selected_features_dict = dict(zip(selected_features, selected_coefs))
 
             outer_models.append({
                 "fold": fold_num,
@@ -172,10 +181,9 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
                 "test_idx": test_idx,
                 "train_idx": train_idx,
                 "cv_results": inner_model.cv_results_,
-                "error": None
+                "error": None,
+                "selected_features": selected_features_dict
             })
-
-            print(f"\n\t--> Fold {fold_num}: Best hyperparams from GridSearchCV:\n{best_params}\n", flush=True)
 
         except ArithmeticError as e:
             print(f"\n\nSkipping fold {fold_num} due to numerical error: {e}\n\n", flush=True)
@@ -185,7 +193,8 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
                 "test_idx": test_idx,
                 "train_idx": train_idx,
                 "cv_results": None,
-                "error": str(e)
+                "error": str(e),
+                "selected_features": None
             })
 
     return outer_models
@@ -211,11 +220,14 @@ def summarize_outer_models(outer_models):
         print(f"Train indices: {len(entry.get('train_idx', []))} samples")
         print(f"Test indices: {len(entry.get('test_idx', []))} samples")
         
-        error = entry.get("error")
-        if error:
-            print(f"Error: {error}")
+        selected_features = entry.get("selected_features")
+        if selected_features is not None:
+            print(f"Number of selected features: {len(selected_features)}")
         else:
-            print("Error: None")
+            print("Selected features: None")
+
+        error = entry.get("error")
+        print(f"Error: {error if error else 'None'}")
 
 # ==============================================================================
 
