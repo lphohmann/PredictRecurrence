@@ -1,31 +1,24 @@
 #!/usr/bin/env python
 
 ################################################################################
-# Script: CoxNet pipeline
-# Author: Lennart Hohmann
+# Script: GBM Pipeline
+# Author: lennart hohmann
 ################################################################################
 
 ################################################################################
 # SET UP
 ################################################################################
 
-import os
-import sys
-import time
+import os, sys, time
 import numpy as np
 import pandas as pd
 import joblib
 from sksurv.util import Surv
 
-# Import custom CoxNet functions
+# Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import (
-    log,
-    load_training_data,
-    preprocess_data
-)
-from src.coxnet_functions import (
-    estimate_alpha_grid,
+from src.utils import log, load_training_data, preprocess_data
+from src.rsf_functions import (
     define_param_grid,
     run_nested_cv,
     summarize_outer_models,
@@ -33,7 +26,7 @@ from src.coxnet_functions import (
     plot_brier_scores,
     plot_auc_curves,
     summarize_performance,
-    select_best_model
+    select_best_model#,compute_permutation_importance
 )
 
 # Set working directory
@@ -43,95 +36,89 @@ os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 # INPUT FILES
 ################################################################################
 
-# Input files
-infile_train_ids = "./data/train/train_subcohorts/TNBC_train_ids.csv" # sample ids of training cohort
-infile_betavalues = "./data/train/train_methylation_unadjusted.csv" # ⚠️ ADAPT
+infile_train_ids = "./data/train/train_subcohorts/TNBC_train_ids.csv"
+infile_betavalues = "./data/train/train_methylation_adjusted.csv"  # ⚠️ ADAPT: adjusted/unadjusted
 infile_clinical = "./data/train/train_clinical.csv"
 
 ################################################################################
 # PARAMS
 ################################################################################
 
-# Output directory and files
-output_dir = "output/CoxNet_unadjusted" # ⚠️ ADAPT: adjusted/unadjusted
+output_dir = "output/GBM_adjusted" # ⚠️ ADAPT: adjusted/unadjusted
 os.makedirs(output_dir, exist_ok=True)
 outfile_outermodels = os.path.join(output_dir, "outer_cv_models.pkl")
 outfile_brierplot = os.path.join(output_dir, "brier_scores.png")
-outfile_AUCplot = os.path.join(output_dir, "auc_curves.png")
-outfile_bestCVfold = os.path.join(output_dir, "best_outer_fold.pkl")
+outfile_aucplot = os.path.join(output_dir, "auc_curves.png")
+outfile_bestfold = os.path.join(output_dir, "best_outer_fold.pkl")
+outfile_importancebyfold = os.path.join(output_dir, "importances_by_fold.pkl")
 
-# log file
-path_logfile = os.path.join(output_dir, "pipeline_run.log")
-logfile = open(path_logfile, "w")
+logfile = open(os.path.join(output_dir, "pipeline_run.log"), "w")
 sys.stdout = logfile
 sys.stderr = logfile
 
-# Parameters
-top_n_cpgs = 200000
+# Data preprocessing parameters
+top_n_cpgs = 10000 #200000  # as in CoxNet or fewer?
 inner_cv_folds = 3
 outer_cv_folds = 5
-eval_time_grid = np.arange(1, 10.1, 0.5)  # 1 to 10 in steps of 0.5
-
-# type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
-alphas_estimation_l1ratio = 0.5#0.9 
-param_grid_l1ratios = [0.5]#[0.9]
+eval_time_grid = np.arange(1, 10.1, 0.5)  # time points for metrics
 
 ################################################################################
 # MAIN PIPELINE
 ################################################################################
 
 start_time = time.time()
-log(f"Script started at: {time.ctime(start_time)}")
+log(f"RSF pipeline started at: {time.ctime(start_time)}")
 
-# Load and prepare data
+# Load and preprocess data (same as CoxNet pipeline)
 train_ids = pd.read_csv(infile_train_ids, header=None).iloc[:, 0].tolist()
-log("Loaded training ids!")
-
+log("Loaded training IDs.")
 beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, infile_clinical)
-log("Loaded training data!")
-
+log("Loaded methylation and clinical data.")
 X = preprocess_data(beta_matrix, top_n_cpgs=top_n_cpgs)
-log("Finished preprocessing of training data!")
-
+log("Preprocessed feature matrix (top CpGs).")
+# Prepare survival labels (Surv object with event & time)
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 
 # Define hyperparameter grid
-alphas = estimate_alpha_grid(X, y, l1_ratio=alphas_estimation_l1ratio, 
-                             alpha_min_ratio=0.05, n_alphas=20)
-param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=param_grid_l1ratios)
+param_grid = define_param_grid(X, y)
 
 # Run nested cross-validation
 outer_models = run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
-                             inner_scorer="concordance_index_ipcw")  #inner_scorer="cumulative_dynamic_auc", auc_scorer_times=eval_time_grid
+                             inner_scorer="concordance_index_ipcw")
 joblib.dump(outer_models, outfile_outermodels)
-log(f"Saved refitted best model per outer fold to: {outfile_outermodels}")
+log(f"Saved outer CV models to: {outfile_outermodels}")
 
-# Summarize and evaluate models
+# Summarize and evaluate performance
 summarize_outer_models(outer_models)
 model_performances = evaluate_outer_models(outer_models, X, y, eval_time_grid)
 
-# Extract fold and evaluation results
+# Extract arrays for plotting
 folds = [p["fold"] for p in model_performances]
 brier_array = np.array([p["brier_t"] for p in model_performances])
 ibs_array = np.array([p["ibs"] for p in model_performances])
 
-# Visualize and summarize performance
-log("Visualizing outer model performances:")
+# Plot performance metrics
+log("Generating performance plots.")
 plot_brier_scores(brier_array, ibs_array, folds, eval_time_grid, outfile_brierplot)
-plot_auc_curves(model_performances, eval_time_grid, outfile_AUCplot)
+plot_auc_curves(model_performances, eval_time_grid, outfile_aucplot)
 summarize_performance(model_performances)
 
-# Select best model based on specified metric
-metric = "mean_auc"  # could also be "ibs" or "auc_at_5y"
+# Average importances_mean across folds
+#outer_models = joblib.load(outfile_outermodels)
+#importances_by_fold = compute_permutation_importance(outer_models, X, y)
+#joblib.dump(importances_by_fold, outfile_importancebyfold)
+#importances_all_folds = [m["feature_importances"]["importances_mean"] for m in outer_models]
+#mean_importances = pd.concat(importances_all_folds, axis=1).mean(axis=1)
+#mean_importances.sort_values(ascending=False).head(20)
+
+# Select and save the best model (by chosen metric)
+metric = "mean_auc"  # could be "ibs" or "auc_at_5y"
 best_outer_fold = select_best_model(model_performances, outer_models, metric)
-joblib.dump(best_outer_fold, outfile_bestCVfold)
-log(f"Best fold ({best_outer_fold['fold']}) saved to: {outfile_bestCVfold}")
+if best_outer_fold:
+    joblib.dump(best_outer_fold, outfile_bestfold)
+    log(f"Best model (fold {best_outer_fold['fold']}) saved to: {outfile_bestfold}")
 
-################################################################################
-# THE END
-################################################################################
-
-end_time = time.time()  # Record end time
-log(f"Script ended at: {time.ctime(end_time)}")
+end_time = time.time()
+log(f"RSF pipeline ended at: {time.ctime(end_time)}")
 log(f"Total execution time: {(end_time - start_time) / 60:.2f} minutes.")
 logfile.close()

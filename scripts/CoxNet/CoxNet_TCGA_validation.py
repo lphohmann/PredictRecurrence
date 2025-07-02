@@ -29,6 +29,9 @@ from src.utils import (
     preprocess_data,
     beta2m
 )
+from src.annotation_functions import (
+    run_univariate_cox_for_cpgs
+)
 
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
@@ -60,6 +63,8 @@ path_logfile = os.path.join(output_dir, "tcga_run.log")
 logfile = open(path_logfile, "w")
 sys.stdout = logfile
 sys.stderr = logfile
+#sys.stdout = sys.__stdout__
+#sys.stderr = sys.__stderr__
 
 # Parameters
 top_n_cpgs = 200000
@@ -94,6 +99,7 @@ log("Finished preprocessing of training data!")
 
 tcga_clinical_data = pd.read_csv(infile_tcga_clinical)
 tcga_clinical_data.rename(columns={tcga_clinical_data.columns[0]: "Sample"}, inplace=True)
+tcga_clinical_data = tcga_clinical_data[tcga_clinical_data['TNBC'] == True]
 tcga_clinical_data = tcga_clinical_data.loc[:,["Sample","PFI","PFIbin","OS","OSbin"]]
 tcga_clinical_data = tcga_clinical_data.set_index("Sample")
 clin_test = tcga_clinical_data
@@ -101,7 +107,6 @@ tcga_betavalues_data = pd.read_csv(infile_tcga_betavalues,index_col=0).T
 tcga_betavalues_data = tcga_betavalues_data.loc[clin_test.index]
 X_test = beta2m(tcga_betavalues_data, beta_threshold=0.001)
 log("Finished loading TCGA data!")
-
 
 ################################################################################
 # inspect model hyperparameters and coefficients
@@ -123,6 +128,8 @@ print(f"{num_present} out of {len(nonzero_features)} non-zero features are prese
 
 missing_features = nonzero_features.difference(X_test.columns)
 print(f"Features NOT present in TCGA dataset ({len(missing_features)}): {missing_features.to_list()}")
+
+nonzero_features_in_tcga = nonzero_features.intersection(X_test.columns)
 
 ################################################################################
 # prep TCGA data
@@ -147,6 +154,26 @@ X_test = pd.concat([X_test, missing_df], axis=1)
 X_test = X_test[train_features]
 
 print(X_test.shape)  # Should be (number of test samples, 200000)
+
+
+################################################################################
+# Compute univar cox on test set for included cpgs
+################################################################################
+log("Computing univar cox on test set per cpg!")
+
+uv_res = run_univariate_cox_for_cpgs(mval_matrix=X_test[nonzero_features_in_tcga],
+                                 clin_data=clin_test,
+                                 time_col="OS",
+                                 event_col="OSbin")
+# Format for nice logging
+uv_res["HR"] = uv_res["HR"].astype(float).map(lambda x: f"{x:.2f}")
+uv_res["CI_lower"] = uv_res["CI_lower"].astype(float).map(lambda x: f"{x:.2f}")
+uv_res["CI_upper"] = uv_res["CI_upper"].astype(float).map(lambda x: f"{x:.2f}")
+uv_res["pval"] = uv_res["pval"].astype(float).map(lambda x: f"{x:.3g}")
+uv_res["padj"] = uv_res["padj"].astype(float).map(lambda x: f"{x:.3g}")
+
+# Print only selected columns
+print(uv_res[["CpG_ID", "HR", "CI_lower","CI_upper","pval", "padj"]].to_string(index=False))
 
 ################################################################################
 # Compute risk scores in TCGA

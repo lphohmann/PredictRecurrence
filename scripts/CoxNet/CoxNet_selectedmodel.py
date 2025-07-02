@@ -28,7 +28,9 @@ from src.utils import (
     load_training_data,
     preprocess_data
 )
-
+from src.annotation_functions import (
+    run_univariate_cox_for_cpgs
+)
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 
@@ -154,6 +156,25 @@ plt.tight_layout()
 plt.savefig(os.path.join(output_dir, "coxnet_nonzero_coefficients.png"), dpi=300, bbox_inches="tight")
 plt.close()
 print(f"Saved coefficient plot with {len(non_zero_coefs)} non-zero features.")
+
+################################################################################
+# Compute univar cox on test set for included cpgs
+################################################################################
+log("Computing univar cox on test set per cpg!")
+
+uv_res = run_univariate_cox_for_cpgs(mval_matrix=X_test[nonzero_features],
+                                 clin_data=clin_test,
+                                 time_col="RFi_years",
+                                 event_col="RFi_event")
+# Format for nice logging
+uv_res["HR"] = uv_res["HR"].astype(float).map(lambda x: f"{x:.2f}")
+uv_res["CI_lower"] = uv_res["CI_lower"].astype(float).map(lambda x: f"{x:.2f}")
+uv_res["CI_upper"] = uv_res["CI_upper"].astype(float).map(lambda x: f"{x:.2f}")
+uv_res["pval"] = uv_res["pval"].astype(float).map(lambda x: f"{x:.3g}")
+uv_res["padj"] = uv_res["padj"].astype(float).map(lambda x: f"{x:.3g}")
+
+# Print only selected columns
+print(uv_res[["CpG_ID", "HR", "CI_lower","CI_upper","pval", "padj"]].to_string(index=False))
 
 ################################################################################
 # Compute risk scores on training set to get cutoffs
