@@ -96,11 +96,27 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
             best_params = inner_model.best_params_
 
             print(f"\n\t--> Fold {fold_num}: Best grid-search parameters {best_params}\n", flush=True)
+            
+            # Refit best RSF with exact best hyperparameters (on full outer train set)
+            # Extract and clean hyperparameters
+            rsf_params = {
+                key.split("randomsurvivalforest__")[1]: value
+                for key, value in best_params.items()
+                if "randomsurvivalforest__" in key
+            }
+
+            refit_best_model = make_pipeline(
+                RandomSurvivalForest(
+                    **rsf_params,  # Unpack best hyperparameters
+                    random_state=42
+                )
+            )
+            refit_best_model.fit(X_train, y_train)
 
             # We can use best_model directly; RandomSurvivalForest is already fitted on X_train.
             outer_models.append({
                 "fold": fold_num,
-                "model": best_model,
+                "model": refit_best_model,
                 "train_idx": train_idx,
                 "test_idx": test_idx,
                 "cv_results": inner_model.cv_results_,

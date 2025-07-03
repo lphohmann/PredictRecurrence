@@ -52,6 +52,7 @@ infile_outerfold = "./output/CoxNet_unadjusted/best_outer_fold.pkl" # ⚠️ ADA
 output_dir = "output/CoxNet_unadjusted/Selected_model/" # ⚠️ ADAPT
 os.makedirs(output_dir, exist_ok=True)
 outfile_cpg_set = os.path.join(output_dir, "selected_cpgs.txt")
+outfile_univariate_cox = os.path.join(output_dir, "testset_univariate_cox.csv")
 
 # log file
 path_logfile = os.path.join(output_dir, "selectedmodel_run.log")
@@ -174,7 +175,9 @@ uv_res["pval"] = uv_res["pval"].astype(float).map(lambda x: f"{x:.3g}")
 uv_res["padj"] = uv_res["padj"].astype(float).map(lambda x: f"{x:.3g}")
 
 # Print only selected columns
+uv_res = uv_res.sort_values(by="CpG_ID")
 print(uv_res[["CpG_ID", "HR", "CI_lower","CI_upper","pval", "padj"]].to_string(index=False))
+uv_res.to_csv(outfile_univariate_cox, index=False)
 
 ################################################################################
 # Compute risk scores on training set to get cutoffs

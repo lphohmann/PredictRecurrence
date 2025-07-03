@@ -57,7 +57,7 @@ sys.stdout = logfile
 sys.stderr = logfile
 
 # Data preprocessing parameters
-top_n_cpgs = 10000 #200000  # as in CoxNet or fewer?
+top_n_cpgs = 10000 #10000  # as in CoxNet or fewer?
 inner_cv_folds = 3
 outer_cv_folds = 5
 eval_time_grid = np.arange(1, 10.1, 0.5)  # time points for metrics
