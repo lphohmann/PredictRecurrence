@@ -26,33 +26,20 @@ import matplotlib.pyplot as plt
 
 def define_param_grid():
     """
-    Define a more compact and computationally feasible parameter grid for
-    GradientBoostingSurvivalAnalysis hyperparameters for nested CV.
-    Focuses on the most impactful parameters.
+    Define a more effective and robust parameter grid for
+    GradientBoostingSurvivalAnalysis hyperparameters for nested CV,
+    prioritizing regularization for small, high-dimensional data.
     """
     param_grid = {
-        # n_estimators: Number of boosting stages (trees).
-        # We need a range, but keep it manageable.
-        "estimator__gradientboostingsurvivalanalysis__n_estimators": [100, 200], # Fewer options
-
-        # learning_rate: Controls the step size. Crucial for speed and performance.
-        # Often best to keep this relatively small and adjust n_estimators.
-        "estimator__gradientboostingsurvivalanalysis__learning_rate": [0.05, 0.1], # Fewer options
-
-        # max_depth: Limits the depth of individual trees. Small values prevent overfitting.
-        # This is a very impactful parameter for model complexity.
-        "estimator__gradientboostingsurvivalanalysis__max_depth": [3, 5], # Keep it shallow and focused
-
-        # subsample: Fraction of samples for fitting each tree. Helps with regularization.
-        # Common values are usually in this range.
-        "estimator__gradientboostingsurvivalanalysis__subsample": [0.8, 1.0], # 1.0 is no subsampling
-
-        # loss: For survival, 'coxph' is almost always what you want.
-        # Fixing it reduces the search space without compromising much.
+        "estimator__gradientboostingsurvivalanalysis__n_estimators": [200, 500],
+        "estimator__gradientboostingsurvivalanalysis__learning_rate": [0.01, 0.05],
+        "estimator__gradientboostingsurvivalanalysis__max_depth": [3, 4], # Even shallower
+        "estimator__gradientboostingsurvivalanalysis__subsample": [0.7, 0.8], # Force subsampling
+        "estimator__gradientboostingsurvivalanalysis__min_samples_leaf": [10, 20], # Add this for more control
         "estimator__gradientboostingsurvivalanalysis__loss": ["coxph"]
     }
 
-    print(f"Defined compact GBM parameter grid:\n{param_grid}")
+    print(f"Defined refined GBM parameter grid:\n{param_grid}")
     return param_grid
 
 # ==============================================================================

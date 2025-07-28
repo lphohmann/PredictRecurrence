@@ -17,7 +17,7 @@ from sksurv.util import Surv
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import log, load_training_data, preprocess_data
+from src.utils import log, load_training_data, preprocess_data, beta2m, variance_filter, run_univariate_cox_for_cpgs
 from src.rsf_functions import (
     define_param_grid,
     run_nested_cv,
@@ -74,7 +74,20 @@ train_ids = pd.read_csv(infile_train_ids, header=None).iloc[:, 0].tolist()
 log("Loaded training IDs.")
 beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, infile_clinical)
 log("Loaded methylation and clinical data.")
-X = preprocess_data(beta_matrix, top_n_cpgs=top_n_cpgs)
+mvals = beta2m(beta_matrix, beta_threshold=0.001)
+# prefiltering step
+#X = variance_filter(mvals, top_n=top_n_cpgs)
+
+univariate_cox_results = run_univariate_cox_for_cpgs(
+    mval_matrix=mvals,
+    clin_data=clinical_data,
+    time_col="RFi_years", 
+    event_col="RFi_event" 
+)
+sorted_cpgs = univariate_cox_results.sort_values(by="padj", ascending=True)
+selected_cpg_ids_top_n = sorted_cpgs["CpG_ID"].head(top_n_cpgs).tolist()
+X = mvals[selected_cpg_ids_top_n]
+
 log("Preprocessed feature matrix (top CpGs).")
 # Prepare survival labels (Surv object with event & time)
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)

@@ -8,6 +8,10 @@
 
 import pandas as pd
 import numpy as np
+from lifelines import CoxPHFitter
+from statsmodels.stats.multitest import multipletests
+import warnings
+from sklearn.exceptions import ConvergenceWarning
 
 # ==============================================================================
 # FUNCTIONS
@@ -122,3 +126,87 @@ def preprocess_data(beta_matrix, top_n_cpgs):
     return mvals
 
 # ==============================================================================
+
+def run_univariate_cox_for_cpgs(mval_matrix: pd.DataFrame,
+                                 clin_data: pd.DataFrame,
+                                 time_col: str,
+                                 event_col: str):
+    """
+    Run univariate Cox regression for each CpG site, using penalized likelihood
+    to handle complete separation issues.
+
+    Parameters:
+    - mval_matrix: DataFrame [patients x CpGs] with M-values.
+    - clin_data: DataFrame with clinical info (must contain time_col and event_col).
+    - time_col: Name of the column with time to event.
+    - event_col: Name of the column with event occurrence (1=event, 0=censored).
+
+    Returns:
+    - DataFrame with columns: CpG_ID, HR, CI_lower, CI_upper, pval, padj
+    """
+    results = []
+
+    # Suppress lifelines warnings for individual CpGs that are handled by penalization
+    # We will only print our custom warning if fitting truly fails.
+    # You can comment this out if you want to see all warnings, but it will be verbose.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=ConvergenceWarning)
+        warnings.simplefilter("ignore", category=RuntimeWarning) # Catch numpy runtime warnings too
+
+        for cpg in mval_matrix.columns:
+            df = pd.concat([clin_data[[time_col, event_col]].copy(), mval_matrix[[cpg]]], axis=1).dropna()
+            df.columns = ["time", "event", "cpg_value"]
+
+            # Check for constant or near-constant values *after* dropping NaNs
+            # A more robust check for very low variance might be beneficial here,
+            # but the penalizer should handle most cases.
+            if df["cpg_value"].nunique() <= 1:
+                results.append({
+                    "CpG_ID": cpg,
+                    "HR": np.nan,
+                    "CI_lower": np.nan,
+                    "CI_upper": np.nan,
+                    "pval": np.nan
+                })
+                continue
+
+            try:
+                # --- CHANGE START ---
+                # Add a penalizer to handle complete separation
+                # A small value like 0.01 or 0.1 is often a good starting point.
+                # This adds a Firth-type penalty.
+                cph = CoxPHFitter(penalizer=0.01) # <--- ADDED PENALIZER
+                # --- CHANGE END ---
+
+                cph.fit(df, duration_col="time", event_col="event")
+                summary = cph.summary.loc["cpg_value"]
+
+                results.append({
+                    "CpG_ID": cpg,
+                    "HR": summary["exp(coef)"],
+                    "CI_lower": summary["exp(coef) lower 95%"],
+                    "CI_upper": summary["exp(coef) upper 95%"],
+                    "pval": summary["p"]
+                })
+            except Exception as e:
+                # Only print warning if it's a true fitting error not related to convergence/separation
+                # that the penalizer should handle.
+                print(f"Warning: Failed for {cpg}: {e}", flush=True)
+                results.append({
+                    "CpG_ID": cpg,
+                    "HR": np.nan,
+                    "CI_lower": np.nan,
+                    "CI_upper": np.nan,
+                    "pval": np.nan
+                })
+
+    df_results = pd.DataFrame(results)
+
+    # Adjust p-values using Benjamini-Hochberg (FDR)
+    pvals = df_results["pval"].values
+    mask = ~pd.isna(pvals)
+    padj = np.full_like(pvals, np.nan, dtype=np.float64)
+    padj[mask] = multipletests(pvals[mask], method='fdr_bh')[1]
+    df_results["padj"] = padj
+
+    return df_results
