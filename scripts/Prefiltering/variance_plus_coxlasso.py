@@ -97,8 +97,8 @@ sys.stderr = logfile
 
 # Hardcoded Filtering parameters
 MIN_SAMPLES_PER_CPG_THRESHOLD = 0.95 # Minimum proportion of non-missing values for a CpG to be kept
-INITIAL_VARIANCE_FILTER_TOP_N = 1000 # First stage: filter to this many CpGs by variance
-FINAL_COX_LASSO_TARGET_N = 1000 # Target number of CpGs to select after Cox Lasso.
+INITIAL_VARIANCE_FILTER_TOP_N = 200000 # First stage: filter to this many CpGs by variance
+FINAL_COX_LASSO_TARGET_N = 200000 # Target number of CpGs to select after Cox Lasso.
 
 # Hardcoded Cox Lasso tuning parameters (for the feature selection step)
 #COX_LASSO_ALPHA_VALUES = np.array([0.0001, 0.001, 0.01, 0.1]) # This is a 1D array of alpha values
@@ -114,7 +114,7 @@ start_time = time.time()
 log(f"CpG filtering pipeline started at: {time.ctime(start_time)}")
 log(f"Processing Cohort: {args.cohort_name}, Methylation Type: {args.methylation_type}")
 log(f"Train IDs file: {COHORT_TRAIN_IDS_PATHS[args.cohort_name]}")
-log(f"Methylation data file: {COHORT_TRAIN_IDS_PATHS[args.cohort_name]}")
+log(f"Methylation data file: {METHYLATION_DATA_PATHS[args.methylation_type]}")
 log(f"Clinical data file: {INFILE_CLINICAL}")
 log(f"Output directory: {current_output_dir}")
 log(f"Output CpG filename: {args.output_cpg_filename}")
@@ -174,7 +174,8 @@ param_grid_for_gs = {
     'estimator__coxnetsurvivalanalysis__l1_ratio': COX_LASSO_L1_RATIO_VALUES
 }
 
-inner_cv = StratifiedKFold(n_splits=COX_LASSO_CV_FOLDS, shuffle=True, random_state=12)
+inner_cv_splitter = StratifiedKFold(n_splits=COX_LASSO_CV_FOLDS, shuffle=True, random_state=12)
+inner_cv = list(inner_cv_splitter.split(mvals_filtered_for_lasso, y_full[EVENT_FIELD_NAME]))
 
 grid_search_cox_lasso = GridSearchCV(
     scorer_cox_lasso_pipe,
@@ -199,10 +200,11 @@ log(f"Best Cox Lasso score (IPCW C-index): {grid_search_cox_lasso.best_score_:.4
 # ================================
 
 # Access CoxnetSurvivalAnalysis estimator
-cox_estimator = best_cox_lasso_model.named_steps['coxnetsurvivalanalysis']
+cox_estimator = best_cox_lasso_model.estimator_.named_steps['coxnetsurvivalanalysis']
 # For CoxnetSurvivalAnalysis, coef_ is a 2D array (n_features, n_alphas).
 # Since we passed single alphas, it's (n_features, 1). We need to flatten it.
 coefficients = pd.Series(cox_estimator.coef_.flatten(), index=mvals_filtered_for_lasso.columns)
+log(f"Coefficient range (min, max): ({coefficients.min():.4f}, {coefficients.max():.4f})")
 
 # ================================
 # Select CpGs with non-zero coefficients
@@ -238,16 +240,12 @@ log(f"Saved selected CpG IDs to: {outfile_filtered_cpgs}")
 # ================================
 
 log("Generating coefficient histograms...")
-plot_coefficients_histogram(coefficients,
-                            title=f"Cox Lasso Coefficients (All) - {args.cohort_name} ({args.methylation_type.capitalize()})",
-                            xlabel="Coefficient Value",
-                            outfile=os.path.join(current_output_dir, "cox_lasso_coefficients_all_histogram.png"))
 
 plot_coefficients_histogram(coefficients[coefficients != 0],
                             title=f"Cox Lasso Coefficients (Non-Zero) - {args.cohort_name} ({args.methylation_type.capitalize()})",
                             xlabel="Coefficient Value",
                             outfile=os.path.join(current_output_dir, "cox_lasso_coefficients_nonzero_histogram.png"))
-log("Coefficient histograms generated.")
+log("Coefficient histogram generated.")
 
 # ================================
 # ================================
