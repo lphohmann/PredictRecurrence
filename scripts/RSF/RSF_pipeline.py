@@ -76,17 +76,7 @@ beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, in
 log("Loaded methylation and clinical data.")
 mvals = beta2m(beta_matrix, beta_threshold=0.001)
 # prefiltering step
-#X = variance_filter(mvals, top_n=top_n_cpgs)
-
-univariate_cox_results = run_univariate_cox_for_cpgs(
-    mval_matrix=mvals,
-    clin_data=clinical_data,
-    time_col="RFi_years", 
-    event_col="RFi_event" 
-)
-sorted_cpgs = univariate_cox_results.sort_values(by="padj", ascending=True)
-selected_cpg_ids_top_n = sorted_cpgs["CpG_ID"].head(top_n_cpgs).tolist()
-X = mvals[selected_cpg_ids_top_n]
+X = variance_filter(mvals, top_n=top_n_cpgs)
 
 log("Preprocessed feature matrix (top CpGs).")
 # Prepare survival labels (Surv object with event & time)

@@ -27,8 +27,7 @@ import seaborn as sns
 import argparse
 
 # Sci-kit learn and Sci-kit survival imports for Cox Lasso
-from sklearn.model_selection import GridSearchCV
-from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import GridSearchCV, KFold, StratifiedKFold
 from sklearn.pipeline import make_pipeline
 from sksurv.linear_model import CoxnetSurvivalAnalysis
 from sksurv.metrics import as_concordance_index_ipcw_scorer
@@ -37,37 +36,12 @@ from sksurv.util import Surv # For creating structured array for survival data
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
 from src.utils import log, load_training_data, beta2m, variance_filter, plot_coefficients_histogram
-
+from src.coxnet_functions import estimate_alpha_grid
 # Set working directory to the project root
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 
 # ==============================================================================
-# HELPER FUNCTIONS
-# ==============================================================================
-
-def plot_coefficients_histogram(coefficients: pd.Series, title: str, xlabel: str, outfile: str, bins='auto'):
-    """
-    Plots a histogram of the given coefficients, focusing on non-zero values.
-    """
-    plt.figure(figsize=(10, 7))
-    # Filter for non-zero coefficients for a more meaningful plot
-    non_zero_coefs = coefficients[coefficients != 0].dropna()
-    if non_zero_coefs.empty:
-        log(f"No non-zero coefficients to plot for {title}.")
-        plt.text(0.5, 0.5, "No non-zero coefficients", horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
-    else:
-        sns.histplot(non_zero_coefs, bins=bins, kde=True, color='purple', edgecolor='black')
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel("Number of CpGs")
-    plt.grid(axis='y', alpha=0.75)
-    plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
-    plt.close()
-    log(f"Saved {title} histogram to {outfile}")
-
-# ==============================================================================
-# CONFIGURATION MAPPINGS
+# MAPPINGS OF INPUT FILES
 # ==============================================================================
 
 # Mapping of methylation types to their respective file paths
@@ -96,6 +70,7 @@ parser.add_argument("--cohort_name", type=str, required=True,
                     help="Name of the cohort to process")
 parser.add_argument("--methylation_type", type=str, choices=METHYLATION_DATA_PATHS.keys(), required=True,
                     help="Type of methylation data")
+# defaults, no need to change usually
 parser.add_argument("--output_base_dir", type=str, default="./data/set_definitions/CpG_prefiltered_sets/",
                     help="Base output directory")
 parser.add_argument("--output_cpg_filename", type=str, default="cox_lasso_selected_cpgs.txt",
@@ -103,7 +78,7 @@ parser.add_argument("--output_cpg_filename", type=str, default="cox_lasso_select
 args = parser.parse_args()
 
 # ==============================================================================
-# PARAMS for Filtering (Hardcoded as requested)
+# PARAMS
 # ==============================================================================
 
 # Cohort-specific output directories
@@ -122,14 +97,13 @@ sys.stderr = logfile
 
 # Hardcoded Filtering parameters
 MIN_SAMPLES_PER_CPG_THRESHOLD = 0.95 # Minimum proportion of non-missing values for a CpG to be kept
-INITIAL_VARIANCE_FILTER_TOP_N = 100 # First stage: filter to this many CpGs by variance
-FINAL_COX_LASSO_TARGET_N = 10 # Target number of CpGs to select after Cox Lasso.
+INITIAL_VARIANCE_FILTER_TOP_N = 1000 # First stage: filter to this many CpGs by variance
+FINAL_COX_LASSO_TARGET_N = 1000 # Target number of CpGs to select after Cox Lasso.
 
 # Hardcoded Cox Lasso tuning parameters (for the feature selection step)
-# For CoxnetSurvivalAnalysis, 'alphas' expects a list of alpha values.
-# GridSearchCV will iterate through each list in 'alphas'.
-COX_LASSO_ALPHA_VALUES = np.array([0.001, 0.01, 0.1, 1.0]) # This is a 1D array of alpha values
-COX_LASSO_L1_RATIO_VALUES = np.array([0.8, 0.9, 0.95, 1.0]) # L1_ratio values for Lasso vs Ridge mix
+#COX_LASSO_ALPHA_VALUES = np.array([0.0001, 0.001, 0.01, 0.1]) # This is a 1D array of alpha values
+# use estimate_alpha_grid() instead
+COX_LASSO_L1_RATIO_VALUES = np.array([0.9, 1.0]) # L1_ratio values for Lasso vs Ridge mix
 COX_LASSO_CV_FOLDS = 5 # Number of CV folds for tuning Cox Lasso hyperparameters
 
 # ==============================================================================
@@ -139,20 +113,20 @@ COX_LASSO_CV_FOLDS = 5 # Number of CV folds for tuning Cox Lasso hyperparameters
 start_time = time.time()
 log(f"CpG filtering pipeline started at: {time.ctime(start_time)}")
 log(f"Processing Cohort: {args.cohort_name}, Methylation Type: {args.methylation_type}")
-
-train_ids_file = COHORT_TRAIN_IDS_PATHS[args.cohort_name]
-log(f"Train IDs file: {train_ids_file}")
+log(f"Train IDs file: {COHORT_TRAIN_IDS_PATHS[args.cohort_name]}")
+log(f"Methylation data file: {COHORT_TRAIN_IDS_PATHS[args.cohort_name]}")
+log(f"Clinical data file: {INFILE_CLINICAL}")
 log(f"Output directory: {current_output_dir}")
 log(f"Output CpG filename: {args.output_cpg_filename}")
 
 # ================================
 # --- Load Data ---
 # ================================
-train_ids = pd.read_csv(train_ids_file, header=None).iloc[:, 0].tolist()
+
+train_ids = pd.read_csv(COHORT_TRAIN_IDS_PATHS[args.cohort_name], header=None).iloc[:, 0].tolist()
 log("Loaded training IDs.")
 
-infile_betavalues = METHYLATION_DATA_PATHS[args.methylation_type]
-beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, INFILE_CLINICAL)
+beta_matrix, clinical_data = load_training_data(train_ids, METHYLATION_DATA_PATHS[args.methylation_type], INFILE_CLINICAL)
 log(f"Loaded methylation data (initial CpGs: {beta_matrix.shape[1]}) and clinical data.")
 
 mvals = beta2m(beta_matrix)
@@ -189,18 +163,23 @@ log(f"Starting Cox Lasso feature selection on {mvals_filtered_for_lasso.shape[1]
 
 # Use CoxnetSurvivalAnalysis in the pipeline
 cox_lasso_pipe = make_pipeline(CoxnetSurvivalAnalysis())
+scorer_cox_lasso_pipe = as_concordance_index_ipcw_scorer(cox_lasso_pipe)
 
 # Construct the param_grid for GridSearchCV 
+alphas = estimate_alpha_grid(mvals_filtered_for_lasso, y_full, l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=10)
+
 # CORRECTED: Each alpha value must be wrapped in its own list for CoxnetSurvivalAnalysis
 param_grid_for_gs = {
-    'coxnetsurvivalanalysis__alphas': [[alpha] for alpha in COX_LASSO_ALPHA_VALUES], 
-    'coxnetsurvivalanalysis__l1_ratio': COX_LASSO_L1_RATIO_VALUES
+    'estimator__coxnetsurvivalanalysis__alphas': [[alpha] for alpha in alphas], 
+    'estimator__coxnetsurvivalanalysis__l1_ratio': COX_LASSO_L1_RATIO_VALUES
 }
 
+inner_cv = StratifiedKFold(n_splits=COX_LASSO_CV_FOLDS, shuffle=True, random_state=12)
+
 grid_search_cox_lasso = GridSearchCV(
-    cox_lasso_pipe,
+    scorer_cox_lasso_pipe,
     param_grid=param_grid_for_gs,
-    cv=COX_LASSO_CV_FOLDS, 
+    cv=inner_cv, 
     #scoring=as_concordance_index_ipcw_scorer(cox_lasso_pipe, times=time_points_for_scorer),
     n_jobs=-1, # Use all available cores for grid search
     error_score=0, # Handle errors gracefully during grid search
