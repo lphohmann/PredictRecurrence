@@ -2,7 +2,7 @@
 
 ################################################################################
 # Script: Cox Lasso CpG Filtering Pipeline
-# Author: lennart hohmann (adapted by Gemini)
+# Author: lennart hohmann 
 # Description: Performs two-stage CpG filtering:
 #              1. Initial variance-based filtering to reduce dimensionality.
 #              2. Cox Lasso (L1-regularized Cox regression) filtering
@@ -20,10 +20,6 @@ import sys
 import time
 import numpy as np
 import pandas as pd
-import joblib
-import warnings
-import matplotlib.pyplot as plt
-import seaborn as sns
 import argparse
 
 # Sci-kit learn and Sci-kit survival imports for Cox Lasso
