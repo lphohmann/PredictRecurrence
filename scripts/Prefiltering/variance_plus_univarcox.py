@@ -93,8 +93,8 @@ sys.stdout = logfile
 sys.stderr = logfile
 
 # Filtering parameters
-INITIAL_VARIANCE_FILTER_TOP_N = 100000 # <--- First stage: filter to this many CpGs by variance
-FINAL_UNIVARCOX_TARGET_N = 100 # <--- Second stage: select this many CpGs by adjusted p-value
+INITIAL_VARIANCE_FILTER_TOP_N = 50000 # <--- First stage: filter to this many CpGs by variance
+FINAL_UNIVARCOX_TARGET_N = 200 # <--- Second stage: select this many CpGs by adjusted p-value
 UNIVAR_COX_PENALIZER_VALUE = 0.01 # Penalizer for CoxPHFitter
 
 # ==============================================================================
@@ -162,14 +162,64 @@ log("-------------------------------------------------")
 # --- Select Final CpGs based on adjusted p-value --- 
 # ================================
 
-num_nan_padj = univariate_cox_results["padj"].isna().sum()
-log(f"Number of CpGs with NaN adjusted p-values (failed univariate Cox fits): {num_nan_padj}")
+#num_nan_padj = univariate_cox_results["padj"].isna().sum()
+#log(f"Number of CpGs with NaN adjusted p-values (failed univariate Cox fits): {num_nan_padj}")
 
 # Ensure to drop NaNs from pval for sorting, as failed fits will have NaN pvals
-filtered_results = univariate_cox_results.dropna(subset=["padj"]).sort_values(by="padj", ascending=True)
-selected_cpg_ids = filtered_results["CpG_ID"].head(FINAL_UNIVARCOX_TARGET_N).tolist()
+#filtered_results = univariate_cox_results.dropna(subset=["padj"]).sort_values(by="padj", ascending=True)
+#selected_cpg_ids = filtered_results["CpG_ID"].head(FINAL_UNIVARCOX_TARGET_N).tolist()
 
-log(f"Final selection: {len(selected_cpg_ids)} CpGs selected based on univariate Cox adjusted p-value (top {FINAL_UNIVARCOX_TARGET_N}).")
+#log(f"Final selection: {len(selected_cpg_ids)} CpGs selected based on univariate Cox adjusted p-value (top {FINAL_UNIVARCOX_TARGET_N}).")
+
+# ================================
+# --- Select Final CpGs based on Combined Score (prioritizing significance) --- 
+# ================================
+
+num_nan_values = univariate_cox_results[["padj", "HR"]].isna().any(axis=1).sum()
+log(f"Number of CpGs with NaN padj or HR (failed fits): {num_nan_values}")
+
+# Create combined score for valid CpGs
+filtered_results = univariate_cox_results.dropna(subset=["padj", "HR"])
+
+if len(filtered_results) == 0:
+    log("ERROR: No valid CpGs after removing NaN values. Cannot proceed with selection.")
+    selected_cpg_ids = []
+else:
+    # Calculate combined score: -log10(padj) * |log(HR)|
+    filtered_results["combined_score"] = -np.log10(filtered_results["padj"]) * np.abs(np.log(filtered_results["HR"]))
+    
+    # Check for significant CpGs first
+    significant_cpgs = filtered_results[filtered_results["padj"] < 0.05]
+    
+    if len(significant_cpgs) > 0:
+        # Select only from significant CpGs
+        n_to_select = min(FINAL_UNIVARCOX_TARGET_N, len(significant_cpgs))
+        selected_cpg_ids = significant_cpgs.nlargest(n_to_select, "combined_score")["CpG_ID"].tolist()
+        selection_method = "significant_only"
+        log(f"Found {len(significant_cpgs)} significant CpGs (padj < 0.05). Selected {len(selected_cpg_ids)} based on combined score.")
+        
+        if len(significant_cpgs) < FINAL_UNIVARCOX_TARGET_N:
+            log(f"NOTE: Only {len(significant_cpgs)} significant CpGs available (target was {FINAL_UNIVARCOX_TARGET_N}).")
+    else:
+        # Fallback: no significant CpGs, select from all based on combined score
+        n_to_select = min(FINAL_UNIVARCOX_TARGET_N, len(filtered_results))
+        selected_cpg_ids = filtered_results.nlargest(n_to_select, "combined_score")["CpG_ID"].tolist()
+        selection_method = "fallback_all"
+        log(f"WARNING: No CpGs with padj < 0.05 found. Selected top {len(selected_cpg_ids)} CpGs by combined score from all available CpGs.")
+    
+    # Get statistics for selected CpGs
+    selected_data = filtered_results[filtered_results["CpG_ID"].isin(selected_cpg_ids)]
+    n_significant_selected = (selected_data["padj"] < 0.05).sum()
+    
+    # Log selection summary
+    log(f"Final selection: {len(selected_cpg_ids)} CpGs selected using {selection_method} method.")
+    log(f"Selected CpGs with padj < 0.05: {n_significant_selected}/{len(selected_cpg_ids)}")
+    
+    # Log detailed statistics
+    log(f"Selected CpGs - HR range: {selected_data['HR'].min():.3f} to {selected_data['HR'].max():.3f}")
+    log(f"Selected CpGs - padj range: {selected_data['padj'].min():.2e} to {selected_data['padj'].max():.2e}")
+    log(f"Selected CpGs - Combined score range: {selected_data['combined_score'].min():.3f} to {selected_data['combined_score'].max():.3f}")
+
 
 # ================================
 # --- Save Selected CpGs --- 
