@@ -93,8 +93,8 @@ sys.stderr = logfile
 
 # Hardcoded Filtering parameters
 MIN_SAMPLES_PER_CPG_THRESHOLD = 0.95 # Minimum proportion of non-missing values for a CpG to be kept
-INITIAL_VARIANCE_FILTER_TOP_N = 200000 # First stage: filter to this many CpGs by variance
-FINAL_COX_LASSO_TARGET_N = 200000 # Target number of CpGs to select after Cox Lasso.
+INITIAL_VARIANCE_FILTER_TOP_N = 50000 # First stage: filter to this many CpGs by variance
+FINAL_COX_LASSO_TARGET_N = 50000 # Target number of CpGs to select after Cox Lasso.
 
 # Hardcoded Cox Lasso tuning parameters (for the feature selection step)
 #COX_LASSO_ALPHA_VALUES = np.array([0.0001, 0.001, 0.01, 0.1]) # This is a 1D array of alpha values
