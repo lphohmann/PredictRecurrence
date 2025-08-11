@@ -1,312 +1,214 @@
 #!/usr/bin/env python
 
 ################################################################################
-# Script: CoxNet selected model - Survival analyses
+# Script: Validate model on external dataset
 # Author: Lennart Hohmann
 ################################################################################
 
 ################################################################################
-# SET UP
+# IMPORTS
 ################################################################################
 
-import os
-import sys
-import time
+import os, sys, time
 import numpy as np
 import pandas as pd
 import joblib
-#from sksurv.util import Surv
-import matplotlib.pyplot as plt
-from lifelines import KaplanMeierFitter, CoxPHFitter
-from lifelines.statistics import logrank_test
-from lifelines.plotting import add_at_risk_counts
+from sksurv.util import Surv
+import matplotlib as plt
 
-# Import custom CoxNet functions
+# Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import (
-    log,
-    load_training_data,
-    preprocess_data
-)
-from src.annotation_functions import (
-    run_univariate_cox_for_cpgs
-)
+from src.utils import log, beta2m
+
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 
 ################################################################################
-# INPUT FILES
+# INPUT FILES & PARAMS
 ################################################################################
 
-# Input files
-infile_train_ids = "./data/train/train_subcohorts/TNBC_train_ids.csv" # sample ids of training cohort
-infile_betavalues = "./data/train/train_methylation_unadjusted.csv" # ⚠️ ADAPT
-infile_clinical = "./data/train/train_clinical.csv"
-infile_outerfold = "./output/RSF_unadjusted/best_outer_fold.pkl" # ⚠️ ADAPT
+#INFILE_IDS_EXTERNAL = ""
+INFILE_METHYLATION_EXTERNAL = "./data/raw/TCGA_n645_unadjustedBeta.csv"
+INFILE_CLINICAL_EXTERNAL = "./data/raw/TCGA_TNBC_MergedAnnotations.csv"
+INFILE_MODEL = "./output/RSF/TNBC/Unadjusted/best_outer_fold.pkl" 
+INFILE_CPG_SET = "./data/set_definitions/CpG_prefiltered_sets/cox_lasso_selected_cpgs.txt"
+
+MODEL_TYPE = "randomsurvivalforest" #"randomsurvivalforest"
+# has to match selected_model.named_steps.get(here)
+
+RISKSCORE_CUTOFF = 0.1 
+OUTCOME_VARS = ["RFi_years", "RFi_event"] # in clinical file columns
 
 ################################################################################
-# PARAMS
+# OUTPUT FILES
 ################################################################################
 
-# Output directory and files
-output_dir = "output/RSF_unadjusted/Selected_model/" # ⚠️ ADAPT
-os.makedirs(output_dir, exist_ok=True)
-outfile_cpg_set = os.path.join(output_dir, "selected_cpgs.txt")
-outfile_univariate_cox = os.path.join(output_dir, "testset_univariate_cox.csv")
+# output directory
+current_output_dir = os.path.join(
+    "output/Model_validation/",
+    MODEL_TYPE
+)
+os.makedirs(current_output_dir, exist_ok=True)
 
 # log file
-path_logfile = os.path.join(output_dir, "selectedmodel_run.log")
+path_logfile = os.path.join(current_output_dir, "validation_run.log")
 logfile = open(path_logfile, "w")
 sys.stdout = logfile
 sys.stderr = logfile
-
-# Parameters
-top_n_cpgs = 200000
 
 ################################################################################
 # MAIN CODE
 ################################################################################
 
 start_time = time.time()
-log(f"Script started at: {time.ctime(start_time)}")
+log(f"Validation pipeline started at: {time.ctime(start_time)}")
+log(f"Model file: {INFILE_MODEL}")
+log(f"Ext. methylation data file: {INFILE_METHYLATION_EXTERNAL}")
+log(f"Ext. clinical data file: {INFILE_CLINICAL_EXTERNAL}")
+log(f"Filtered CpG set data file: {INFILE_CPG_SET}")
+print(f"Cutoff for patient sratification: {RISKSCORE_CUTOFF}")
+log(f"Output directory: {current_output_dir}")
 
-# Load and prepare data
-selected_fold = joblib.load(infile_outerfold)
-#print(selected_fold.keys())
-selected_model = selected_fold['model'].best_estimator_
-bm_testidx = selected_fold["test_idx"].tolist() 
-bm_trainidx = selected_fold["train_idx"].tolist()
-log("Loaded selected outer fold!")
+# Load 
+#ids = pd.read_csv(INFILE_IDS_EXTERNAL, header=None).iloc[:, 0].tolist()
 
-train_ids = pd.read_csv(infile_train_ids, header=None).iloc[:, 0].tolist()
-log("Loaded training ids!")
+# load clin data
+clinical_data = pd.read_csv(INFILE_CLINICAL_EXTERNAL)
+clinical_data = clinical_data.set_index("Sample")
+#clinical_data = clinical_data.loc[ids]
+# load beta values
+beta_matrix = pd.read_csv(INFILE_METHYLATION_EXTERNAL,index_col=0).T
+# align dataframes
+beta_matrix = beta_matrix.loc[clinical_data.index] # works??
+log("Loaded methylation and clinical data.")
 
-beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, infile_clinical)
-log("Loaded training data!")
+mvals = beta2m(beta_matrix, beta_threshold=0.001)
 
-X = preprocess_data(beta_matrix, top_n_cpgs=top_n_cpgs)
-log("Finished preprocessing of training data!")
+# subset to only include prefiltered cpgs that were used int he trianing of the model
+with open(INFILE_CPG_SET, 'r') as f:
+    model_cpg_ids = [line.strip() for line in f if line.strip()]
+    log(f"Successfully loaded {len(model_cpg_ids)} CpG IDs from the model's feature set.")
 
-#y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
+    # Identify which CpGs from the model are in the new dataset
+    available_cpgs = [cpg for cpg in model_cpg_ids if cpg in mvals.columns]
+    
+    # Identify the missing CpGs
+    missing_cpgs = [cpg for cpg in model_cpg_ids if cpg not in mvals.columns]
 
-################################################################################
-# calc median follow up time
-################################################################################
-log("Calculating median follow up time!")
+    if not missing_cpgs:
+        log("All CpGs from the model's feature set are present in the external dataset.")
+        # Subset the external data to match the model's features
+        X = mvals[model_cpg_ids]
+    else:
+        log(f"Warning: {len(missing_cpgs)} of the {len(model_cpg_ids)} CpGs from the model's feature set are not in the external dataset.")
+        log(f"Missing CpGs: {', '.join(missing_cpgs)}")
+        
+        if not available_cpgs:
+            log("Error: No CpGs from the model's feature set were found in the external dataset. Cannot proceed.")
+            raise ValueError("No matching CpGs to proceed with.")
 
-clin_mf = clinical_data.copy()
-#clinical_data['RFi_years'].median()
-clin_mf['reverse_event'] = 1 - clin_mf['RFi_event']
-kmf = KaplanMeierFitter()
-kmf.fit(durations=clin_mf['RFi_years'], event_observed=clin_mf['reverse_event'])
-median_followup = kmf.median_survival_time_
-print(f"Median follow-up time (Reverse KM): {median_followup:.2f} years")
+        # Create a new DataFrame with only the available CpGs
+        X = mvals[available_cpgs].copy()
+        log(f"Proceeding with the {len(available_cpgs)} available CpGs and imputing the missing ones.")
+        
+        # Add back missing CpGs and impute with the calculated M-value
+        for cpg in missing_cpgs:
+            X[cpg] = np.log2(0.5 / (1 - 0.5)) # is 0
 
-# survival analyses
-#y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
+        # Reorder the columns to match the original model's feature order
+        X = X[model_cpg_ids]
 
-################################################################################
-# define clin test and train data of that outer fold
-################################################################################
-log("Defining clinical test and train data of selected outer fold!")
+    log(f"Final data matrix for validation (X) has shape: {X.shape}")
 
-X_test = X.iloc[bm_testidx,:].copy()
-clin_test = clinical_data.iloc[bm_testidx,:].copy()
+# Prepare survival labels (Surv object with event & time)
+y = Surv.from_dataframe(OUTCOME_VARS[1], OUTCOME_VARS[0], clinical_data)
 
-X_train = X.iloc[bm_trainidx,:].copy()
-clin_train = clinical_data.iloc[bm_trainidx,:].copy()
+# load model
+selected_fold = joblib.load(INFILE_MODEL)
+selected_model = selected_fold['model']
 
-################################################################################
-# inspect model hyperparameters and coefficients
-################################################################################
-log("Inspecting outer foldmodel hyperparameters and coefficients!")
+# Access the RandomSurvivalForest estimator from the pipeline
+model = selected_model.named_steps.get(MODEL_TYPE)
 
-# Unpack estimator from pipeline
-coxnet = selected_model.named_steps["randomsurvivalforest"]
+log("Predicting risk scores on the external dataset.")
+risk_scores = model.predict(X)
+clinical_data["risk_score"] = risk_scores
 
-# Now access alpha and coefficients
-alpha_used = coxnet.alphas_[0]  # or simply: coxnet.alphas_[0]
-print("alpha =", alpha_used)
-print("L1 ratio:", coxnet.l1_ratio)
-
-# Get non-zero coefficients
-coefs = coxnet.coef_.flatten()
-nonzero_mask = coefs != 0
-nonzero_features = X.columns[nonzero_mask]
-nonzero_features.shape
-print(f"Number of non-zero coefficients: {np.sum(nonzero_mask)}")
-
-# save for later annotation
-with open(outfile_cpg_set, "w") as f:
-    for cpg in nonzero_features.to_list():
-        f.write(f"{cpg}\n")
-
-# plot
-coefs_df = pd.DataFrame(coefs, index=X.columns, columns=["coefficient"])
-non_zero_coefs = coefs_df[coefs_df["coefficient"] != 0]
-# Sort by absolute coefficient size for plotting
-coef_order = non_zero_coefs["coefficient"].abs().sort_values().index
-non_zero_coefs = non_zero_coefs.loc[coef_order]
-
-fig, ax = plt.subplots(figsize=(6, 8))
-non_zero_coefs.plot.barh(ax=ax, legend=False)
-ax.set_xlabel("Coefficient")
-ax.set_title("Non-zero CoxNet Coefficients")
-ax.grid(True)
-plt.tight_layout()
-plt.savefig(os.path.join(output_dir, "coxnet_nonzero_coefficients.png"), dpi=300, bbox_inches="tight")
-plt.close()
-print(f"Saved coefficient plot with {len(non_zero_coefs)} non-zero features.")
-
-################################################################################
-# Compute univar cox on test set for included cpgs
-################################################################################
-log("Computing univar cox on test set per cpg!")
-
-uv_res = run_univariate_cox_for_cpgs(mval_matrix=X_test[nonzero_features],
-                                 clin_data=clin_test,
-                                 time_col="RFi_years",
-                                 event_col="RFi_event")
-# Format for nice logging
-uv_res["HR"] = uv_res["HR"].astype(float).map(lambda x: f"{x:.2f}")
-uv_res["CI_lower"] = uv_res["CI_lower"].astype(float).map(lambda x: f"{x:.2f}")
-uv_res["CI_upper"] = uv_res["CI_upper"].astype(float).map(lambda x: f"{x:.2f}")
-uv_res["pval"] = uv_res["pval"].astype(float).map(lambda x: f"{x:.3g}")
-uv_res["padj"] = uv_res["padj"].astype(float).map(lambda x: f"{x:.3g}")
-
-# Print only selected columns
-uv_res = uv_res.sort_values(by="CpG_ID")
-print(uv_res[["CpG_ID", "HR", "CI_lower","CI_upper","pval", "padj"]].to_string(index=False))
-uv_res.to_csv(outfile_univariate_cox, index=False)
-
-################################################################################
-# Compute risk scores on training set to get cutoffs
-################################################################################
-log("Computing risk scores on training set to get cutoffs!")
-
-risk_scores_train = selected_model.predict(X_train)
-risk_scores_train = pd.Series(risk_scores_train, index=X_train.index)
-median_cutoff = risk_scores_train.median()  # define median cutoff from training risk scores
-print(f"Median-based cutoff: {median_cutoff:.4f}")
-
-################################################################################
-# Compute predictiveness-based cutoff
-################################################################################
-
-sorted_scores = np.sort(risk_scores_train.values)
-event_rate = clin_train["RFi_event"].mean()  # prevalence of event
-# Find percentile where predicted risk is closest to event rate
-closest_idx = np.argmin(np.abs(sorted_scores - event_rate))
-percentile = (closest_idx + 1) / len(sorted_scores) * 100
-predictiveness_cutoff = np.percentile(sorted_scores, percentile)
-print(f"Predictiveness-based cutoff: {predictiveness_cutoff:.4f}")
-
-################################################################################
-# 2. Compute risk scores on test set
-################################################################################
-log("Computing risk scores on test set!")
-
-risk_scores = selected_model.predict(X_test)
-risk_scores = pd.Series(risk_scores, index=X_test.index)
-clin_test["risk_score"] = risk_scores
-
-################################################################################
-# 3. Stratify into high/low risk using median
-################################################################################
-
+# Plot Histogram of Risk Scores
 log("Plotting Histogram of Risk Scores!")
 
-# Basic matplotlib histogram
 plt.figure(figsize=(8, 6))
 plt.hist(risk_scores, bins=30, color='skyblue', edgecolor='black')
 plt.title("Histogram of Risk Scores")
-plt.xlabel("Risk Score")
+plt.xlabel("Risk Score (Cumulative Hazard)")
 plt.ylabel("Number of Patients")
 plt.grid(True)
-plt.savefig(os.path.join(output_dir, "Hist_riskscores.png"), dpi=300)  
+plt.savefig(os.path.join(current_output_dir, "Hist_riskscores.png"), dpi=300)  
 plt.close()
 
-################################################################################
-# 4. Kaplan-Meier Plot
-################################################################################
+# Kaplan-Meier Plot
+log("Plotting Kaplan-Meier curves for high/low risk groups defined by cutoff")
 
-log("Plotting Kaplan-Meier curves for high/low risk groups defined by median and predictiveness cutoffs!")
+clinical_data["risk_group"] = pd.Series(["high" if x > cutoff else "low" for x in risk_scores], index=risk_scores.index)
 
-for cutoff in [median_cutoff, predictiveness_cutoff]:
+summary = clinical_data.groupby("risk_group")[OUTCOME_VARS[1]].value_counts().unstack(fill_value=0)
+print(summary)
 
-    print(f"\nCutoff = {cutoff:.4f}\n",flush=True)
+kmf_low = KaplanMeierFitter()
+kmf_high = KaplanMeierFitter()
 
-    # Use the median cutoff from training to assign risk groups in test set
-    clin_test["risk_group"] = pd.Series(["high" if x > cutoff else "low" for x in risk_scores], index=risk_scores.index)
+mask_low = clinical_data["risk_group"] == "low"
+mask_high = clinical_data["risk_group"] == "high"
 
-    summary = clin_test.groupby("risk_group")["RFi_event"].value_counts().unstack()
-    print(summary)
+kmf_low.fit(clinical_data.loc[mask_low, OUTCOME_VARS[0]], clinical_data.loc[mask_low, OUTCOME_VARS[1]], label="Low risk")
+kmf_high.fit(clinical_data.loc[mask_high, OUTCOME_VARS[0]], clinical_data.loc[mask_high, OUTCOME_VARS[1]], label="High risk")
 
-    # Initialize KM fitters
-    kmf_low = KaplanMeierFitter()
-    kmf_high = KaplanMeierFitter()
+fig, ax = plt.subplots(figsize=(8, 6))
 
-    # Masks
-    mask_low = clin_test["risk_group"] == "low"
-    mask_high = clin_test["risk_group"] == "high"
+kmf_low.plot(ax=ax, ci_show=True)
+kmf_high.plot(ax=ax, ci_show=True)
 
-    # Fit
-    kmf_low.fit(clin_test.loc[mask_low, "RFi_years"], clin_test.loc[mask_low, "RFi_event"], label="Low risk")
-    kmf_high.fit(clin_test.loc[mask_high, "RFi_years"], clin_test.loc[mask_high, "RFi_event"], label="High risk")
+add_at_risk_counts(kmf_low, kmf_high, ax=ax, rows_to_show= ["At risk"])
+ax.set_xlabel("Time (years)")
+ax.set_ylabel("Survival Probability")
 
-    # plot
-    # Allocate space for KM plot + risk table
-    fig, ax = plt.subplots(figsize=(8, 6))
+results = logrank_test(
+    clinical_data.loc[mask_low, OUTCOME_VARS[0]],
+    clinical_data.loc[mask_high, OUTCOME_VARS[0]],
+    event_observed_A=clinical_data.loc[mask_low, OUTCOME_VARS[1]],
+    event_observed_B=clinical_data.loc[mask_high, OUTCOME_VARS[1]]
+)
 
-    kmf_low.plot(ax=ax, ci_show=True)
-    kmf_high.plot(ax=ax, ci_show=True)
+p_value = results.p_value
 
-    # Add risk table
-    add_at_risk_counts(kmf_low, kmf_high, ax=ax,rows_to_show= ["At risk"])
-    ax.set_xlabel("Time (years)")
-    ax.set_ylabel("Survival Probability")
+plt.title(f"Kaplan-Meier: High vs. Low Risk Groups\nLog-rank p-value = {p_value:.4f}\nCutoff method: {cutoff_name}")
+plt.xlabel("Time (years)")
+plt.ylabel("Survival Probability")
+plt.grid(True, linestyle='--', alpha=0.6)
+plt.tight_layout()
+plt.savefig(os.path.join(current_output_dir, f"KM_risk_groups_cutoff_{cutoff_name.lower()}.png"), dpi=300) 
+plt.close()
 
-    results = logrank_test(
-        clin_test.loc[mask_low, "RFi_years"],
-        clin_test.loc[mask_high, "RFi_years"],
-        event_observed_A=clin_test.loc[mask_low, "RFi_event"],
-        event_observed_B=clin_test.loc[mask_high, "RFi_event"]
-    )
-
-    p_value = results.p_value
-
-    plt.title(f"Kaplan-Meier: High vs. Low Risk Groups\nLog-rank p-value = {p_value:.4f}")
-    plt.xlabel("Time (years)")
-    plt.ylabel("Survival Probability")
-    plt.grid(True, linestyle='--', alpha=0.6)
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f"KM_risk_groups_{cutoff:.4f}.png"), dpi=300) 
-    plt.close()
-
-################################################################################
-# 5. Univariate Cox regression with risk score
-################################################################################
-
+# Univariate Cox regression with risk score
 log("Calculating univariate Cox regression and plotting hazard ratio for risk score!")
 
-# Prepare dataframe for lifelines
-df_lifelines = clin_test[["RFi_event", "RFi_years", "risk_score"]].copy()
-df_lifelines.columns = ["event", "time", "risk_score"]  # lifelines naming
+df_lifelines = clinical_data[[OUTCOME_VARS[1], OUTCOME_VARS[0], "risk_score"]].copy()
+df_lifelines.columns = ["event", "time", "risk_score"]
 
-# Fit univariate Cox model
 cph = CoxPHFitter()
 cph.fit(df_lifelines, duration_col="time", event_col="event")
 
-# Print summary
 print("\nUnivariate Cox regression (risk score):")
 cph.print_summary()
 
-# Optional: check event distribution
 print("\nEvent value counts:")
-print(clin_test["RFi_event"].value_counts())
+print(clinical_data[OUTCOME_VARS[1]].value_counts())
 
-# Generate the forest plot
 ax = cph.plot(hazard_ratios=True)
 plt.tight_layout()
-plt.savefig(os.path.join(output_dir, "cox_forest_plot.png"), dpi=300, bbox_inches="tight")  
+plt.savefig(os.path.join(current_output_dir, "cox_forest_plot.png"), dpi=300, bbox_inches="tight")
 plt.close()
+
+log(f"Script finished at: {time.ctime(time.time())}")
+log(f"Total runtime: {(time.time() - start_time):.2f} seconds.")
+logfile.close()

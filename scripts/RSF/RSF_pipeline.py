@@ -120,7 +120,7 @@ outfile_bestfold = os.path.join(current_output_dir, "best_outer_fold.pkl")
 outfile_importancebyfold = os.path.join(current_output_dir, "importances_by_fold.pkl")
 
 # ==============================================================================
-# MAIN FILTERING PIPELINE
+# MAIN PIPELINE
 # ==============================================================================
 
 start_time = time.time()
