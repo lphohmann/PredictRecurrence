@@ -14,7 +14,10 @@ import numpy as np
 import pandas as pd
 import joblib
 from sksurv.util import Surv
-import matplotlib as plt
+import matplotlib.pyplot as plt
+from lifelines import KaplanMeierFitter, CoxPHFitter
+from lifelines.statistics import logrank_test
+from lifelines.plotting import add_at_risk_counts
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
@@ -30,14 +33,15 @@ os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 #INFILE_IDS_EXTERNAL = ""
 INFILE_METHYLATION_EXTERNAL = "./data/raw/TCGA_n645_unadjustedBeta.csv"
 INFILE_CLINICAL_EXTERNAL = "./data/raw/TCGA_TNBC_MergedAnnotations.csv"
-INFILE_MODEL = "./output/RSF/TNBC/Unadjusted/best_outer_fold.pkl" 
-INFILE_CPG_SET = "./data/set_definitions/CpG_prefiltered_sets/cox_lasso_selected_cpgs.txt"
 
-MODEL_TYPE = "randomsurvivalforest" #"randomsurvivalforest"
+INFILE_MODEL = "./output/RSF/TNBC/Unadjusted/Coxlasso/best_outer_fold.pkl" # GBM RSF
+INFILE_CPG_SET = "./data/set_definitions/CpG_prefiltered_sets/TNBC/Unadjusted/cox_lasso_selected_cpgs.txt"
+
+MODEL_TYPE = "randomsurvivalforest" #"gradientboostingsurvivalanalysis" #"randomsurvivalforest"
 # has to match selected_model.named_steps.get(here)
 
-RISKSCORE_CUTOFF = 0.1 
-OUTCOME_VARS = ["RFi_years", "RFi_event"] # in clinical file columns
+RISKSCORE_CUTOFF = 7 #1 # calc medain in train set 
+OUTCOME_VARS = ["PFS", "PFSbin"]#["OS", "OSbin"] # in clinical file columns
 
 ################################################################################
 # OUTPUT FILES
@@ -74,15 +78,20 @@ log(f"Output directory: {current_output_dir}")
 
 # load clin data
 clinical_data = pd.read_csv(INFILE_CLINICAL_EXTERNAL)
+clinical_data.rename(columns={clinical_data.columns[0]: "Sample"}, inplace=True)
+clinical_data = clinical_data[clinical_data['TNBC'] == True]
+clinical_data = clinical_data.loc[:,["Sample","PFI","PFIbin","OS","OSbin"]]
 clinical_data = clinical_data.set_index("Sample")
+
 #clinical_data = clinical_data.loc[ids]
 # load beta values
 beta_matrix = pd.read_csv(INFILE_METHYLATION_EXTERNAL,index_col=0).T
-# align dataframes
-beta_matrix = beta_matrix.loc[clinical_data.index] # works??
-log("Loaded methylation and clinical data.")
 
+# align dataframes
+beta_matrix = beta_matrix.loc[clinical_data.index]
 mvals = beta2m(beta_matrix, beta_threshold=0.001)
+
+log("Loaded methylation and clinical data.")
 
 # subset to only include prefiltered cpgs that were used int he trianing of the model
 with open(INFILE_CPG_SET, 'r') as f:
@@ -125,10 +134,16 @@ y = Surv.from_dataframe(OUTCOME_VARS[1], OUTCOME_VARS[0], clinical_data)
 
 # load model
 selected_fold = joblib.load(INFILE_MODEL)
-selected_model = selected_fold['model']
+selected_model = selected_fold['model']  # scorer object
+pipeline = selected_model.estimator      # unwrap the pipeline
+
+print(pipeline.named_steps)
 
 # Access the RandomSurvivalForest estimator from the pipeline
-model = selected_model.named_steps.get(MODEL_TYPE)
+model = pipeline.named_steps[MODEL_TYPE] # your RSF inside
+
+#print(type(selected_model))
+#print(dir(selected_model))
 
 log("Predicting risk scores on the external dataset.")
 risk_scores = model.predict(X)
@@ -146,50 +161,65 @@ plt.grid(True)
 plt.savefig(os.path.join(current_output_dir, "Hist_riskscores.png"), dpi=300)  
 plt.close()
 
+
+################################################################################
 # Kaplan-Meier Plot
+################################################################################
+
+
 log("Plotting Kaplan-Meier curves for high/low risk groups defined by cutoff")
 
-clinical_data["risk_group"] = pd.Series(["high" if x > cutoff else "low" for x in risk_scores], index=risk_scores.index)
+cutoff_name = f"fixed_{RISKSCORE_CUTOFF}"
+clinical_data["risk_group"] = ["high" if x > RISKSCORE_CUTOFF else "low" for x in risk_scores]
 
 summary = clinical_data.groupby("risk_group")[OUTCOME_VARS[1]].value_counts().unstack(fill_value=0)
 print(summary)
 
-kmf_low = KaplanMeierFitter()
-kmf_high = KaplanMeierFitter()
-
 mask_low = clinical_data["risk_group"] == "low"
 mask_high = clinical_data["risk_group"] == "high"
 
-kmf_low.fit(clinical_data.loc[mask_low, OUTCOME_VARS[0]], clinical_data.loc[mask_low, OUTCOME_VARS[1]], label="Low risk")
-kmf_high.fit(clinical_data.loc[mask_high, OUTCOME_VARS[0]], clinical_data.loc[mask_high, OUTCOME_VARS[1]], label="High risk")
+kmf_low = KaplanMeierFitter()
+kmf_high = KaplanMeierFitter()
 
+# Fit KM curves
+kmf_low.fit(
+    clinical_data.loc[mask_low, OUTCOME_VARS[0]],
+    clinical_data.loc[mask_low, OUTCOME_VARS[1]],
+    label="Low risk"
+)
+kmf_high.fit(
+    clinical_data.loc[mask_high, OUTCOME_VARS[0]],
+    clinical_data.loc[mask_high, OUTCOME_VARS[1]],
+    label="High risk"
+)
+
+# Plot curves
 fig, ax = plt.subplots(figsize=(8, 6))
-
 kmf_low.plot(ax=ax, ci_show=True)
 kmf_high.plot(ax=ax, ci_show=True)
 
-add_at_risk_counts(kmf_low, kmf_high, ax=ax, rows_to_show= ["At risk"])
+add_at_risk_counts(kmf_low, kmf_high, ax=ax)
 ax.set_xlabel("Time (years)")
 ax.set_ylabel("Survival Probability")
 
+# Log-rank test
 results = logrank_test(
     clinical_data.loc[mask_low, OUTCOME_VARS[0]],
     clinical_data.loc[mask_high, OUTCOME_VARS[0]],
     event_observed_A=clinical_data.loc[mask_low, OUTCOME_VARS[1]],
     event_observed_B=clinical_data.loc[mask_high, OUTCOME_VARS[1]]
 )
-
 p_value = results.p_value
 
 plt.title(f"Kaplan-Meier: High vs. Low Risk Groups\nLog-rank p-value = {p_value:.4f}\nCutoff method: {cutoff_name}")
-plt.xlabel("Time (years)")
-plt.ylabel("Survival Probability")
 plt.grid(True, linestyle='--', alpha=0.6)
 plt.tight_layout()
-plt.savefig(os.path.join(current_output_dir, f"KM_risk_groups_cutoff_{cutoff_name.lower()}.png"), dpi=300) 
+plt.savefig(os.path.join(current_output_dir, f"KM_risk_groups_cutoff_{cutoff_name}.png"), dpi=300)
 plt.close()
 
+################################################################################
 # Univariate Cox regression with risk score
+################################################################################
 log("Calculating univariate Cox regression and plotting hazard ratio for risk score!")
 
 df_lifelines = clinical_data[[OUTCOME_VARS[1], OUTCOME_VARS[0], "risk_score"]].copy()

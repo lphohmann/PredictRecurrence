@@ -63,7 +63,7 @@ parser.add_argument("--cohort_name", type=str, required=True,
                     help="Name of the cohort to process")
 parser.add_argument("--methylation_type", type=str, choices=METHYLATION_DATA_PATHS.keys(), required=True,
                     help="Type of methylation data")
-parser.add_argument("--filt_cpgs", type=str, required=True,
+parser.add_argument("--train_cpgs", type=str, default=None,
                     help="Set of CpGs for training")
 # defaults, no need to change usually
 parser.add_argument("--output_base_dir", type=str, default="./output/RSF",
@@ -73,15 +73,6 @@ args = parser.parse_args()
 # ==============================================================================
 # PARAMS
 # ==============================================================================
-
-# Mapping of filtered CpG sites to their respective file paths
-# placed here because depended on other input params
-cpg_set_path = os.path.join("./data/set_definitions/CpG_prefiltered_sets",
-args.cohort_name,args.methylation_type.capitalize())
-CPG_DATA_PATHS = {
-    "univarcox": os.path.join(cpg_set_path,"univarcox_selected_cpgs.txt"),
-    "coxlasso": os.path.join(cpg_set_path,"cox_lasso_selected_cpgs.txt")
-}
 
 # Cohort-specific output directories
 current_output_dir = os.path.join(
@@ -110,7 +101,7 @@ EVAL_TIME_GRID = np.arange(1, 10.1, 0.5)  # time points for metrics
 infile_train_ids = COHORT_TRAIN_IDS_PATHS[args.cohort_name]
 infile_betavalues = METHYLATION_DATA_PATHS[args.methylation_type] 
 infile_clinical = INFILE_CLINICAL
-infile_cpg_ids = CPG_DATA_PATHS[args.filt_cpgs]
+infile_cpg_ids = args.train_cpgs
 
 # output files
 outfile_outermodels = os.path.join(current_output_dir, "outer_cv_models.pkl")
@@ -129,7 +120,7 @@ log(f"Processing Cohort: {args.cohort_name}, Methylation Type: {args.methylation
 log(f"Train IDs file: {COHORT_TRAIN_IDS_PATHS[args.cohort_name]}")
 log(f"Methylation data file: {METHYLATION_DATA_PATHS[args.methylation_type]}")
 log(f"Clinical data file: {INFILE_CLINICAL}")
-log(f"Filtered CpG set data file: {CPG_DATA_PATHS[args.filt_cpgs]}")
+log(f"Filtered CpG set data file: {infile_cpg_ids}")
 log(f"Output directory: {current_output_dir}")
 
 # Load and preprocess data (same as CoxNet pipeline)
@@ -139,22 +130,29 @@ beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, in
 log("Loaded methylation and clinical data.")
 mvals = beta2m(beta_matrix, beta_threshold=0.001)
 
-# subset to only include prefiltered cpgs
-
-with open(infile_cpg_ids, 'r') as f:
-    selected_cpg_ids = [line.strip() for line in f if line.strip()]
+# Subset to only include prefiltered CpGs if infile is provided
+if infile_cpg_ids is not None:
+    with open(infile_cpg_ids, 'r') as f:
+        selected_cpg_ids = [line.strip() for line in f if line.strip()] # empy line would be skipped
     log(f"Successfully loaded {len(selected_cpg_ids)} pre-filtered CpG IDs.")
 
-    # --- Subset mvals to only include prefiltered cpgs ---
+    # --- Subset mvals to only include prefiltered CpGs ---
     valid_selected_cpg_ids = [cpg for cpg in selected_cpg_ids if cpg in mvals.columns]
-    
+    missing_cpgs = [cpg for cpg in selected_cpg_ids if cpg not in mvals.columns]
+
+    if missing_cpgs:
+        log(f"Warning: {len(missing_cpgs)} CpGs from the input file are not in the training data: {missing_cpgs}")
+
     if len(valid_selected_cpg_ids) == 0:
         log("Error: No valid pre-filtered CpGs found in the current methylation data columns.")
         raise ValueError("No valid CpGs to proceed with.")
-    else:
-        # save in X
-        X = mvals[valid_selected_cpg_ids]
-        log(f"Successfully subsetted methylation data to {X.shape[1]} pre-filtered CpGs.")
+    
+    X = mvals[valid_selected_cpg_ids]
+    log(f"Successfully subsetted methylation data to {X.shape[1]} pre-filtered CpGs.")
+else:
+    # Keep all CpGs
+    X = mvals.copy()
+    log(f"No pre-filtered CpG file provided. Keeping all {X.shape[1]} CpGs.")
 
 # Prepare survival labels (Surv object with event & time)
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
