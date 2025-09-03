@@ -9,8 +9,11 @@ rm(list=ls())
 setwd("~/PhD_Workspace/PredictRecurrence/")
 #-------------------
 # packages
-if (!require("pacman")) install.packages("pacman")
-pacman::p_load(data.table, globaltest)
+#install.packages("data.table")
+
+#BiocManager::install("globaltest")
+library(globaltest)
+library(data.table)
 
 #-------------------
 # set/create output directories
@@ -79,6 +82,9 @@ for (outcome in outcomes) {
 #######################################################################
 
 sink(outfile_1)
+# Print the date at the top
+cat("Output generated on:", format(Sys.Date(), "%Y-%m-%d"), "\n\n")
+
 for (outcome in outcomes) {
   cat("Global Test Results for", outcome, "\n")
   print(results[[outcome]])

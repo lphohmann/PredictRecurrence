@@ -43,14 +43,13 @@ def define_param_grid(X=None, y=None):
 
 # ==============================================================================
 
-def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds, 
-                  inner_scorer="concordance_index_ipcw", auc_scorer_times=None):
+def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds):
     """
     Run nested cross-validation for RSF. 
     Outer loop estimates performance, inner loop tunes hyperparameters.
     """
     
-    print(f"\n=== Running nested CV for CoxNet with {outer_cv_folds} outer folds and {inner_cv_folds} inner folds (scorer: {inner_scorer}) ===\n", flush=True)
+    print(f"\n=== Running nested CV for CoxNet with {outer_cv_folds} outer folds and {inner_cv_folds} inner folds ===\n", flush=True)
 
     # Stratify outer folds by event indicator to maintain event proportion
     event_labels = y["RFi_event"]
@@ -62,16 +61,7 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
     print(pipe.get_params().keys())
 
     # Choose scoring method for inner CV
-    if inner_scorer == "concordance_index_ipcw":
-        scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
-    elif inner_scorer == "cumulative_dynamic_auc":
-        if auc_scorer_times is None:
-            raise ValueError("Specify auc_scorer_times when using cumulative_dynamic_auc scorer.")
-        scorer_pipe = as_cumulative_dynamic_auc_scorer(pipe, times=auc_scorer_times)
-    #elif inner_scorer is None:
-    #    scorer_pipe = pipe  # use default scoring (Harrell’s C-index)
-    else:
-        raise ValueError(f"Unsupported inner_scorer: {inner_scorer}")
+    scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
 
     # Set up GridSearchCV on the scorer-wrapped pipeline
     inner_model = GridSearchCV(
@@ -90,38 +80,45 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
         print(f"\nOuter fold {fold_num}: {sum(y_train['RFi_event'])} events in training set.", flush=True)
 
         try:
+            # CpG filtering with Cox Lasso
+            selected_cpgs = filter_cpgs_with_cox_lasso(
+                X_train, y_train, log_prefix=f"Prefilter: [Fold {fold_num}] "
+            )
+
+            # Check if any CpGs were selected
+            if not selected_cpgs:
+                print(f"\n\nSkipping fold {fold_num} due to no CpGs selected.\n\n", flush=True)
+                outer_models.append({
+                "fold": fold_num,
+                "model": None,
+                "train_idx": train_idx,
+                "test_idx": test_idx,
+                "cv_results": None,
+                "error": "No CpGs selected by Cox Lasso",
+                "selected_cpgs": None
+                })
+                continue  # skip fitting this fold
+
+            # Subset X_train and X_test to selected CpGs
+            X_train = X_train[selected_cpgs] 
+            X_test = X_test[selected_cpgs]    
+            
             # Inner CV for hyperparameter tuning
             inner_model.fit(X_train, y_train)
             best_model = inner_model.best_estimator_  # pipeline with RSF fitted on X_train
             best_params = inner_model.best_params_
 
             print(f"\n\t--> Fold {fold_num}: Best grid-search parameters {best_params}\n", flush=True)
-            
-            # dont need this because refit=TRUE in GridSearchCV
-            # Refit best RSF with exact best hyperparameters (on full outer train set)
-            # Extract and clean hyperparameters
-            #rsf_params = {
-            #    key.split("randomsurvivalforest__")[1]: value
-            #    for key, value in best_params.items()
-            #    if "randomsurvivalforest__" in key
-            #}
-
-            #refit_best_model = make_pipeline(
-            #    RandomSurvivalForest(
-            #        **rsf_params,  # Unpack best hyperparameters
-            #        random_state=42
-            #    )
-            #)
-            #refit_best_model.fit(X_train, y_train)
 
             # We can use best_model directly; RandomSurvivalForest is already fitted on X_train.
             outer_models.append({
                 "fold": fold_num,
-                "model": best_model,#refit_best_model,
+                "model": best_model,
                 "train_idx": train_idx,
                 "test_idx": test_idx,
                 "cv_results": inner_model.cv_results_,
-                "error": None
+                "error": None,
+                "selected_cpgs": selected_cpgs
             })
 
         except Exception as e:
@@ -132,7 +129,8 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds,
                 "train_idx": train_idx,
                 "test_idx": test_idx,
                 "cv_results": None,
-                "error": str(e)
+                "error": str(e),
+                "selected_cpgs": None
             })
 
     return outer_models
@@ -148,9 +146,8 @@ def summarize_outer_models(outer_models):
         print(f"Fold {entry['fold']}:")
         print(f"  Model: {type(entry['model']).__name__ if entry['model'] else None}")
         print(f"  Training samples: {len(entry.get('train_idx', []))}, "
-              f"Test samples: {len(entry.get('test_idx', []))}")
-        print(f"  Error: {entry.get('error')}")
-    print()
+              f"  Test samples: {len(entry.get('test_idx', []))}")
+        print(f"  Selected_cpgs: {entry['selected_cpgs'] if entry['selected_cpgs'] else None}")
 
 # ==============================================================================
 
@@ -175,8 +172,14 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
         test_idx = entry["test_idx"]
         train_idx = entry["train_idx"]
 
+        # Get the features used in training this fold
+        selected_features = entry.get("selected_cpgs", X.columns)  # fallback to all columns if missing
         X_test, X_train = X.iloc[test_idx], X.iloc[train_idx]
         y_test, y_train = y[test_idx], y[train_idx]
+
+        # Subset X_train and X_test
+        #X_train = X_train[selected_features]
+        X_test = X_test[selected_features]
 
         # Predict risk scores and survival functions on test set
         pred_scores = model.predict(X_test)  # RSF.predict gives risk (sum of cumulative hazard)
@@ -273,18 +276,20 @@ def plot_auc_curves(performance, time_grid, outfile):
 def summarize_performance(performance):
     """
     Print summary statistics (mean ± std) for evaluation metrics across folds.
+    Ignores NaNs in the calculations.
     """
     print("\n=== RSF Evaluation Summary ===\n", flush=True)
+    
     cindexes = [p["cindex"] for p in performance]
     auc5y = [p["auc_at_5y"] for p in performance if p["auc_at_5y"] is not None]
     mean_aucs = [p["mean_auc"] for p in performance]
     ibs_vals = [p["ibs"] for p in performance]
-    print(f"C-index: mean={np.mean(cindexes):.3f} ± {np.std(cindexes):.3f}")
+
+    print(f"C-index: mean={np.nanmean(cindexes):.3f} ± {np.nanstd(cindexes):.3f}")
     if auc5y:
-        print(f"AUC@5y: mean={np.mean(auc5y):.3f} ± {np.std(auc5y):.3f}")
-    print(f"Mean AUC over times: {np.mean(mean_aucs):.3f} ± {np.std(mean_aucs):.3f}")
-    print(f"Integrated Brier Score (IBS): {np.mean(ibs_vals):.3f} ± {np.std(ibs_vals):.3f}")
-    print()
+        print(f"AUC@5y: mean={np.nanmean(auc5y):.3f} ± {np.nanstd(auc5y):.3f}")
+    print(f"Mean AUC over times: {np.nanmean(mean_aucs):.3f} ± {np.nanstd(mean_aucs):.3f}")
+    print(f"Integrated Brier Score (IBS): {np.nanmean(ibs_vals):.3f} ± {np.nanstd(ibs_vals):.3f}")
 
 # ==============================================================================
 
@@ -304,59 +309,81 @@ def select_best_model(performance, outer_models, metric):
 
 # ==============================================================================
 
-def compute_permutation_importance(outer_models, X, y, n_repeats=15, random_state=42):
+
+# ==============================================================================
+
+from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sksurv.linear_model import CoxnetSurvivalAnalysis
+import pandas as pd
+import numpy as np
+from src.coxnet_functions import estimate_alpha_grid
+from src.utils import log, variance_filter
+
+def filter_cpgs_with_cox_lasso(X_train, y_train,
+                               initial_variance_top_n=50000,
+                               l1_ratio_values=[0.9, 1.0],
+                               cox_lasso_cv_folds=5,
+                               log_prefix=""):
     """
-    Compute permutation feature importance on the test set for each outer fold model.
+    Perform CpG filtering on training data using variance + Cox Lasso.
+
+    Steps:
+      1. Variance filter
+      2. Cox Lasso feature selection on training fold
+      3. Return list of CpGs with non-zero coefficients
 
     Args:
-        outer_models (list): List of dicts with trained models and test indices from outer CV.
-        X (DataFrame): Full feature matrix.
-        y (structured array): Full survival outcome.
-        n_repeats (int): Number of permutation repeats.
-        random_state (int): Random seed for reproducibility.
+        X_train (pd.DataFrame): Training methylation data (samples x CpGs).
+        y_train (structured array): Survival labels (Surv object).
+        initial_variance_top_n (int): Keep top N CpGs by variance before Cox Lasso.
+        l1_ratio_values (list): L1 ratios to test in Cox Lasso.
+        cox_lasso_cv_folds (int): Inner CV folds for Cox Lasso hyperparam tuning.
+        log_prefix (str): Prefix for log messages (e.g. "[Fold 1] ").
 
     Returns:
-        dict: Mapping from fold number to feature importances DataFrame (or None if failed).
+        list: CpG IDs selected in this training fold.
     """
-    print("\n=== Computing permutation feature importances for outer models ===\n", flush=True)
+    log(f"{log_prefix}Starting CpG filtering on training fold ({X_train.shape[1]} CpGs).")
 
-    importances_by_fold = {}
+    # 1. Variance filter
+    X_var_filtered = variance_filter(X_train, top_n=initial_variance_top_n)
+    log(f"{log_prefix}Variance filter applied: {X_var_filtered.shape[1]} CpGs remain.")
 
-    for entry in outer_models:
-        fold = entry['fold']
-        model = entry.get('model')
-        test_idx = entry.get('test_idx')
+    # 2. Cox Lasso
+    cox_pipe = make_pipeline(CoxnetSurvivalAnalysis())
 
-        if model is None:
-            print(f"Skipping fold {fold} (no trained model).", flush=True)
-            importances_by_fold[fold] = None
-            continue
+    # Estimate alphas
+    alphas = estimate_alpha_grid(X_var_filtered, y_train,
+                                 l1_ratio=l1_ratio_values[0],
+                                 alpha_min_ratio=0.1, n_alphas=10)
 
-        X_test = X.iloc[test_idx]
-        y_test = y[test_idx]
+    param_grid = {
+        'coxnetsurvivalanalysis__alphas': [[a] for a in alphas],
+        'coxnetsurvivalanalysis__l1_ratio': l1_ratio_values
+    }
 
-        print(f"Computing permutation importance for fold {fold}...", flush=True)
+    event_indicator = y_train["RFi_event"]  
+    stratifier = StratifiedKFold(n_splits=cox_lasso_cv_folds, shuffle=True, random_state=42)
+    inner_cv = stratifier.split(X_var_filtered, event_indicator)
 
-        try:
-            result = permutation_importance(
-                model,
-                X_test,
-                y_test,
-                n_repeats=n_repeats,
-                random_state=random_state,
-                n_jobs=-1
-            )
+    grid_search = GridSearchCV(
+        estimator=cox_pipe,
+        param_grid=param_grid,
+        cv=inner_cv,
+        n_jobs=-1,
+        error_score=0,
+        verbose=0
+    )
 
-            importances_df = pd.DataFrame({
-                "importances_mean": result["importances_mean"],
-                "importances_std": result["importances_std"]
-            }, index=X.columns).sort_values(by="importances_mean", ascending=False)
+    grid_search.fit(X_var_filtered, y_train)
+    best_model = grid_search.best_estimator_
 
-            importances_by_fold[fold] = importances_df
-            print(f"Fold {fold} - Top features:\n{importances_df.head()}\n", flush=True)
+    # 3. Extract non-zero CpGs
+    cox_estimator = best_model.named_steps['coxnetsurvivalanalysis']
+    coefs = pd.Series(cox_estimator.coef_.flatten(), index=X_var_filtered.columns)
 
-        except Exception as e:
-            print(f"Error computing permutation importance for fold {fold}: {e}", flush=True)
-            importances_by_fold[fold] = None
+    selected_cpgs = coefs[coefs != 0].index.tolist()
+    log(f"{log_prefix}Cox Lasso selected {len(selected_cpgs)} CpGs.")
 
-    return importances_by_fold
+    return selected_cpgs

@@ -78,9 +78,7 @@ args = parser.parse_args()
 current_output_dir = os.path.join(
     args.output_base_dir,
     args.cohort_name,
-    args.methylation_type.capitalize(),
-    args.filt_cpgs.capitalize()
-)
+    args.methylation_type.capitalize())
 os.makedirs(current_output_dir, exist_ok=True)
 
 # Logfile is now directly in the cohort's output directory
@@ -161,8 +159,7 @@ y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 param_grid = define_param_grid(X, y)
 
 # Run nested cross-validation
-outer_models = run_nested_cv(X, y, param_grid, OUTER_CV_FOLDS, INNER_CV_FOLDS,
-                             inner_scorer="concordance_index_ipcw")
+outer_models = run_nested_cv(X, y, param_grid, OUTER_CV_FOLDS, INNER_CV_FOLDS)
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")
 
@@ -180,14 +177,6 @@ log("Generating performance plots.")
 plot_brier_scores(brier_array, ibs_array, folds, EVAL_TIME_GRID, outfile_brierplot)
 plot_auc_curves(model_performances, EVAL_TIME_GRID, outfile_aucplot)
 summarize_performance(model_performances)
-
-# Average importances_mean across folds
-#outer_models = joblib.load(outfile_outermodels)
-#importances_by_fold = compute_permutation_importance(outer_models, X, y)
-#joblib.dump(importances_by_fold, outfile_importancebyfold)
-#importances_all_folds = [m["feature_importances"]["importances_mean"] for m in outer_models]
-#mean_importances = pd.concat(importances_all_folds, axis=1).mean(axis=1)
-#mean_importances.sort_values(ascending=False).head(20)
 
 # Select and save the best model (by chosen metric)
 metric = "mean_auc"  # could be "ibs" or "auc_at_5y"
