@@ -99,7 +99,7 @@ outfile_outermodels = os.path.join(current_output_dir, "outer_cv_models.pkl")
 outfile_brierplot = os.path.join(current_output_dir, "brier_scores.png")
 outfile_aucplot = os.path.join(current_output_dir, "auc_curves.png")
 outfile_bestfold = os.path.join(current_output_dir, "best_outer_fold.pkl")
-outfile_importancebyfold = os.path.join(current_output_dir, "importances_by_fold.pkl")
+outfile_performance = os.path.join(current_output_dir, "outer_cv_performance.pkl")
 
 # ==============================================================================
 # MAIN PIPELINE
@@ -168,6 +168,8 @@ log(f"Saved outer CV models to: {outfile_outermodels}")
 # Summarize and evaluate performance
 summarize_outer_models(outer_models)
 model_performances = evaluate_outer_models(outer_models, X, y, EVAL_TIME_GRID)
+joblib.dump(model_performances, outfile_performance)
+print(f"Saved model performances to: {outfile_performance}")
 
 # Extract arrays for plotting
 folds = [p["fold"] for p in model_performances]

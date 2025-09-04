@@ -11,11 +11,10 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import seaborn as sns 
 import os
+from src.utils import log
 
 # ==============================================================================
 # FUNCTIONS
-# ==============================================================================
-
 # ==============================================================================
 
 def plot_brier_scores(brier_array, ibs_array, folds, time_grid, outfile):

@@ -15,23 +15,13 @@ import pandas as pd
 import joblib
 from sksurv.util import Surv
 import argparse
+from sksurv.ensemble import GradientBoostingSurvivalAnalysis 
 
 # Add project src directory to path for imports (adjust as needed)
-# Ensure this path is correct for your environment
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-
-# Import functions specifically for GBM from a new module
-from src.utils import log, load_training_data, beta2m, preprocess_data
-from src.gbm_functions import (
-    define_param_grid,
-    run_nested_cv,
-    summarize_outer_models,
-    evaluate_outer_models,
-    plot_brier_scores,
-    plot_auc_curves,
-    summarize_performance,
-    select_best_model
-)
+from src.utils import log, load_training_data, beta2m, apply_admin_censoring, filter_cpgs_with_cox_lasso, run_nested_cv, summarize_outer_models, summarize_performance,select_best_model
+from src.plotting_functions import plot_brier_scores, plot_auc_curves
+from src.gbm_functions import define_param_grid, evaluate_outer_models
 
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
@@ -66,7 +56,7 @@ parser.add_argument("--cohort_name", type=str, required=True,
                     help="Name of the cohort to process")
 parser.add_argument("--methylation_type", type=str, choices=METHYLATION_DATA_PATHS.keys(), required=True,
                     help="Type of methylation data")
-parser.add_argument("--filt_cpgs", type=str, required=True,
+parser.add_argument("--train_cpgs", type=str, default=None,
                     help="Set of CpGs for training")
 # defaults, no need to change usually
 parser.add_argument("--output_base_dir", type=str, default="./output/GBM",
@@ -77,22 +67,11 @@ args = parser.parse_args()
 # PARAMS
 # ==============================================================================
 
-# Mapping of filtered CpG sites to their respective file paths
-# placed here because depended on other input params
-cpg_set_path = os.path.join("./data/set_definitions/CpG_prefiltered_sets",
-args.cohort_name,args.methylation_type.capitalize())
-CPG_DATA_PATHS = {
-    "univarcox": os.path.join(cpg_set_path,"univarcox_selected_cpgs.txt"),
-    "coxlasso": os.path.join(cpg_set_path,"cox_lasso_selected_cpgs.txt")
-}
-
 # Cohort-specific output directories
 current_output_dir = os.path.join(
     args.output_base_dir,
     args.cohort_name,
-    args.methylation_type.capitalize(),
-    args.filt_cpgs.capitalize()
-)
+    args.methylation_type.capitalize())
 os.makedirs(current_output_dir, exist_ok=True)
 
 # Logfile is now directly in the cohort's output directory
@@ -104,7 +83,7 @@ sys.stderr = logfile
 # Data preprocessing parameters
 INNER_CV_FOLDS = 3
 OUTER_CV_FOLDS = 5
-EVAL_TIME_GRID = np.arange(1, 10.1, 0.5)  # time points for metrics
+EVAL_TIME_GRID = np.arange(1, 5.1, 0.5)  # time points for metrics
 
 # ==============================================================================
 # INPUT AND OUTPUT FILES
@@ -113,13 +92,14 @@ EVAL_TIME_GRID = np.arange(1, 10.1, 0.5)  # time points for metrics
 infile_train_ids = COHORT_TRAIN_IDS_PATHS[args.cohort_name]
 infile_betavalues = METHYLATION_DATA_PATHS[args.methylation_type] 
 infile_clinical = INFILE_CLINICAL
-infile_cpg_ids = CPG_DATA_PATHS[args.filt_cpgs]
+infile_cpg_ids = args.train_cpgs
 
 # output files
 outfile_outermodels = os.path.join(current_output_dir, "outer_cv_models.pkl")
 outfile_brierplot = os.path.join(current_output_dir, "brier_scores.png")
 outfile_aucplot = os.path.join(current_output_dir, "auc_curves.png")
 outfile_bestfold = os.path.join(current_output_dir, "best_outer_fold.pkl")
+outfile_performance = os.path.join(current_output_dir, "outer_cv_performance.pkl")
 
 # ==============================================================================
 # MAIN PIPELINE
@@ -131,32 +111,43 @@ log(f"Processing Cohort: {args.cohort_name}, Methylation Type: {args.methylation
 log(f"Train IDs file: {COHORT_TRAIN_IDS_PATHS[args.cohort_name]}")
 log(f"Methylation data file: {METHYLATION_DATA_PATHS[args.methylation_type]}")
 log(f"Clinical data file: {INFILE_CLINICAL}")
-log(f"Filtered CpG set data file: {CPG_DATA_PATHS[args.filt_cpgs]}")
+log(f"Filtered CpG set data file: {infile_cpg_ids}")
 log(f"Output directory: {current_output_dir}")
 
-# Load and preprocess data
+# Load and preprocess data (same as CoxNet pipeline)
 train_ids = pd.read_csv(infile_train_ids, header=None).iloc[:, 0].tolist()
 log("Loaded training IDs.")
 beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, infile_clinical)
 log("Loaded methylation and clinical data.")
 mvals = beta2m(beta_matrix, beta_threshold=0.001)
 
-# subset to only include prefiltered cpgs
+# apply censoring at 5 years
+# censoring cutoff > max evaluation time
+clinical_data = apply_admin_censoring(clinical_data, "RFi_years", "RFi_event", time_cutoff=5.5, inplace=False)
 
-with open(infile_cpg_ids, 'r') as f:
-    selected_cpg_ids = [line.strip() for line in f if line.strip()]
+# Subset to only include prefiltered CpGs if infile is provided
+if infile_cpg_ids is not None:
+    with open(infile_cpg_ids, 'r') as f:
+        selected_cpg_ids = [line.strip() for line in f if line.strip()] # empy line would be skipped
     log(f"Successfully loaded {len(selected_cpg_ids)} pre-filtered CpG IDs.")
 
-    # --- Subset mvals to only include prefiltered cpgs ---
+    # --- Subset mvals to only include prefiltered CpGs ---
     valid_selected_cpg_ids = [cpg for cpg in selected_cpg_ids if cpg in mvals.columns]
-    
+    missing_cpgs = [cpg for cpg in selected_cpg_ids if cpg not in mvals.columns]
+
+    if missing_cpgs:
+        log(f"Warning: {len(missing_cpgs)} CpGs from the input file are not in the training data: {missing_cpgs}")
+
     if len(valid_selected_cpg_ids) == 0:
         log("Error: No valid pre-filtered CpGs found in the current methylation data columns.")
         raise ValueError("No valid CpGs to proceed with.")
-    else:
-        # save in X
-        X = mvals[valid_selected_cpg_ids]
-        log(f"Successfully subsetted methylation data to {X.shape[1]} pre-filtered CpGs.")
+    
+    X = mvals[valid_selected_cpg_ids]
+    log(f"Successfully subsetted methylation data to {X.shape[1]} pre-filtered CpGs.")
+else:
+    # Keep all CpGs
+    X = mvals.copy()
+    log(f"No pre-filtered CpG file provided. Keeping all {X.shape[1]} CpGs.")
 
 # Prepare survival labels (Surv object with event & time)
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
@@ -165,14 +156,20 @@ y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 param_grid = define_param_grid()
 
 # Run nested cross-validation
-outer_models = run_nested_cv(X, y, param_grid, OUTER_CV_FOLDS, INNER_CV_FOLDS,
-                             inner_scorer="concordance_index_ipcw")
+estimator = GradientBoostingSurvivalAnalysis(random_state=96)
+outer_models = run_nested_cv(X, y, base_estimator=estimator, 
+                             param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS,  
+                             filter_function=filter_cpgs_with_cox_lasso)# model agnostic,
+
+#outer_models = run_nested_cv(X, y, param_grid, OUTER_CV_FOLDS, INNER_CV_FOLDS)
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")
 
 # Summarize and evaluate performance
 summarize_outer_models(outer_models)
 model_performances = evaluate_outer_models(outer_models, X, y, EVAL_TIME_GRID)
+joblib.dump(model_performances, outfile_performance)
+print(f"Saved model performances to: {outfile_performance}")
 
 # Extract arrays for plotting
 folds = [p["fold"] for p in model_performances]
@@ -186,13 +183,13 @@ plot_auc_curves(model_performances, EVAL_TIME_GRID, outfile_aucplot)
 summarize_performance(model_performances)
 
 # Select and save the best model (by chosen metric)
-metric = "mean_auc"
+metric = "mean_auc"  # could be "ibs" or "auc_at_5y"
 best_outer_fold = select_best_model(model_performances, outer_models, metric)
 if best_outer_fold:
     joblib.dump(best_outer_fold, outfile_bestfold)
     log(f"Best model (fold {best_outer_fold['fold']}) saved to: {outfile_bestfold}")
 
 end_time = time.time()
-log(f"GBM survival pipeline ended at: {time.ctime(end_time)}")
+log(f"GBM pipeline ended at: {time.ctime(end_time)}")
 log(f"Total execution time: {(end_time - start_time) / 60:.2f} minutes.")
 logfile.close()
