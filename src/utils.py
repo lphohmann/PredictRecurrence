@@ -8,13 +8,12 @@
 
 import pandas as pd
 import numpy as np
-from lifelines import CoxPHFitter
 from statsmodels.stats.multitest import multipletests
-import warnings
-from sklearn.exceptions import ConvergenceWarning
-import matplotlib.pyplot as plt 
-import seaborn as sns 
-import os
+from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, KFold
+from sksurv.linear_model import CoxnetSurvivalAnalysis
+from src.coxnet_functions import estimate_alpha_grid
+from sksurv.metrics import as_concordance_index_ipcw_scorer
 
 # ==============================================================================
 # FUNCTIONS
@@ -22,6 +21,68 @@ import os
 
 def log(msg):
     print(f"\n=== {msg} ===\n", flush=True)
+
+# ==============================================================================
+
+def load_training_data(train_ids, beta_path, clinical_path):
+    """
+    Loads and aligns clinical and beta methylation data using provided sample IDs.
+
+    Args:
+        train_ids (list): Sample IDs to subset data.
+        beta_path (str): File path to methylation beta matrix.
+        clinical_path (str): File path to clinical data.
+
+    Returns:
+        tuple: (beta_matrix, clinical_data) aligned to the same samples.
+    """
+    # load clin data
+    clinical_data = pd.read_csv(clinical_path)
+    clinical_data = clinical_data.set_index("Sample")
+    clinical_data = clinical_data.loc[train_ids]
+
+    # load beta values
+    beta_matrix = pd.read_csv(beta_path,index_col=0).T
+
+    # align dataframes
+    beta_matrix = beta_matrix.loc[train_ids]
+
+    return beta_matrix, clinical_data
+
+# ==============================================================================
+
+def apply_admin_censoring(df, time_col, event_col, time_cutoff=5.0, inplace=False):
+    """
+    Apply administrative censoring at 'time_cutoff' years for a given time/event pair.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing survival times and events.
+    time_col : str
+        Column name for survival time (e.g., 'OS_years').
+    event_col : str
+        Column name for event indicator (e.g., 'OS_event').
+    time_cutoff : float, default=5.0
+        Time (in years) at which administrative censoring is applied.
+    inplace : bool, default=False
+        If True, modify df in place. If False, return a new DataFrame.
+    
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with censored times and events.
+    """
+    if inplace:
+        df_to_use = df
+    else:
+        df_to_use = df.copy()
+
+    mask = df_to_use[time_col] > time_cutoff
+    df_to_use.loc[mask, time_col] = time_cutoff
+    df_to_use.loc[mask, event_col] = 0
+
+    return df_to_use
 
 # ==============================================================================
 
@@ -81,33 +142,77 @@ def variance_filter(df, min_variance=None, top_n=None):
 
 # ==============================================================================
 
-def load_training_data(train_ids, beta_path, clinical_path):
+def filter_cpgs_with_cox_lasso(X_train, y_train,
+                               initial_variance_top_n=50000,
+                               l1_ratio_values=[0.9, 1.0],
+                               cox_lasso_cv_folds=5,
+                               log_prefix=""):
     """
-    Loads and aligns clinical and beta methylation data using provided sample IDs.
+    Perform CpG filtering on training data using variance + Cox Lasso.
+
+    Steps:
+      1. Variance filter
+      2. Cox Lasso feature selection on training fold
+      3. Return list of CpGs with non-zero coefficients
 
     Args:
-        train_ids (list): Sample IDs to subset data.
-        beta_path (str): File path to methylation beta matrix.
-        clinical_path (str): File path to clinical data.
+        X_train (pd.DataFrame): Training methylation data (samples x CpGs).
+        y_train (structured array): Survival labels (Surv object).
+        initial_variance_top_n (int): Keep top N CpGs by variance before Cox Lasso.
+        l1_ratio_values (list): L1 ratios to test in Cox Lasso.
+        cox_lasso_cv_folds (int): Inner CV folds for Cox Lasso hyperparam tuning.
+        log_prefix (str): Prefix for log messages (e.g. "[Fold 1] ").
 
     Returns:
-        tuple: (beta_matrix, clinical_data) aligned to the same samples.
+        list: CpG IDs selected in this training fold.
     """
-    # load clin data
-    clinical_data = pd.read_csv(clinical_path)
-    clinical_data = clinical_data.set_index("Sample")
-    clinical_data = clinical_data.loc[train_ids]
+    log(f"{log_prefix}Starting CpG filtering on training fold ({X_train.shape[1]} CpGs).")
 
-    # load beta values
-    beta_matrix = pd.read_csv(beta_path,index_col=0).T
+    # 1. Variance filter
+    X_var_filtered = variance_filter(X_train, top_n=initial_variance_top_n)
+    log(f"{log_prefix}Variance filter applied: {X_var_filtered.shape[1]} CpGs remain.")
 
-    # align dataframes
-    beta_matrix = beta_matrix.loc[train_ids]
+    # 2. Cox Lasso
+    cox_pipe = make_pipeline(CoxnetSurvivalAnalysis())
 
-    return beta_matrix, clinical_data
+    # Estimate alphas
+    alphas = estimate_alpha_grid(X_var_filtered, y_train,
+                                 l1_ratio=l1_ratio_values[0],
+                                 alpha_min_ratio=0.1, n_alphas=10)
+
+    param_grid = {
+        'coxnetsurvivalanalysis__alphas': [[a] for a in alphas],
+        'coxnetsurvivalanalysis__l1_ratio': l1_ratio_values
+    }
+
+    event_indicator = y_train["RFi_event"]  
+    stratifier = StratifiedKFold(n_splits=cox_lasso_cv_folds, shuffle=True, random_state=42)
+    inner_cv = stratifier.split(X_var_filtered, event_indicator)
+
+    grid_search = GridSearchCV(
+        estimator=cox_pipe,
+        param_grid=param_grid,
+        cv=inner_cv,
+        n_jobs=-1,
+        error_score=0,
+        verbose=0
+    )
+
+    grid_search.fit(X_var_filtered, y_train)
+    best_model = grid_search.best_estimator_
+
+    # 3. Extract non-zero CpGs
+    cox_estimator = best_model.named_steps['coxnetsurvivalanalysis']
+    coefs = pd.Series(cox_estimator.coef_.flatten(), index=X_var_filtered.columns)
+
+    selected_cpgs = coefs[coefs != 0].index.tolist()
+    log(f"{log_prefix}Cox Lasso selected {len(selected_cpgs)} CpGs.")
+
+    return selected_cpgs
+
 
 # ==============================================================================
-
+# delete if not needed anymore
 def preprocess_data(beta_matrix, top_n_cpgs):
     """
     Converts beta values to M-values and retains most variable CpGs.
@@ -130,165 +235,157 @@ def preprocess_data(beta_matrix, top_n_cpgs):
 
 # ==============================================================================
 
-# Assuming 'log' function is available in this scope, e.g., imported from src.utils
-# from src.utils import log # Uncomment this if log is not globally available
-
-def run_univariate_cox_for_cpgs(mval_matrix: pd.DataFrame,
-                                 clin_data: pd.DataFrame,
-                                 time_col: str,
-                                 event_col: str,
-                                 penalizer_value: float = 0.01): # Added penalizer_value as argument
+def run_nested_cv(X, y, base_estimator, param_grid, 
+                  outer_cv_folds=5, inner_cv_folds=3, 
+                  filter_function=None):
     """
-    Run univariate Cox regression for each CpG site, using penalized likelihood
-    to handle complete separation issues. Includes progress logging.
+    Run nested cross-validation for survival models (RSF, Coxnet, GBM, etc.).
 
-    Parameters:
-    - mval_matrix: DataFrame [patients x CpGs] with M-values.
-    - clin_data: DataFrame with clinical info (must contain time_col and event_col).
-    - time_col: Name of the column with time to event.
-    - event_col: Name of the column with event occurrence (1=event, 0=censored).
-    - penalizer_value: L2 penalizer for CoxPHFitter to handle separation.
+    Args:
+        X (pd.DataFrame): Feature matrix.
+        y (structured array): Survival outcome (event, time).
+        base_estimator: Survival model (e.g. RandomSurvivalForest()).
+        param_grid (dict): Hyperparameter grid.
+        outer_cv_folds (int): Number of outer CV folds.
+        inner_cv_folds (int): Number of inner CV folds.
+        filter_function (callable): Function to filter features.
+                                    Must accept (X_train, y_train) and return list of columns.
+                                    If None, all features are used.
 
     Returns:
-    - DataFrame with columns: CpG_ID, HR, CI_lower, CI_upper, pval, padj
+        list: Results from each outer fold with trained models and metadata.
     """
-    results = []
-    total_cpgs = mval_matrix.shape[1]
-    log(f"Starting univariate Cox regression for {total_cpgs} CpGs...") # Initial log
+    
+    print(f"\n=== Running nested CV with {outer_cv_folds} outer folds "
+          f"and {inner_cv_folds} inner folds ===\n", flush=True)
 
-    # Suppress lifelines warnings for individual CpGs that are handled by penalization
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=ConvergenceWarning)
-        warnings.simplefilter("ignore", category=RuntimeWarning)
+    event_labels = y["RFi_event"]
+    outer_cv = StratifiedKFold(n_splits=outer_cv_folds, shuffle=True, random_state=96)
+    inner_cv = KFold(n_splits=inner_cv_folds, shuffle=True, random_state=96)
 
-        # --- CHANGE START: Added enumerate for progress tracking ---
-        for i, cpg in enumerate(mval_matrix.columns):
-            # Log progress every 5000 CpGs or at the very end
-            if (i + 1) % 5000 == 0 or (i + 1) == total_cpgs:
-                log(f"  Processing CpG {i + 1}/{total_cpgs}...")
-        # --- CHANGE END ---
+    # Build pipeline (can extend with scaling/one-hot encoding if needed)
+    pipe = make_pipeline(base_estimator)
+    print(pipe.get_params().keys())
 
-            df = pd.concat([clin_data[[time_col, event_col]].copy(), mval_matrix[[cpg]]], axis=1).dropna()
-            df.columns = ["time", "event", "cpg_value"]
+    # Default scorer = concordance index
+    scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
 
-            if df["cpg_value"].nunique() <= 1:
-                results.append({
-                    "CpG_ID": cpg,
-                    "HR": np.nan,
-                    "CI_lower": np.nan,
-                    "CI_upper": np.nan,
-                    "pval": np.nan
-                })
-                continue
+    # Inner CV model selection
+    inner_model = GridSearchCV(
+        scorer_pipe,
+        param_grid=param_grid,
+        cv=inner_cv,
+        error_score=0.5,
+        n_jobs=-1,
+        refit=True
+    )
 
-            try:
-                cph = CoxPHFitter(penalizer=penalizer_value) # Use the passed penalizer_value
-                cph.fit(df, duration_col="time", event_col="event")
-                summary = cph.summary.loc["cpg_value"]
+    outer_models = []
+    for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X, event_labels)):
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y[train_idx], y[test_idx]
+        print(f"\nOuter fold {fold_num}: {sum(y_train['RFi_event'])} events "
+              f"in training set.", flush=True)
 
-                results.append({
-                    "CpG_ID": cpg,
-                    "HR": summary["exp(coef)"],
-                    "CI_lower": summary["exp(coef) lower 95%"],
-                    "CI_upper": summary["exp(coef) upper 95%"],
-                    "pval": summary["p"]
-                })
-            except Exception as e:
-                log(f"Warning: Failed for {cpg}: {e}", flush=True)
-                results.append({
-                    "CpG_ID": cpg,
-                    "HR": np.nan,
-                    "CI_lower": np.nan,
-                    "CI_upper": np.nan,
-                    "pval": np.nan
-                })
+        try:
+            # Apply filter function if provided
+            if filter_function is not None:
+                selected_cpgs = filter_function(X_train, y_train)
+                if not selected_cpgs:
+                    print(f"Skipping fold {fold_num} (no features selected).", flush=True)
+                    outer_models.append({
+                        "fold": fold_num,
+                        "model": None,
+                        "train_idx": train_idx,
+                        "test_idx": test_idx,
+                        "cv_results": None,
+                        "error": "No features selected by filter function",
+                        "selected_cpgs": None
+                    })
+                    continue
+                X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
+            else:
+                selected_cpgs = X_train.columns  # use all features
 
-    df_results = pd.DataFrame(results)
+            # Fit inner CV model
+            inner_model.fit(X_train, y_train)
+            best_model = inner_model.best_estimator_
+            best_params = inner_model.best_params_
 
-    # Adjust p-values using Benjamini-Hochberg (FDR)
-    pvals = df_results["pval"].values
-    mask = ~pd.isna(pvals)
-    padj = np.full_like(pvals, np.nan, dtype=np.float64)
-    padj[mask] = multipletests(pvals[mask], method='fdr_bh')[1]
-    df_results["padj"] = padj
+            print(f"\t--> Fold {fold_num}: Best params {best_params}", flush=True)
 
-    log("Univariate Cox regression filtering complete.") # Final log
-    return df_results
+            outer_models.append({
+                "fold": fold_num,
+                "model": best_model,
+                "train_idx": train_idx,
+                "test_idx": test_idx,
+                "cv_results": inner_model.cv_results_,
+                "error": None,
+                "selected_cpgs": selected_cpgs
+            })
+
+        except Exception as e:
+            print(f"Skipping fold {fold_num} due to error: {e}", flush=True)
+            outer_models.append({
+                "fold": fold_num,
+                "model": None,
+                "train_idx": train_idx,
+                "test_idx": test_idx,
+                "cv_results": None,
+                "error": str(e),
+                "selected_cpgs": None
+            })
+
+    return outer_models
 
 # ==============================================================================
 
-def plot_histogram(data: pd.Series, title: str, xlabel: str, outfile: str, bins='auto', xlim=None):
+def summarize_performance(performance):
     """
-    Plots a histogram of the given data.
+    Print summary statistics (mean ± std) for evaluation metrics across folds.
+    Ignores NaNs in the calculations.
     """
-    plt.figure(figsize=(8, 6))
-    sns.histplot(data.dropna(), bins=bins, kde=True, color='skyblue', edgecolor='black')
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel("Number of CpGs")
-    if xlim:
-        plt.xlim(xlim)
-    plt.grid(axis='y', alpha=0.75)
-    plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
-    plt.close()
-    log(f"Saved {title} histogram to {outfile}")
+    print("\n=== RSF Evaluation Summary ===\n", flush=True)
+    
+    cindexes = [p["cindex"] for p in performance]
+    auc5y = [p["auc_at_5y"] for p in performance if p["auc_at_5y"] is not None]
+    mean_aucs = [p["mean_auc"] for p in performance]
+    ibs_vals = [p["ibs"] for p in performance]
+
+    print(f"C-index: mean={np.nanmean(cindexes):.3f} ± {np.nanstd(cindexes):.3f}")
+    if auc5y:
+        print(f"AUC@5y: mean={np.nanmean(auc5y):.3f} ± {np.nanstd(auc5y):.3f}")
+    print(f"Mean AUC over times: {np.nanmean(mean_aucs):.3f} ± {np.nanstd(mean_aucs):.3f}")
+    print(f"Integrated Brier Score (IBS): {np.nanmean(ibs_vals):.3f} ± {np.nanstd(ibs_vals):.3f}")
 
 # ==============================================================================
 
-def plot_pvalue_histograms(df_results: pd.DataFrame, output_dir: str):
+def select_best_model(performance, outer_models, metric):
     """
-    Plots histograms for raw and adjusted p-values.
+    Select the best model by given metric ('ibs', 'mean_auc', or 'auc_at_5y').
     """
-    log("Generating p-value histograms...")
-    # Raw p-values
-    plot_histogram(df_results["pval"],
-                   title="Distribution of Raw Univariate Cox P-values",
-                   xlabel="P-value",
-                   outfile=os.path.join(output_dir, "raw_pvalue_histogram.png"),
-                   bins=50, xlim=(0, 1))
-
-    # Adjusted p-values
-    plot_histogram(df_results["padj"],
-                   title="Distribution of Adjusted Univariate Cox P-values (FDR)",
-                   xlabel="Adjusted P-value",
-                   outfile=os.path.join(output_dir, "adjusted_pvalue_histogram.png"),
-                   bins=50, xlim=(0, 1))
-    log("P-value histograms generated.")
+    print(f"\n=== Selecting best model by {metric} ===\n", flush=True)
+    assert metric in {"ibs", "mean_auc", "auc_at_5y"}
+    if metric == "ibs":
+        best = min(performance, key=lambda p: p["ibs"])
+    else:  # maximize for AUC metrics
+        best = max(performance, key=lambda p: p[metric])
+    print(f"Best fold: {best['fold']}, {metric}={best[metric]:.3f}")
+    best_outer = next((e for e in outer_models if e['fold']==best['fold']), None)
+    return best_outer
 
 # ==============================================================================
 
-def plot_hr_histogram(df_results: pd.DataFrame, output_dir: str):
+def summarize_outer_models(outer_models):
     """
-    Plots a histogram for Hazard Ratios.
+    Print a summary of each outer CV fold result.
     """
-    log("Generating Hazard Ratio histogram...")
-    plot_histogram(df_results["HR"],
-                   title="Distribution of Univariate Cox Hazard Ratios",
-                   xlabel="Hazard Ratio (HR)",
-                   outfile=os.path.join(output_dir, "hr_histogram.png"),
-                   bins=50) # Bins can be 'auto' or specified
-    log("Hazard Ratio histogram generated.")
+    print("\n=== Summarizing outer models ===\n", flush=True)
+    for entry in outer_models:
+        print(f"Fold {entry['fold']}:")
+        print(f"  Model: {type(entry['model']).__name__ if entry['model'] else None}")
+        print(f"  Training samples: {len(entry.get('train_idx', []))}, "
+              f"  Test samples: {len(entry.get('test_idx', []))}")
+        print(f"  Selected_cpgs: {entry['selected_cpgs'] if entry['selected_cpgs'] else None}")
 
 # ==============================================================================
-
-def plot_coefficients_histogram(coefficients: pd.Series, title: str, xlabel: str, outfile: str, bins='auto'):
-    """
-    Plots a histogram of the given coefficients, focusing on non-zero values.
-    """
-    plt.figure(figsize=(10, 7))
-    # Filter for non-zero coefficients for a more meaningful plot
-    non_zero_coefs = coefficients[coefficients != 0].dropna()
-    if non_zero_coefs.empty:
-        log(f"No non-zero coefficients to plot for {title}.")
-        plt.text(0.5, 0.5, "No non-zero coefficients", horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
-    else:
-        sns.histplot(non_zero_coefs, bins=bins, kde=True, color='purple', edgecolor='black')
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel("Number of CpGs")
-    plt.grid(axis='y', alpha=0.75)
-    plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
-    plt.close()
-    log(f"Saved {title} histogram to {outfile}")

@@ -6,19 +6,9 @@
 # IMPORTS
 # ==============================================================================
 
-import pandas as pd
 import numpy as np
-import warnings
-from sklearn.model_selection import GridSearchCV, KFold, StratifiedKFold
-from sklearn.pipeline import make_pipeline
-from sklearn.ensemble import RandomForestClassifier  # for type hints (not directly used)
-from sksurv.ensemble import RandomSurvivalForest
 from sksurv.metrics import (cumulative_dynamic_auc, concordance_index_censored,
-                             brier_score, integrated_brier_score,
-                             as_concordance_index_ipcw_scorer,
-                             as_cumulative_dynamic_auc_scorer)
-import matplotlib.pyplot as plt
-from sklearn.inspection import permutation_importance
+                             brier_score, integrated_brier_score)
 
 # ==============================================================================
 # FUNCTIONS
@@ -43,6 +33,72 @@ def define_param_grid(X=None, y=None):
 
 # ==============================================================================
 
+def evaluate_outer_models(outer_models, X, y, time_grid):
+    """
+    Evaluate each trained RSF on its test fold, computing:
+      - Concordance index (c-index)
+      - Time-dependent AUC(t) and mean AUC
+      - Brier score over time and Integrated Brier Score (IBS)
+    """
+    print("\n=== Evaluating outer models ===\n", flush=True)
+    performance = []
+
+    print(f"Global evaluation time grid: {time_grid}", flush=True)
+    print(f"Global min time: {y['RFi_years'].min()}, max time: {y['RFi_years'].max()}\n", flush=True)
+
+
+    for entry in outer_models:
+        fold = entry['fold']
+        print(f"Evaluating fold {fold}...", flush=True)
+        if entry["model"] is None:
+            print(f"  Skipping fold {fold} (no model).", flush=True)
+            continue
+
+        model = entry["model"]
+        test_idx = entry["test_idx"]
+        train_idx = entry["train_idx"]
+
+        # Get the features used in training this fold
+        selected_features = entry.get("selected_cpgs", X.columns)  # fallback to all columns if missing
+        X_test, X_train = X.iloc[test_idx], X.iloc[train_idx]
+        y_test, y_train = y[test_idx], y[train_idx]
+
+        print(f"  Fold {fold} - test set min time: {y_test['RFi_years'].min():.3f}, max time: {y_test['RFi_years'].max():.3f}", flush=True)
+        print(f"  Fold {fold} - train set min time: {y_train['RFi_years'].min():.3f}, max time: {y_train['RFi_years'].max():.3f}", flush=True)
+
+        # Subset X_train and X_test
+        #X_train = X_train[selected_features]
+        X_test = X_test[selected_features]
+
+        # Predict risk scores and survival functions on test set
+        pred_scores = model.predict(X_test)  # RSF.predict gives risk (sum of cumulative hazard)
+        surv_funcs = model.predict_survival_function(X_test)
+        # Build array of survival probabilities for each patient x time grid
+        preds = np.vstack([[fn(t) for t in time_grid] for fn in surv_funcs])
+
+        # Compute time-dependent AUC and mean AUC
+        auc, mean_auc = cumulative_dynamic_auc(y_train, y_test, pred_scores, times=time_grid)
+        # Compute c-index (concordance) on test set
+        cindex = concordance_index_censored(y_test["RFi_event"], y_test["RFi_years"], pred_scores)[0]
+        # Compute Brier scores and IBS
+        brier_scores = brier_score(y_train, y_test, preds, time_grid)[1]
+        ibs = integrated_brier_score(y_train, y_test, preds, time_grid)
+
+        performance.append({
+            "fold": fold,
+            "auc": auc,
+            "mean_auc": mean_auc,
+            "auc_at_5y": auc[np.where(time_grid == 5.0)[0][0]] if 5.0 in time_grid else None,
+            "brier_t": brier_scores,
+            "ibs": ibs,
+            "cindex": cindex
+        })
+        print(f"  Fold {fold} - C-index: {cindex:.3f}, Mean AUC: {mean_auc:.3f}, IBS: {ibs:.3f}", flush=True)
+
+    return performance
+
+# ==============================================================================
+'''
 def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds):
     """
     Run nested cross-validation for RSF. 
@@ -134,256 +190,4 @@ def run_nested_cv(X, y, param_grid, outer_cv_folds, inner_cv_folds):
             })
 
     return outer_models
-
-# ==============================================================================
-
-def summarize_outer_models(outer_models):
-    """
-    Print a summary of each outer CV fold result.
-    """
-    print("\n=== Summarizing outer models ===\n", flush=True)
-    for entry in outer_models:
-        print(f"Fold {entry['fold']}:")
-        print(f"  Model: {type(entry['model']).__name__ if entry['model'] else None}")
-        print(f"  Training samples: {len(entry.get('train_idx', []))}, "
-              f"  Test samples: {len(entry.get('test_idx', []))}")
-        print(f"  Selected_cpgs: {entry['selected_cpgs'] if entry['selected_cpgs'] else None}")
-
-# ==============================================================================
-
-def evaluate_outer_models(outer_models, X, y, time_grid):
-    """
-    Evaluate each trained RSF on its test fold, computing:
-      - Concordance index (c-index)
-      - Time-dependent AUC(t) and mean AUC
-      - Brier score over time and Integrated Brier Score (IBS)
-    """
-    print("\n=== Evaluating outer models ===\n", flush=True)
-    performance = []
-
-    for entry in outer_models:
-        fold = entry['fold']
-        print(f"Evaluating fold {fold}...", flush=True)
-        if entry["model"] is None:
-            print(f"  Skipping fold {fold} (no model).", flush=True)
-            continue
-
-        model = entry["model"]
-        test_idx = entry["test_idx"]
-        train_idx = entry["train_idx"]
-
-        # Get the features used in training this fold
-        selected_features = entry.get("selected_cpgs", X.columns)  # fallback to all columns if missing
-        X_test, X_train = X.iloc[test_idx], X.iloc[train_idx]
-        y_test, y_train = y[test_idx], y[train_idx]
-
-        # Subset X_train and X_test
-        #X_train = X_train[selected_features]
-        X_test = X_test[selected_features]
-
-        # Predict risk scores and survival functions on test set
-        pred_scores = model.predict(X_test)  # RSF.predict gives risk (sum of cumulative hazard)
-        surv_funcs = model.predict_survival_function(X_test)
-        # Build array of survival probabilities for each patient x time grid
-        preds = np.vstack([[fn(t) for t in time_grid] for fn in surv_funcs])
-
-        # Compute time-dependent AUC and mean AUC
-        auc, mean_auc = cumulative_dynamic_auc(y_train, y_test, pred_scores, times=time_grid)
-        # Compute c-index (concordance) on test set
-        cindex = concordance_index_censored(y_test["RFi_event"], y_test["RFi_years"], pred_scores)[0]
-        # Compute Brier scores and IBS
-        brier_scores = brier_score(y_train, y_test, preds, time_grid)[1]
-        ibs = integrated_brier_score(y_train, y_test, preds, time_grid)
-
-        performance.append({
-            "fold": fold,
-            "auc": auc,
-            "mean_auc": mean_auc,
-            "auc_at_5y": auc[np.where(time_grid == 5.0)[0][0]] if 5.0 in time_grid else None,
-            "brier_t": brier_scores,
-            "ibs": ibs,
-            "cindex": cindex
-        })
-        print(f"  Fold {fold} - C-index: {cindex:.3f}, Mean AUC: {mean_auc:.3f}, IBS: {ibs:.3f}", flush=True)
-
-    return performance
-
-# ==============================================================================
-
-def plot_brier_scores(brier_array, ibs_array, folds, time_grid, outfile):
-    """
-    Plot time-dependent Brier scores for each fold and IBS per fold.
-    """
-    print("Plotting Brier scores...", flush=True)
-    plt.style.use('seaborn-whitegrid')
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), 
-                                   gridspec_kw={'height_ratios': [3, 1]})
-    # Brier curves
-    for i, brier in enumerate(brier_array):
-        ax1.plot(time_grid, brier, label=f'Fold {folds[i]}', alpha=0.6)
-    ax1.plot(time_grid, np.mean(brier_array, axis=0), color='black', lw=3, 
-             label='Mean Brier Score')
-    ax1.set_title("Time-dependent Brier Score")
-    ax1.set_xlabel("Time")
-    ax1.set_ylabel("Brier Score")
-    ax1.legend(loc='upper right')
-    ax1.set_ylim(0, 0.5)
-
-    # IBS bar chart
-    colors = plt.cm.Paired(np.linspace(0, 1, len(folds)))
-    bars = ax2.bar(folds, ibs_array, color=colors, edgecolor='black', alpha=0.85)
-    ax2.set_title("Integrated Brier Score (IBS) per Fold")
-    ax2.set_xlabel("Fold")
-    ax2.set_ylabel("IBS")
-    ax2.set_ylim(0, max(ibs_array) * 1.1 if len(ibs_array) else 1)
-    for bar in bars:
-        yval = bar.get_height()
-        ax2.text(bar.get_x() + bar.get_width() / 2.0, yval + 0.005, f'{yval:.3f}', ha='center')
-
-    plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
-    plt.close()
-    print(f"Saved Brier plot to {outfile}", flush=True)
-
-# ==============================================================================
-
-def plot_auc_curves(performance, time_grid, outfile):
-    """
-    Plot time-dependent AUC(t) curves for all folds and their mean.
-    """
-    print("Plotting time-dependent AUC curves...", flush=True)
-    plt.style.use('seaborn-whitegrid')
-    plt.figure(figsize=(10, 6))
-
-    # Plot each fold's AUC curve
-    for p in performance:
-        plt.plot(time_grid, p["auc"], label=f'Fold {p["fold"]}', alpha=0.5)
-    # Mean AUC curve
-    mean_auc_curve = np.mean([p["auc"] for p in performance], axis=0)
-    plt.plot(time_grid, mean_auc_curve, color='black', lw=2.5, label='Mean AUC')
-    plt.title("Time-dependent AUC(t) per Fold")
-    plt.xlabel("Time")
-    plt.ylabel("AUC(t)")
-    plt.ylim(0, 1)
-    plt.legend(loc='lower right')
-    plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
-    plt.close()
-    print(f"Saved AUC plot to {outfile}", flush=True)
-
-# ==============================================================================
-
-def summarize_performance(performance):
-    """
-    Print summary statistics (mean ± std) for evaluation metrics across folds.
-    Ignores NaNs in the calculations.
-    """
-    print("\n=== RSF Evaluation Summary ===\n", flush=True)
-    
-    cindexes = [p["cindex"] for p in performance]
-    auc5y = [p["auc_at_5y"] for p in performance if p["auc_at_5y"] is not None]
-    mean_aucs = [p["mean_auc"] for p in performance]
-    ibs_vals = [p["ibs"] for p in performance]
-
-    print(f"C-index: mean={np.nanmean(cindexes):.3f} ± {np.nanstd(cindexes):.3f}")
-    if auc5y:
-        print(f"AUC@5y: mean={np.nanmean(auc5y):.3f} ± {np.nanstd(auc5y):.3f}")
-    print(f"Mean AUC over times: {np.nanmean(mean_aucs):.3f} ± {np.nanstd(mean_aucs):.3f}")
-    print(f"Integrated Brier Score (IBS): {np.nanmean(ibs_vals):.3f} ± {np.nanstd(ibs_vals):.3f}")
-
-# ==============================================================================
-
-def select_best_model(performance, outer_models, metric):
-    """
-    Select the best model by given metric ('ibs', 'mean_auc', or 'auc_at_5y').
-    """
-    print(f"\n=== Selecting best model by {metric} ===\n", flush=True)
-    assert metric in {"ibs", "mean_auc", "auc_at_5y"}
-    if metric == "ibs":
-        best = min(performance, key=lambda p: p["ibs"])
-    else:  # maximize for AUC metrics
-        best = max(performance, key=lambda p: p[metric])
-    print(f"Best fold: {best['fold']}, {metric}={best[metric]:.3f}")
-    best_outer = next((e for e in outer_models if e['fold']==best['fold']), None)
-    return best_outer
-
-# ==============================================================================
-
-
-# ==============================================================================
-
-from sklearn.pipeline import make_pipeline
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
-from sksurv.linear_model import CoxnetSurvivalAnalysis
-import pandas as pd
-import numpy as np
-from src.coxnet_functions import estimate_alpha_grid
-from src.utils import log, variance_filter
-
-def filter_cpgs_with_cox_lasso(X_train, y_train,
-                               initial_variance_top_n=50000,
-                               l1_ratio_values=[0.9, 1.0],
-                               cox_lasso_cv_folds=5,
-                               log_prefix=""):
-    """
-    Perform CpG filtering on training data using variance + Cox Lasso.
-
-    Steps:
-      1. Variance filter
-      2. Cox Lasso feature selection on training fold
-      3. Return list of CpGs with non-zero coefficients
-
-    Args:
-        X_train (pd.DataFrame): Training methylation data (samples x CpGs).
-        y_train (structured array): Survival labels (Surv object).
-        initial_variance_top_n (int): Keep top N CpGs by variance before Cox Lasso.
-        l1_ratio_values (list): L1 ratios to test in Cox Lasso.
-        cox_lasso_cv_folds (int): Inner CV folds for Cox Lasso hyperparam tuning.
-        log_prefix (str): Prefix for log messages (e.g. "[Fold 1] ").
-
-    Returns:
-        list: CpG IDs selected in this training fold.
-    """
-    log(f"{log_prefix}Starting CpG filtering on training fold ({X_train.shape[1]} CpGs).")
-
-    # 1. Variance filter
-    X_var_filtered = variance_filter(X_train, top_n=initial_variance_top_n)
-    log(f"{log_prefix}Variance filter applied: {X_var_filtered.shape[1]} CpGs remain.")
-
-    # 2. Cox Lasso
-    cox_pipe = make_pipeline(CoxnetSurvivalAnalysis())
-
-    # Estimate alphas
-    alphas = estimate_alpha_grid(X_var_filtered, y_train,
-                                 l1_ratio=l1_ratio_values[0],
-                                 alpha_min_ratio=0.1, n_alphas=10)
-
-    param_grid = {
-        'coxnetsurvivalanalysis__alphas': [[a] for a in alphas],
-        'coxnetsurvivalanalysis__l1_ratio': l1_ratio_values
-    }
-
-    event_indicator = y_train["RFi_event"]  
-    stratifier = StratifiedKFold(n_splits=cox_lasso_cv_folds, shuffle=True, random_state=42)
-    inner_cv = stratifier.split(X_var_filtered, event_indicator)
-
-    grid_search = GridSearchCV(
-        estimator=cox_pipe,
-        param_grid=param_grid,
-        cv=inner_cv,
-        n_jobs=-1,
-        error_score=0,
-        verbose=0
-    )
-
-    grid_search.fit(X_var_filtered, y_train)
-    best_model = grid_search.best_estimator_
-
-    # 3. Extract non-zero CpGs
-    cox_estimator = best_model.named_steps['coxnetsurvivalanalysis']
-    coefs = pd.Series(cox_estimator.coef_.flatten(), index=X_var_filtered.columns)
-
-    selected_cpgs = coefs[coefs != 0].index.tolist()
-    log(f"{log_prefix}Cox Lasso selected {len(selected_cpgs)} CpGs.")
-
-    return selected_cpgs
+'''

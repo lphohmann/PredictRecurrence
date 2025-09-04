@@ -56,3 +56,18 @@ def test_filter_cpgs_returns_list(fake_data):
         assert cpg in X.columns  # ensures only valid CpG names are returned
 
 
+
+import pandas as pd
+from src.utils import apply_admin_censoring
+clinical_data = pd.read_csv("./data/train/train_clinical.csv")
+clinical_data = clinical_data.set_index("Sample")
+
+cens_clinical = apply_admin_censoring(clinical_data, "RFi_years", "RFi_event",inplace=False)
+
+mask = clinical_data["RFi_years"] > 5
+clinical_data.loc[mask,["RFi_years","RFi_event"]].shape
+clinical_data.shape
+
+mask = cens_clinical["RFi_years"] > 5
+cens_clinical.loc[mask,["RFi_years","RFi_event"]].shape
+cens_clinical.head()

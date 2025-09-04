@@ -15,20 +15,13 @@ import pandas as pd
 import joblib
 from sksurv.util import Surv
 import argparse
+from sksurv.ensemble import RandomSurvivalForest
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import log, load_training_data, preprocess_data, beta2m, variance_filter, run_univariate_cox_for_cpgs
-from src.rsf_functions import (
-    define_param_grid,
-    run_nested_cv,
-    summarize_outer_models,
-    evaluate_outer_models,
-    plot_brier_scores,
-    plot_auc_curves,
-    summarize_performance,
-    select_best_model#,compute_permutation_importance
-)
+from src.utils import log, load_training_data, beta2m, apply_admin_censoring, filter_cpgs_with_cox_lasso, run_nested_cv, summarize_outer_models, summarize_performance,select_best_model
+from src.plotting_functions import plot_brier_scores, plot_auc_curves
+from src.rsf_functions import define_param_grid, evaluate_outer_models
 
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
@@ -90,7 +83,7 @@ sys.stderr = logfile
 # Data preprocessing parameters
 INNER_CV_FOLDS = 3
 OUTER_CV_FOLDS = 5
-EVAL_TIME_GRID = np.arange(1, 10.1, 0.5)  # time points for metrics
+EVAL_TIME_GRID = np.arange(1, 5.1, 0.5)  # time points for metrics
 
 # ==============================================================================
 # INPUT AND OUTPUT FILES
@@ -128,6 +121,10 @@ beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, in
 log("Loaded methylation and clinical data.")
 mvals = beta2m(beta_matrix, beta_threshold=0.001)
 
+# apply censoring at 5 years
+# censoring cutoff > max evaluation time
+clinical_data = apply_admin_censoring(clinical_data, "RFi_years", "RFi_event", time_cutoff=5.5, inplace=False)
+
 # Subset to only include prefiltered CpGs if infile is provided
 if infile_cpg_ids is not None:
     with open(infile_cpg_ids, 'r') as f:
@@ -159,7 +156,12 @@ y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 param_grid = define_param_grid(X, y)
 
 # Run nested cross-validation
-outer_models = run_nested_cv(X, y, param_grid, OUTER_CV_FOLDS, INNER_CV_FOLDS)
+estimator = RandomSurvivalForest(random_state=96)
+outer_models = run_nested_cv(X, y, base_estimator=estimator, 
+                             param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS,  
+                             filter_function=filter_cpgs_with_cox_lasso)# model agnostic,
+
+#outer_models = run_nested_cv(X, y, param_grid, OUTER_CV_FOLDS, INNER_CV_FOLDS)
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")
 

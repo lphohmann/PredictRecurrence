@@ -16,6 +16,9 @@ import gseapy as gp
 from matplotlib.backends.backend_pdf import PdfPages
 from lifelines import CoxPHFitter
 from statsmodels.stats.multitest import multipletests
+import warnings
+from sklearn.exceptions import ConvergenceWarning
+from src.utils import log 
 
 # ==============================================================================
 # FUNCTIONS
@@ -165,7 +168,7 @@ def enrich_and_plot(cpg_anno: pd.DataFrame,
     print(f"Enrichment plots saved to: {outfile}", flush=True)
 
 # ==============================================================================
-
+'''
 def run_univariate_cox_for_cpgs(mval_matrix: pd.DataFrame,
                                  clin_data: pd.DataFrame,
                                  time_col: str,
@@ -230,5 +233,87 @@ def run_univariate_cox_for_cpgs(mval_matrix: pd.DataFrame,
     df_results["padj"] = padj
 
     return df_results
-
+'''
 # ==============================================================================
+
+# Assuming 'log' function is available in this scope, e.g., imported from src.utils
+
+def run_univariate_cox_for_cpgs(mval_matrix: pd.DataFrame,
+                                 clin_data: pd.DataFrame,
+                                 time_col: str,
+                                 event_col: str,
+                                 penalizer_value: float = 0.01): # Added penalizer_value as argument
+    """
+    Run univariate Cox regression for each CpG site, using penalized likelihood
+    to handle complete separation issues. Includes progress logging.
+
+    Parameters:
+    - mval_matrix: DataFrame [patients x CpGs] with M-values.
+    - clin_data: DataFrame with clinical info (must contain time_col and event_col).
+    - time_col: Name of the column with time to event.
+    - event_col: Name of the column with event occurrence (1=event, 0=censored).
+    - penalizer_value: L2 penalizer for CoxPHFitter to handle separation.
+
+    Returns:
+    - DataFrame with columns: CpG_ID, HR, CI_lower, CI_upper, pval, padj
+    """
+    results = []
+    total_cpgs = mval_matrix.shape[1]
+    log(f"Starting univariate Cox regression for {total_cpgs} CpGs...") # Initial log
+
+    # Suppress lifelines warnings for individual CpGs that are handled by penalization
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=ConvergenceWarning)
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+
+        for i, cpg in enumerate(mval_matrix.columns):
+            # Log progress every 5000 CpGs or at the very end
+            if (i + 1) % 5000 == 0 or (i + 1) == total_cpgs:
+                log(f"  Processing CpG {i + 1}/{total_cpgs}...")
+
+            df = pd.concat([clin_data[[time_col, event_col]].copy(), mval_matrix[[cpg]]], axis=1).dropna()
+            df.columns = ["time", "event", "cpg_value"]
+
+            if df["cpg_value"].nunique() <= 1:
+                results.append({
+                    "CpG_ID": cpg,
+                    "HR": np.nan,
+                    "CI_lower": np.nan,
+                    "CI_upper": np.nan,
+                    "pval": np.nan
+                })
+                continue
+
+            try:
+                cph = CoxPHFitter(penalizer=penalizer_value) # Use the passed penalizer_value
+                cph.fit(df, duration_col="time", event_col="event")
+                summary = cph.summary.loc["cpg_value"]
+
+                results.append({
+                    "CpG_ID": cpg,
+                    "HR": summary["exp(coef)"],
+                    "CI_lower": summary["exp(coef) lower 95%"],
+                    "CI_upper": summary["exp(coef) upper 95%"],
+                    "pval": summary["p"]
+                })
+            except Exception as e:
+                log(f"Warning: Failed for {cpg}: {e}", flush=True)
+                results.append({
+                    "CpG_ID": cpg,
+                    "HR": np.nan,
+                    "CI_lower": np.nan,
+                    "CI_upper": np.nan,
+                    "pval": np.nan
+                })
+
+    df_results = pd.DataFrame(results)
+
+    # Adjust p-values using Benjamini-Hochberg (FDR)
+    pvals = df_results["pval"].values
+    mask = ~pd.isna(pvals)
+    padj = np.full_like(pvals, np.nan, dtype=np.float64)
+    padj[mask] = multipletests(pvals[mask], method='fdr_bh')[1]
+    df_results["padj"] = padj
+
+    log("Univariate Cox regression filtering complete.") # Final log
+    return df_results
