@@ -14,6 +14,8 @@ from sklearn.model_selection import GridSearchCV, StratifiedKFold, KFold
 from sksurv.linear_model import CoxnetSurvivalAnalysis
 from src.coxnet_functions import estimate_alpha_grid
 from sksurv.metrics import as_concordance_index_ipcw_scorer
+from sklearn.preprocessing import StandardScaler # deletes impact of high variance CpGs
+from sklearn.preprocessing import RobustScaler
 
 # ==============================================================================
 # FUNCTIONS
@@ -173,9 +175,11 @@ def filter_cpgs_with_cox_lasso(X_train, y_train,
     log(f"{log_prefix}Variance filter applied: {X_var_filtered.shape[1]} CpGs remain.")
 
     # 2. Cox Lasso
-    cox_pipe = make_pipeline(CoxnetSurvivalAnalysis())
+    cox_pipe = make_pipeline(RobustScaler(), # added for coxnet
+                             CoxnetSurvivalAnalysis())
 
     # Estimate alphas
+    # possible set min alpha to 0.5
     alphas = estimate_alpha_grid(X_var_filtered, y_train,
                                  l1_ratio=l1_ratio_values[0],
                                  alpha_min_ratio=0.1, n_alphas=10)
@@ -200,6 +204,10 @@ def filter_cpgs_with_cox_lasso(X_train, y_train,
 
     grid_search.fit(X_var_filtered, y_train)
     best_model = grid_search.best_estimator_
+
+    # Print optimal parameters
+    log(f"{log_prefix}Optimal parameters found in Cox Lasso/Net filter:")
+    log(f"{log_prefix}{grid_search.best_params_}")
 
     # 3. Extract non-zero CpGs
     cox_estimator = best_model.named_steps['coxnetsurvivalanalysis']

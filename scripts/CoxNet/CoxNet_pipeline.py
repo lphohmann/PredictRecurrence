@@ -1,40 +1,27 @@
 #!/usr/bin/env python
 
 ################################################################################
-# Script: CoxNet pipeline
-# Author: Lennart Hohmann
+# Script: CoxNet Pipeline
+# Author: lennart hohmann
 ################################################################################
 
 ################################################################################
-# SET UP
+# IMPORTS
 ################################################################################
 
-import os
-import sys
-import time
+import os, sys, time
 import numpy as np
 import pandas as pd
 import joblib
 from sksurv.util import Surv
+import argparse
+from sksurv.ensemble import RandomSurvivalForest
 
-# Import custom CoxNet functions
+# Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import (
-    log,
-    load_training_data,
-    preprocess_data
-)
-from src.coxnet_functions import (
-    estimate_alpha_grid,
-    define_param_grid,
-    run_nested_cv,
-    summarize_outer_models,
-    evaluate_outer_models,
-    plot_brier_scores,
-    plot_auc_curves,
-    summarize_performance,
-    select_best_model
-)
+from src.utils import log, load_training_data, beta2m, apply_admin_censoring, filter_cpgs_with_cox_lasso, run_nested_cv, summarize_outer_models, summarize_performance,select_best_model
+from src.plotting_functions import plot_brier_scores, plot_auc_curves
+from src.rsf_functions import define_param_grid, evaluate_outer_models
 
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
