@@ -22,6 +22,7 @@ from sksurv.metrics import (
     as_cumulative_dynamic_auc_scorer,
     as_integrated_brier_score_scorer,
 )
+from sklearn.preprocessing import RobustScaler
 
 # ==============================================================================
 # FUNCTIONS
@@ -47,6 +48,7 @@ def estimate_alpha_grid(X, y, l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=30):
     warnings.simplefilter("ignore", UserWarning)
 
     pipe = make_pipeline(
+        RobustScaler(), 
         CoxnetSurvivalAnalysis(l1_ratio=l1_ratio, alpha_min_ratio=alpha_min_ratio, n_alphas=n_alphas)
     )
 

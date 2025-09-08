@@ -121,31 +121,31 @@ def m2beta(m):
 
 def variance_filter(df, min_variance=None, top_n=None):
     """
-    Filter features (CpGs) based on variance. Extects CpGs as columns and patients as rows
+    Filter features (CpGs) based on variance. Expects CpGs as columns and patients as rows.
+    
     Args:
-        X (pd.DataFrame): Feature matrix (samples x features).
+        df (pd.DataFrame): Feature matrix (samples x features).
         top_n (int, optional): Number of top features to select based on variance.
         min_variance (float, optional): Minimum variance threshold to retain features.
+    
     Returns:
-        pd.DataFrame: Filtered feature matrix.
+        list: Selected CpG IDs (column names).
     """
     variances = df.var(axis=0)
     
     if min_variance is not None:
-        # Filter features with variance above threshold
         selected_features = variances[variances >= min_variance].index
     elif top_n is not None:
-        # Select top_n features by variance
         selected_features = variances.sort_values(ascending=False).head(top_n).index
     else:
         raise ValueError("Either min_variance or top_n must be specified")
     
-    return df.loc[:, selected_features]
+    return selected_features.tolist()
 
 # ==============================================================================
 
 def filter_cpgs_with_cox_lasso(X_train, y_train,
-                               initial_variance_top_n=50000,
+                               initial_variance_top_n=50,#50000,
                                l1_ratio_values=[0.9, 1.0],
                                cox_lasso_cv_folds=5,
                                log_prefix=""):
@@ -171,7 +171,9 @@ def filter_cpgs_with_cox_lasso(X_train, y_train,
     log(f"{log_prefix}Starting CpG filtering on training fold ({X_train.shape[1]} CpGs).")
 
     # 1. Variance filter
-    X_var_filtered = variance_filter(X_train, top_n=initial_variance_top_n)
+    #X_var_filtered = variance_filter(X_train, top_n=initial_variance_top_n)
+    selected_by_variance = variance_filter(X_train, top_n=initial_variance_top_n)
+    X_var_filtered = X_train[selected_by_variance]
     log(f"{log_prefix}Variance filter applied: {X_var_filtered.shape[1]} CpGs remain.")
 
     # 2. Cox Lasso
@@ -245,7 +247,8 @@ def preprocess_data(beta_matrix, top_n_cpgs):
 
 def run_nested_cv(X, y, base_estimator, param_grid, 
                   outer_cv_folds=5, inner_cv_folds=3, 
-                  filter_function=None):
+                  filter_function=None,
+                  scaler=None):
     """
     Run nested cross-validation for survival models (RSF, Coxnet, GBM, etc.).
 
@@ -259,6 +262,8 @@ def run_nested_cv(X, y, base_estimator, param_grid,
         filter_function (callable): Function to filter features.
                                     Must accept (X_train, y_train) and return list of columns.
                                     If None, all features are used.
+        scaler (object or None): Optional sklearn scaler (e.g. RobustScaler()).
+                                 If provided, will be inserted before the estimator in the pipeline.
 
     Returns:
         list: Results from each outer fold with trained models and metadata.
@@ -271,8 +276,14 @@ def run_nested_cv(X, y, base_estimator, param_grid,
     outer_cv = StratifiedKFold(n_splits=outer_cv_folds, shuffle=True, random_state=96)
     inner_cv = KFold(n_splits=inner_cv_folds, shuffle=True, random_state=96)
 
-    # Build pipeline (can extend with scaling/one-hot encoding if needed)
-    pipe = make_pipeline(base_estimator)
+    # Build pipeline with optional scaler
+    if scaler is not None:
+        pipe = make_pipeline(scaler, base_estimator)
+        print(f"--> Using pipeline with {scaler.__class__.__name__}", flush=True)
+    else:
+        pipe = make_pipeline(base_estimator)
+        print("--> Using pipeline without scaler", flush=True)
+
     print(pipe.get_params().keys())
 
     # Default scorer = concordance index
