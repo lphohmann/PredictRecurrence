@@ -50,6 +50,7 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
     for entry in outer_models:
         fold = entry['fold']
         print(f"Evaluating fold {fold}...", flush=True)
+        
         if entry["model"] is None:
             print(f"  Skipping fold {fold} (no model).", flush=True)
             continue
@@ -78,8 +79,10 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
 
         # Compute time-dependent AUC and mean AUC
         auc, mean_auc = cumulative_dynamic_auc(y_train, y_test, pred_scores, times=time_grid)
+
         # Compute c-index (concordance) on test set
         cindex = concordance_index_censored(y_test["RFi_event"], y_test["RFi_years"], pred_scores)[0]
+
         # Compute Brier scores and IBS
         brier_scores = brier_score(y_train, y_test, preds, time_grid)[1]
         ibs = integrated_brier_score(y_train, y_test, preds, time_grid)

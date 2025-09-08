@@ -12,13 +12,45 @@ from statsmodels.stats.multitest import multipletests
 from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import GridSearchCV, StratifiedKFold, KFold
 from sksurv.linear_model import CoxnetSurvivalAnalysis
-from src.coxnet_functions import estimate_alpha_grid
 from sksurv.metrics import as_concordance_index_ipcw_scorer
 from sklearn.preprocessing import StandardScaler # deletes impact of high variance CpGs
 from sklearn.preprocessing import RobustScaler
+import warnings
+from sklearn.exceptions import FitFailedWarning
 
 # ==============================================================================
 # FUNCTIONS
+# ==============================================================================
+
+def estimate_alpha_grid(X, y, l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=30):
+    """
+    Estimate a suitable grid of alpha values for Coxnet hyperparameter tuning.
+
+    Args:
+        X (DataFrame): Feature matrix.
+        y (structured array): Survival labels (from sksurv).
+        l1_ratio (float): Elastic net mixing parameter for alpha estimation.
+        alpha_min_ratio (float): Minimum ratio of alpha_max for grid.
+        n_alphas (int): Number of alphas to generate.
+
+    Returns:
+        np.array: Array of alpha values.
+    """
+    print(f"\n=== Estimating {n_alphas} alpha values for Coxnet tuning ===\n", flush=True)
+
+    warnings.simplefilter("ignore", FitFailedWarning)
+    warnings.simplefilter("ignore", UserWarning)
+
+    pipe = make_pipeline(
+        RobustScaler(), 
+        CoxnetSurvivalAnalysis(l1_ratio=l1_ratio, alpha_min_ratio=alpha_min_ratio, n_alphas=n_alphas)
+    )
+
+    pipe.fit(X, y)
+    alphas = pipe.named_steps["coxnetsurvivalanalysis"].alphas_
+
+    return alphas
+
 # ==============================================================================
 
 def log(msg):
@@ -405,6 +437,6 @@ def summarize_outer_models(outer_models):
         print(f"  Model: {type(entry['model']).__name__ if entry['model'] else None}")
         print(f"  Training samples: {len(entry.get('train_idx', []))}, "
               f"  Test samples: {len(entry.get('test_idx', []))}")
-        print(f"  Selected_cpgs: {entry['selected_cpgs'] if entry['selected_cpgs'] else None}")
+        print(f"  Selected_cpgs: {len(entry['selected_cpgs']) if entry['selected_cpgs'] is not None else 0}")
 
 # ==============================================================================

@@ -20,9 +20,9 @@ from sklearn.preprocessing import RobustScaler
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import log, load_training_data, beta2m, variance_filter, apply_admin_censoring, run_nested_cv, summarize_outer_models, summarize_performance,select_best_model
+from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, estimate_alpha_grid
 from src.plotting_functions import plot_brier_scores, plot_auc_curves
-from src.coxnet_functions import estimate_alpha_grid, define_param_grid, evaluate_outer_models
+from src.coxnet_functions import define_param_grid, evaluate_outer_models_coxnet, run_nested_cv_cox, print_selected_cpgs_counts
 
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
@@ -87,8 +87,8 @@ OUTER_CV_FOLDS = 5
 EVAL_TIME_GRID = np.arange(1, 5.1, 0.5)  # time points for metrics
 
 # type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
-ALPHAS_ESTIMATION_L1RATIO = 0.5#[0.9]
-PARAM_GRID_L1RATIOS  = [0.5]#[0.9]
+ALPHAS_ESTIMATION_L1RATIO = 0.9#[0.9]
+PARAM_GRID_L1RATIOS  = [0.5,0,7,0.9]#[0.9]
 
 # ==============================================================================
 # INPUT AND OUTPUT FILES
@@ -165,16 +165,17 @@ param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=PARAM_GRID_L1RAT
 # Run nested cross-validation
 estimator = CoxnetSurvivalAnalysis()
 scaler = RobustScaler()
-outer_models = run_nested_cv(X, y, base_estimator=estimator, 
-                             param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS,  
-                             filter_function=variance_filter,
-                             scaler=scaler)
+outer_models = run_nested_cv_cox(X, y,
+                             param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS)
+
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")
 
 # Summarize and evaluate performance
 summarize_outer_models(outer_models)
-model_performances = evaluate_outer_models(outer_models, X, y, EVAL_TIME_GRID)
+print_selected_cpgs_counts(outer_models)
+
+model_performances = evaluate_outer_models_coxnet(outer_models, X, y, EVAL_TIME_GRID)
 joblib.dump(model_performances, outfile_performance)
 print(f"Saved model performances to: {outfile_performance}")
 
