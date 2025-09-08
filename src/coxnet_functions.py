@@ -110,6 +110,7 @@ def run_nested_cv_cox(X, y, param_grid,
 
             # --- REFIT with baseline model for survival function prediction ---
             refit_best_model = make_pipeline(
+                RobustScaler(),
                 CoxnetSurvivalAnalysis(
                     alphas=[best_params["estimator__coxnetsurvivalanalysis__alphas"][0]],
                     l1_ratio=best_params["estimator__coxnetsurvivalanalysis__l1_ratio"],

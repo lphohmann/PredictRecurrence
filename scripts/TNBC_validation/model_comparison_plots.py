@@ -64,6 +64,10 @@ OUTFILE_BRIER = os.path.join(OUTPUT_DIR, "brier_comparison.pdf")
 # FUNCTIONS
 ################################################################################
 
+import matplotlib as mpl
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['ps.fonttype'] = 42
+
 def plot_auc_curves_multi(performances_dict, time_grid, outfile):
     plt.style.use('seaborn-whitegrid')
     plt.figure(figsize=(10, 6))
@@ -72,13 +76,13 @@ def plot_auc_curves_multi(performances_dict, time_grid, outfile):
         mean_auc_curve = np.mean([p["auc"] for p in performance], axis=0)
         plt.plot(time_grid, mean_auc_curve, lw=2, label=f'{model_name} Mean AUC')
 
-    plt.title("Time-dependent AUC(t) Comparison")
+    #plt.title("Time-dependent AUC(t) Comparison")
     plt.xlabel("Time")
     plt.ylabel("AUC(t)")
     plt.ylim(0, 1)
     plt.legend(loc='lower right')
     plt.tight_layout()
-    plt.savefig(outfile, format="pdf", dpi=300)  # <-- save as PDF
+    plt.savefig(outfile, format="pdf", dpi=300)
     plt.close()
     log(f"Saved AUC comparison plot to {outfile}")
 
@@ -94,7 +98,7 @@ def plot_brier_scores_multi(performances_dict, time_grid, outfile):
         mean_brier = np.mean([p["brier_t"] for p in perf], axis=0)
         ax1.plot(time_grid, mean_brier, lw=2, color=colors[i], label=f'{model_name} Mean Brier')
     
-    ax1.set_title("Time-dependent Brier Score Comparison")
+    #ax1.set_title("Time-dependent Brier Score Comparison")
     ax1.set_xlabel("Time")
     ax1.set_ylabel("Brier Score")
     ax1.set_ylim(0, 0.5)
@@ -115,7 +119,7 @@ def plot_brier_scores_multi(performances_dict, time_grid, outfile):
     plt.savefig(outfile, format="pdf", dpi=300)  # <-- save as PDF
     plt.close()
     log(f"Saved Brier comparison plot to {outfile}")
-    
+
 ################################################################################
 # MAIN CODE
 ################################################################################

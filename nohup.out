@@ -951,3 +951,520 @@ FileNotFoundError: [Errno 2] No such file or directory: './output/CoxLasso/Unadj
 
 === Saved Brier comparison plot to ./output/Model_validation/Adjusted/brier_comparison.pdf ===
 
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: ConvergenceWarning: Optimization terminated early, you might want to increase the number of iterations (max_iter=100000).
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+/Users/le7524ho/miniconda3/envs/predict_recurrence/lib/python3.9/site-packages/sklearn/pipeline.py:473: UserWarning: all coefficients are zero, consider decreasing alpha.
+  self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+
+=== Generating comparison plots. ===
+
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/TNBC_validation/model_comparison_plots.py:72: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+
+=== Saved AUC comparison plot to ./output/Model_validation/Unadjusted/auc_comparison.pdf ===
+
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/TNBC_validation/model_comparison_plots.py:91: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+
+=== Saved Brier comparison plot to ./output/Model_validation/Unadjusted/brier_comparison.pdf ===
+
+
+=== Generating comparison plots. ===
+
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/TNBC_validation/model_comparison_plots.py:72: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+
+=== Saved AUC comparison plot to ./output/Model_validation/Unadjusted/auc_comparison.pdf ===
+
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/TNBC_validation/model_comparison_plots.py:91: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+
+=== Saved Brier comparison plot to ./output/Model_validation/Unadjusted/brier_comparison.pdf ===
+
+
+=== Generating comparison plots. ===
+
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/TNBC_validation/model_comparison_plots.py:72: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+
+=== Saved AUC comparison plot to ./output/Model_validation/Adjusted/auc_comparison.pdf ===
+
+/Users/le7524ho/PhD_Workspace/PredictRecurrence/./scripts/TNBC_validation/model_comparison_plots.py:91: MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+  plt.style.use('seaborn-whitegrid')
+
+=== Saved Brier comparison plot to ./output/Model_validation/Adjusted/brier_comparison.pdf ===
+

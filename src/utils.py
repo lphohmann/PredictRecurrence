@@ -181,7 +181,7 @@ def variance_filter(df, min_variance=None, top_n=None):
 # ==============================================================================
 
 def filter_cpgs_with_cox_lasso(X_train, y_train,
-                               initial_variance_top_n=50,#50000,
+                               initial_variance_top_n=50000,#50,#50000,
                                l1_ratio_values=[0.9, 1.0],
                                cox_lasso_cv_folds=5,
                                log_prefix=""):
