@@ -22,7 +22,7 @@ from sklearn.exceptions import FitFailedWarning
 # FUNCTIONS
 # ==============================================================================
 
-def estimate_alpha_grid(X, y, l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=30):
+def estimate_alpha_grid(X, y, l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=10, scale_factor=None):
     """
     Estimate a suitable grid of alpha values for Coxnet hyperparameter tuning.
 
@@ -48,6 +48,10 @@ def estimate_alpha_grid(X, y, l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=30):
 
     pipe.fit(X, y)
     alphas = pipe.named_steps["coxnetsurvivalanalysis"].alphas_
+
+    # Apply scaling to make grid more conservative
+    if scale_factor is not None:
+        alphas = alphas * scale_factor
 
     return alphas
 

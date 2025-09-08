@@ -13,6 +13,7 @@ import os, sys
 import numpy as np
 import matplotlib.pyplot as plt
 from joblib import load
+import argparse
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
@@ -22,27 +23,42 @@ from src.utils import log
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 
 ################################################################################
+# ARGUMENTS
+################################################################################
+
+parser = argparse.ArgumentParser(description="Compare model performances")
+parser.add_argument(
+    "--methylation_type",
+    choices=["adjusted", "unadjusted"],
+    help="Specify which methylation data to use"
+)
+args = parser.parse_args()
+
+################################################################################
 # INPUT FILES & PARAMS
 ################################################################################
 
+mtype = args.methylation_type.capitalize()  # "Adjusted" or "Unadjusted"
+
 # Dictionary of model names -> saved performance files
 MODELS = {
-    "RSF": "./output/RSF/model_performances_rsf.joblib",
-    "CoxPH": "./output/CoxPH/model_performances_coxph.joblib",
-    "DeepSurv": "./output/DeepSurv/model_performances_deepsurv.joblib"
+    "RSF": f"./output/RSF/TNBC/{mtype}/outer_cv_performance.pkl",
+    "CoxLasso": f"./output/CoxLasso/TNBC/{mtype}/outer_cv_performance.pkl",
+    "CoxNet": f"./output/CoxNet/TNBC/{mtype}/outer_cv_performance.pkl",
+    "GBM": f"./output/GBM/TNBC/{mtype}/outer_cv_performance.pkl"
 }
 
-EVAL_TIME_GRID = np.linspace(0, 10, 100)  # adjust based on dataset
+EVAL_TIME_GRID = np.arange(1, 5.1, 0.5)  # time points for metrics
 
 ################################################################################
 # OUTPUT FILES
 ################################################################################
 
-OUTPUT_DIR = "./output/Model_validation/"
+OUTPUT_DIR = f"./output/Model_validation/{mtype}/"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-OUTFILE_AUC = os.path.join(OUTPUT_DIR, "auc_comparison.png")
-OUTFILE_BRIER = os.path.join(OUTPUT_DIR, "brier_comparison.png")
+OUTFILE_AUC = os.path.join(OUTPUT_DIR, "auc_comparison.pdf")
+OUTFILE_BRIER = os.path.join(OUTPUT_DIR, "brier_comparison.pdf")
 
 ################################################################################
 # FUNCTIONS
@@ -62,7 +78,7 @@ def plot_auc_curves_multi(performances_dict, time_grid, outfile):
     plt.ylim(0, 1)
     plt.legend(loc='lower right')
     plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
+    plt.savefig(outfile, format="pdf", dpi=300)  # <-- save as PDF
     plt.close()
     log(f"Saved AUC comparison plot to {outfile}")
 
@@ -96,10 +112,10 @@ def plot_brier_scores_multi(performances_dict, time_grid, outfile):
         ax2.text(bar.get_x() + bar.get_width()/2.0, yval + 0.005, f'{yval:.3f}', ha='center')
 
     plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
+    plt.savefig(outfile, format="pdf", dpi=300)  # <-- save as PDF
     plt.close()
     log(f"Saved Brier comparison plot to {outfile}")
-
+    
 ################################################################################
 # MAIN CODE
 ################################################################################
