@@ -98,7 +98,7 @@ def run_nested_cv_cox(X, y, param_grid,
 
         try:
             # Apply filter function if provided
-            selected_cpgs = variance_filter(X_train, top_n=5000)
+            selected_cpgs = variance_filter(X_train, top_n=50000)
             X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
 
             # Fit inner CV model
@@ -230,31 +230,39 @@ def evaluate_outer_models_coxnet(outer_models, X, y, time_grid):
 
 # ==============================================================================
 
-
-
 def print_selected_cpgs_counts(outer_models):
     """
-    Print the number of non-zero coefficients (selected CpGs) 
+    Print the number and names of non-zero coefficient CpGs 
     for each outer fold Coxnet model.
 
     Args:
         outer_models (list): List of dicts with trained models and fold metadata.
+                             Each entry must have 'selected_cpgs' and 'model'.
     """
-    print("\n=== Number of selected CpGs per outer fold ===\n", flush=True)
+    print("\n=== Selected CpGs per outer fold ===\n", flush=True)
 
     for entry in outer_models:
         fold = entry["fold"]
         model = entry["model"]
+        selected_features = entry.get("selected_cpgs", None)
 
         if model is None:
             print(f"Fold {fold}: no model", flush=True)
+            continue
+        if selected_features is None:
+            print(f"Fold {fold}: no selected features recorded", flush=True)
             continue
 
         # Extract Coxnet model from pipeline
         coxnet = model.named_steps["coxnetsurvivalanalysis"]
 
-        # Count non-zero coefficients
+        # Get non-zero coefficients
         coefs = coxnet.coef_.flatten()
-        n_selected = np.sum(coefs != 0)
+        nonzero_mask = coefs != 0
 
-        print(f"Fold {fold}: {n_selected} CpGs selected", flush=True)
+        # Map to feature names actually used in this fold
+        selected_cpgs = np.array(selected_features)[nonzero_mask]
+
+        print(f"Fold {fold}: {len(selected_cpgs)} CpGs selected", flush=True)
+        print(f"  CpGs: {selected_cpgs.tolist()}", flush=True)
+
