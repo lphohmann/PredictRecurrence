@@ -15,7 +15,9 @@ import time
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
+import matplotlib as mpl
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['ps.fonttype'] = 42
 # Import custom CoxNet functions
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
 from src.utils import (
@@ -39,11 +41,11 @@ os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 ################################################################################
 
 # Input files
-infile_cpg_set = "./output/CoxNet_adjusted/Selected_model/selected_cpgs.txt"# ⚠️ ADAPT
+infile_cpg_set = "./output/CoxLasso/TNBC/Unadjusted/Selected_model/selected_cpgs.txt"# ⚠️ ADAPT
 infile_cpg_anno = "./data/raw/EPIC_probeAnnoObj.csv"
 
 infile_train_ids = "./data/train/train_subcohorts/TNBC_train_ids.csv" # sample ids of training cohort
-infile_betavalues = "./data/train/train_methylation_adjusted.csv" # ⚠️ ADAPT
+infile_betavalues = "./data/train/train_methylation_unadjusted.csv" # ⚠️ ADAPT
 infile_clinical = "./data/train/train_clinical.csv"
 
 ################################################################################
@@ -51,10 +53,10 @@ infile_clinical = "./data/train/train_clinical.csv"
 ################################################################################
 
 # Output directory and files
-output_dir = "output/CpG_set_annotation/CoxNet_adjusted" # ⚠️ ADAPT
+output_dir = "./output/CoxLasso/TNBC/Unadjusted/Selected_model/" # ⚠️ ADAPT
 os.makedirs(output_dir, exist_ok=True)
 outfile_correlation = os.path.join(output_dir, "correlation_matrix.png")
-outfile_posbarplot = os.path.join(output_dir, "position_barplot.png")
+outfile_posbarplot = os.path.join(output_dir, "position_barplot.pdf")
 outfile_enrich= os.path.join(output_dir, "enrichment_barplot.png")
 outfile_betahist= os.path.join(output_dir, "beta_histograms.pdf")
 
@@ -131,7 +133,7 @@ plt.ylabel("Count")
 plt.title("CpG Annotation Feature Classes")
 plt.xticks(rotation=45)
 plt.tight_layout()
-plt.savefig(outfile_posbarplot, dpi=300, bbox_inches="tight")
+plt.savefig(outfile_posbarplot, dpi=300, format="pdf", bbox_inches="tight")
 plt.close()
 print(f"Position bar plot saved to: {outfile_posbarplot}", flush=True)
 

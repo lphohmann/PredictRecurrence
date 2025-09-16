@@ -1589,3 +1589,31 @@ FileNotFoundError: [Errno 2] No such file or directory: './output/CoxLasso/Unadj
 nohup: python: No such file or directory
 nohup: python: No such file or directory
 nohup: python: No such file or directory
+
+=== Script started at: Tue Sep  9 19:50:17 2025 ===
+
+Correlation matrix saved to: ./output/CoxLasso/TNBC/Unadjusted/Selected_model/correlation_matrix.png
+
+=== Starting univariate Cox regression for 45 CpGs... ===
+
+
+===   Processing CpG 45/45... ===
+
+
+=== Univariate Cox regression filtering complete. ===
+
+Saved all beta histograms to: ./output/CoxLasso/TNBC/Unadjusted/Selected_model/beta_histograms.pdf
+Position bar plot saved to: ./output/CoxLasso/TNBC/Unadjusted/Selected_model/position_barplot.pdf
+Gene names (2): ['KCNK17', 'LXN_GFM1']
+querying 1-2...done.
+Finished.
+1 input query terms found no hit:
+	['LXN_GFM1']
+Pass "returnall=True" to return complete lists of duplicate or missing query terms.
+No enrichment terms found for both or one of GO/KEGG. Exiting.
+
+=== Script ended at: Tue Sep  9 19:51:28 2025 ===
+
+
+=== Script executed in 70.03 seconds. ===
+

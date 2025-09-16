@@ -168,7 +168,7 @@ ax.set_xlabel("Coefficient")
 ax.set_title("Non-zero CoxNet Coefficients")
 ax.grid(True)
 plt.tight_layout()
-plt.savefig(os.path.join(output_dir, "coxnet_nonzero_coefficients.png"), dpi=300, bbox_inches="tight")
+plt.savefig(os.path.join(output_dir, "coxnet_nonzero_coefficients.pdf"),format="pdf", dpi=300, bbox_inches="tight")
 plt.close()
 print(f"Saved coefficient plot with {len(non_zero_coefs)} non-zero features.")
 
@@ -390,3 +390,32 @@ for cutoff in [median_cutoff, predictiveness_cutoff]:
     plt.savefig(os.path.join(output_dir, f"KM_full_dataset_{cutoff:.4f}.pdf"),
                 format="pdf", dpi=300)
     plt.close()
+
+
+################################################################################
+
+log("Calculating univariate Cox regression and plotting hazard ratio for risk score!")
+
+# Prepare dataframe for lifelines
+
+df_lifelines = clinical_data[["RFi_event", "RFi_years", "risk_score"]].copy()
+df_lifelines.columns = ["event", "time", "risk_score"]  # lifelines naming
+
+# Fit univariate Cox model
+cph = CoxPHFitter()
+cph.fit(df_lifelines, duration_col="time", event_col="event")
+
+# Print summary
+print("\nALL Univariate Cox regression (risk score):")
+cph.print_summary()
+
+# Optional: check event distribution
+print("\nEvent value counts:")
+print(clinical_data["RFi_event"].value_counts())
+
+# Generate the forest plot
+ax = cph.plot(hazard_ratios=True)
+plt.tight_layout()
+#plt.savefig(os.path.join(output_dir, "cox_forest_plot.png"), dpi=300, bbox_inches="tight")  
+plt.savefig(os.path.join(output_dir, "cox_forest_plot_all.pdf"), format="pdf", dpi=300, bbox_inches="tight") 
+plt.close()
