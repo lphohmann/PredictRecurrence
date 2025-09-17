@@ -14,6 +14,7 @@ import sys
 import time
 import pandas as pd
 import numpy as np
+import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
@@ -34,7 +35,6 @@ from src.annotation_functions import (
 
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
-
 
 ################################################################################
 # INPUT FILES
@@ -59,6 +59,7 @@ outfile_correlation = os.path.join(output_dir, "correlation_matrix.png")
 outfile_posbarplot = os.path.join(output_dir, "position_barplot.pdf")
 outfile_enrich= os.path.join(output_dir, "enrichment_barplot.png")
 outfile_betahist= os.path.join(output_dir, "beta_histograms.pdf")
+outfile_heatmap = os.path.join(output_dir, "heatmap_selected_cpgs.pdf")
 
 # log file
 #path_logfile = os.path.join(output_dir, "_run.log")
@@ -105,6 +106,48 @@ cpg_anno = cpg_anno[cpg_anno['illuminaID'].isin(cpg_list)]
 plot_cpg_correlation(mval_matrix.loc[:,cpg_list], output_path = outfile_correlation,method = 'spearman')
 #plot_cpg_correlation(beta_matrix.loc[:,cpg_list], output_path = outfile_correlation,method = 'spearman')
 print(f"Correlation matrix saved to: {outfile_correlation}", flush=True)
+
+
+################################################################################
+# heatmap of selected CpGs
+################################################################################
+
+# Subset beta values for selected CpGs and training samples
+heatmap_data = beta_matrix.loc[:, cpg_list]
+
+# Transpose so that samples are columns
+heatmap_data_T = heatmap_data.T  # now rows = CpGs, cols = samples
+
+# Get clinical annotation for relapse
+relapse_status = clinical_data.loc[heatmap_data.index, "RFi_event"]
+
+# Create a color map for relapse annotation (0 = no relapse, 1 = relapse)
+relapse_palette = {0: "lightgrey", 1: "red"}
+col_colors = relapse_status.map(relapse_palette)  # now used as col_colors
+
+# Plot clustered heatmap
+sns.set_theme(style="white")
+g = sns.clustermap(
+    heatmap_data_T,
+    col_colors=col_colors,  # samples are columns
+    cmap="viridis",
+    xticklabels=False,
+    yticklabels=True,  # CpG names on rows
+    figsize=(12, 8),
+    metric="euclidean",
+    method="average"
+)
+
+# Add legend for relapse annotation
+for label in relapse_palette:
+    g.ax_col_dendrogram.bar(0, 0, color=relapse_palette[label],
+                            label=f"RFi_event={label}", linewidth=0)
+g.ax_col_dendrogram.legend(loc="center", ncol=2)
+
+# Save
+g.savefig(outfile_heatmap, format="pdf", dpi=300, bbox_inches="tight")
+plt.close()
+print(f"Heatmap saved to: {outfile_heatmap}", flush=True)
 
 ################################################################################
 # univar cox

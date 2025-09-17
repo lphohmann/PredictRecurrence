@@ -21,6 +21,9 @@ from src.utils import variance_filter #, estimate_alpha_grid
 # FUNCTIONS
 # ==============================================================================
 
+# idea use univar cox filtering of cpgs (only fors for coxmodels as outherwise dicard nonlinear effects)
+
+
 def define_param_grid(grid_alphas, grid_l1ratio=[0.9]):
     """
     Define the final parameter grid for GridSearchCV using estimated alphas.

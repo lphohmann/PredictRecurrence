@@ -13,16 +13,97 @@ from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import GridSearchCV, StratifiedKFold, KFold
 from sksurv.linear_model import CoxnetSurvivalAnalysis
 from sksurv.metrics import as_concordance_index_ipcw_scorer
-from sklearn.preprocessing import StandardScaler # deletes impact of high variance CpGs
+from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import RobustScaler
 import warnings
 from sklearn.exceptions import FitFailedWarning
+from lifelines import CoxPHFitter
+from lifelines.utils import ConvergenceWarning
 
 # ==============================================================================
 # FUNCTIONS
 # ==============================================================================
 
-def estimate_alpha_grid(X, y, l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=10, scale_factor=None):
+def filter_cpgs_univariate_cox(X_train: pd.DataFrame, 
+                               y_train, 
+                               time_col="RFi_years", 
+                               event_col="RFi_event", 
+                               top_n=5000,
+                               penalizer_value=0.01):
+    """
+    Filter CpGs using univariate Cox regression.
+
+    Steps:
+      1. Run univariate Cox regression for each CpG in X_train.
+      2. Rank CpGs by p-value (adjusted for multiple testing).
+      3. Return top_n CpG IDs with smallest adjusted p-values.
+
+    Args:
+        X_train (pd.DataFrame): CpG matrix (samples x CpGs).
+        y_train (structured array or DataFrame): Survival labels (must contain time_col & event_col if DataFrame).
+        time_col (str): Column name for survival time in y_train (if DataFrame).
+        event_col (str): Column name for event indicator in y_train (if DataFrame).
+        top_n (int): Number of top CpGs to keep.
+        penalizer_value (float): L2 penalizer for CoxPHFitter.
+
+    Returns:
+        list: Selected CpG IDs.
+    """
+    # Convert y_train to DataFrame if it is structured array
+    if isinstance(y_train, np.ndarray) and y_train.dtype.names is not None:
+        y_df = pd.DataFrame({
+            time_col: y_train[time_col],
+            event_col: y_train[event_col]
+        }, index=X_train.index)
+    else:
+        y_df = y_train.copy()
+
+    results = []
+    total_cpgs = X_train.shape[1]
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=ConvergenceWarning)
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+
+        for i, cpg in enumerate(X_train.columns):
+            if (i + 1) % 5000 == 0 or (i + 1) == total_cpgs:
+                print(f"  Processing CpG {i + 1}/{total_cpgs}...")
+
+            df = pd.concat([y_df[[time_col, event_col]].copy(), X_train[[cpg]]], axis=1).dropna()
+            df.columns = ["time", "event", "cpg_value"]
+
+            if df["cpg_value"].nunique() <= 1:
+                results.append({"CpG_ID": cpg, "pval": np.nan})
+                continue
+
+            try:
+                cph = CoxPHFitter(penalizer=penalizer_value)
+                cph.fit(df, duration_col="time", event_col="event")
+                summary = cph.summary.loc["cpg_value"]
+                results.append({"CpG_ID": cpg, "pval": summary["p"]})
+            except Exception as e:
+                print(f"Warning: Failed for {cpg}: {e}", flush=True)
+                results.append({"CpG_ID": cpg, "pval": np.nan})
+
+    df_results = pd.DataFrame(results)
+
+    # Adjust p-values using Benjamini-Hochberg
+    pvals = df_results["pval"].values
+    mask = ~pd.isna(pvals)
+    padj = np.full_like(pvals, np.nan, dtype=np.float64)
+    padj[mask] = multipletests(pvals[mask], method='fdr_bh')[1]
+    df_results["padj"] = padj
+
+    # Sort by adjusted p-value and select top_n
+    df_results = df_results.sort_values("padj")
+    selected_cpgs = df_results["CpG_ID"].iloc[:top_n].tolist()
+
+    print(f"Selected {len(selected_cpgs)} CpGs by univariate Cox filter.")
+    return selected_cpgs
+
+# ==============================================================================
+
+def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio, scale_factor=None): #match l1 ratio
     """
     Estimate a suitable grid of alpha values for Coxnet hyperparameter tuning.
 
@@ -42,8 +123,8 @@ def estimate_alpha_grid(X, y, l1_ratio=0.9, alpha_min_ratio=0.1, n_alphas=10, sc
     warnings.simplefilter("ignore", UserWarning)
 
     pipe = make_pipeline(
-        RobustScaler(), 
-        CoxnetSurvivalAnalysis(l1_ratio=l1_ratio, alpha_min_ratio=alpha_min_ratio, n_alphas=n_alphas)
+        RobustScaler(), #StandardScaler(),#RobustScaler(), # ADD BACK
+        CoxnetSurvivalAnalysis(l1_ratio=l1_ratio, n_alphas=n_alphas, alpha_min_ratio=alpha_min_ratio)
     )
 
     pipe.fit(X, y)
@@ -155,19 +236,21 @@ def m2beta(m):
 
 # ==============================================================================
 
-def variance_filter(df, min_variance=None, top_n=None):
+def variance_filter(X, y=None, min_variance=None, top_n=None):
     """
     Filter features (CpGs) based on variance. Expects CpGs as columns and patients as rows.
     
     Args:
-        df (pd.DataFrame): Feature matrix (samples x features).
+        X (pd.DataFrame): Feature matrix (samples x features).
         top_n (int, optional): Number of top features to select based on variance.
         min_variance (float, optional): Minimum variance threshold to retain features.
     
     Returns:
         list: Selected CpG IDs (column names).
     """
-    variances = df.var(axis=0)
+
+    log(f"Starting CpG filtering on training fold ({X.shape[1]} CpGs).")
+    variances = X.var(axis=0)
     
     if min_variance is not None:
         selected_features = variances[variances >= min_variance].index
@@ -176,13 +259,14 @@ def variance_filter(df, min_variance=None, top_n=None):
     else:
         raise ValueError("Either min_variance or top_n must be specified")
     
+    log(f"Filter applied: {len(selected_features.tolist())} CpGs remain after filtering.")
     return selected_features.tolist()
 
 # ==============================================================================
 
 def filter_cpgs_with_cox_lasso(X_train, y_train,
-                               initial_variance_top_n=50000,#50,#50000,
-                               l1_ratio_values=[0.9, 1.0],
+                               initial_variance_top_n=5000,#50,#50000,
+                               l1_ratio_values=[0.5],
                                cox_lasso_cv_folds=5,
                                log_prefix=""):
     """
@@ -213,14 +297,15 @@ def filter_cpgs_with_cox_lasso(X_train, y_train,
     log(f"{log_prefix}Variance filter applied: {X_var_filtered.shape[1]} CpGs remain.")
 
     # 2. Cox Lasso
-    cox_pipe = make_pipeline(RobustScaler(), # added for coxnet
+    cox_pipe = make_pipeline(RobustScaler(),#StandardScaler(),#RobustScaler(), # ADD BACK
                              CoxnetSurvivalAnalysis())
 
     # Estimate alphas
     # possible set min alpha to 0.5
     alphas = estimate_alpha_grid(X_var_filtered, y_train,
                                  l1_ratio=l1_ratio_values[0],
-                                 alpha_min_ratio=0.1, n_alphas=10)
+                                 alpha_min_ratio=1e-5,
+                                 n_alphas=10)
 
     param_grid = {
         'coxnetsurvivalanalysis__alphas': [[a] for a in alphas],
@@ -256,28 +341,69 @@ def filter_cpgs_with_cox_lasso(X_train, y_train,
 
     return selected_cpgs
 
-
 # ==============================================================================
-# delete if not needed anymore
-def preprocess_data(beta_matrix, top_n_cpgs):
+
+def filter_cpgs_with_correlation(X_train, y_train,
+                                 initial_variance_top_n=50000,
+                                 correlation_threshold=0.9):
     """
-    Converts beta values to M-values and retains most variable CpGs.
+    Perform CpG filtering on training data using variance + correlation.
+
+    Steps:
+      1. Variance filter: keep top N most variable CpGs
+      2. Correlation filter: remove highly correlated CpGs to reduce redundancy
+      3. Return list of selected CpGs
 
     Args:
-        beta_matrix (DataFrame): Raw beta methylation matrix.
-        top_n_cpgs (int): Number of most variable CpGs to retain.
+        X_train (pd.DataFrame): Training methylation data (samples x CpGs).
+        initial_variance_top_n (int): Keep top N CpGs by variance.
+        correlation_threshold (float): Threshold above which features are considered redundant.
+        log_prefix (str): Prefix for log messages.
 
     Returns:
-        DataFrame: Preprocessed M-values matrix.
+        list: CpG IDs selected after filtering.
     """
 
-    print(f"\n=== Preprocessing: Converting to M-values and selecting top {top_n_cpgs} most variable CpGs ===\n", flush=True)
+    log(f"Starting CpG filtering on training fold ({X_train.shape[1]} CpGs).")
 
-    # Convert beta values to M-values with a threshold 
-    mvals = beta2m(beta_matrix, beta_threshold=0.001)
-    # Apply variance filtering to retain top N most variable CpGs
-    mvals = variance_filter(mvals, top_n=top_n_cpgs)
-    return mvals
+    # Compute variance for each CpG (column) across all samples (rows)
+    variances = X_train.var(axis=0)
+
+    # Select top N CpGs with highest variance
+    top_variance_cpgs = variances.nlargest(initial_variance_top_n).index
+    X_var_filtered = X_train[top_variance_cpgs].copy()
+
+    log(f"Variance filter applied: {X_var_filtered.shape[1]} CpGs remain.")
+
+    # Correlation filter
+    log("Starting correlation filtering...")
+
+    # Idea: Many CpGs are highly correlated (e.g., nearby CpGs on same gene/region)
+    # Keeping all correlated features is redundant and can bias RSF variable importance
+    # We will iterate through columns, keeping a CpG only if it is not highly correlated
+    # with any CpG already selected.
+
+    # Compute absolute correlation matrix of the filtered CpGs
+    corr_matrix = X_var_filtered.corr().abs()
+
+    selected_cpgs = []        # final list of selected CpGs
+    already_selected = set()  # tracks CpGs that are too correlated to keep
+
+    # Iterate over each CpG
+    for cpg in corr_matrix.columns:
+        if cpg not in already_selected:
+            # Keep this CpG because it hasn't been excluded yet
+            selected_cpgs.append(cpg)
+
+            # Find all CpGs that are highly correlated with this one
+            high_corr = corr_matrix[cpg][corr_matrix[cpg] > correlation_threshold].index.tolist()
+
+            # Mark all of these as already selected so we skip them in future iterations
+            already_selected.update(high_corr)
+
+    log(f"Correlation filter applied: {len(selected_cpgs)} CpGs remain after filtering.")
+
+    return selected_cpgs
 
 # ==============================================================================
 

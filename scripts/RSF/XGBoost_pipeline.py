@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 ################################################################################
-# Script: RSF Pipeline
+# Script: XGBoost Pipeline
 # Author: lennart hohmann
 ################################################################################
 
@@ -15,13 +15,12 @@ import pandas as pd
 import joblib
 from sksurv.util import Surv
 import argparse
-from sksurv.ensemble import RandomSurvivalForest
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import log, load_training_data, beta2m, apply_admin_censoring, run_nested_cv, summarize_outer_models, summarize_performance,select_best_model, filter_cpgs_with_correlation, variance_filter, filter_cpgs_with_cox_lasso
+from src.utils import log, load_training_data, beta2m, apply_admin_censoring, run_nested_cv, summarize_outer_models, summarize_performance,select_best_model, variance_filter
 from src.plotting_functions import plot_brier_scores, plot_auc_curves
-from src.rsf_functions import define_param_grid, evaluate_outer_models
+from src.xgboost_functions import define_param_grid, evaluate_outer_models
 
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
@@ -150,17 +149,28 @@ else:
     log(f"No pre-filtered CpG file provided. Keeping all {X.shape[1]} CpGs.")
 
 # Prepare survival labels (Surv object with event & time)
-y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
+#y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
+from xgbse.converters import convert_to_structured
+y = convert_to_structured(clinical_data["RFi_years"], clinical_data["RFi_event"])
+
 
 # Define hyperparameter grid
+
+
 param_grid = define_param_grid(X, y)
 
+
 # Run nested cross-validation
-estimator = RandomSurvivalForest(random_state=96)
-filter_func = lambda X_train, y_train: variance_filter(X_train, y_train, top_n=1000)
-#filter_func = lambda X_train, y_train: filter_cpgs_with_cox_lasso(X_train, y_train,
-#                               initial_variance_top_n=5000,#50000,
-#                               l1_ratio_values=[0.5])
+#estimator = RandomSurvivalForest(random_state=96)
+from xgbse import XGBSEDebiasedBCE
+estimator = XGBSEDebiasedBCE() #other xgbse models (e.g. XGBSEKaplanNeighbors, XGBSEBootstrapEstimator).
+
+
+
+#filter_func = lambda X_train, y_train: variance_filter(X_train, y_train, top_n=1000)
+filter_func = lambda X_train, y_train: filter_cpgs_with_cox_lasso(X_train, y_train,
+                               initial_variance_top_n=5000,#50000,
+                               l1_ratio_values=[0.5])
 
 #filter_cpgs_with_cox_lasso
 outer_models = run_nested_cv(X, y, base_estimator=estimator, 
