@@ -16,7 +16,7 @@ import joblib
 from sksurv.util import Surv
 import argparse
 from sksurv.linear_model import CoxnetSurvivalAnalysis
-from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import RobustScaler,StandardScaler
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
@@ -88,7 +88,7 @@ EVAL_TIME_GRID = np.arange(1, 5.1, 0.5)  # time points for metrics
 
 # type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
 ALPHAS_ESTIMATION_L1RATIO = 0.9#[0.9]
-PARAM_GRID_L1RATIOS  = [0.5,0.7,0.9]#[0.9]
+PARAM_GRID_L1RATIOS  = [0.9]#[0.9]
 
 # ==============================================================================
 # INPUT AND OUTPUT FILES
@@ -158,19 +158,21 @@ else:
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 
 # Define hyperparameter grid
-#if args.methylation_type == "adjusted":
-#    scale_factor=0.01
-#else:
-#    scale_factor=0.1
+if args.methylation_type == "adjusted":
+    alpha_min=0.01
+else:
+    alpha_min=0.1
 
-alphas = estimate_alpha_grid(X, y, l1_ratio=ALPHAS_ESTIMATION_L1RATIO, n_alphas=10, scale_factor=None)
+alphas = estimate_alpha_grid(X, y, l1_ratio=ALPHAS_ESTIMATION_L1RATIO, n_alphas=10,top_n_variance=10000,alpha_min_ratio=alpha_min)
+
+#alphas = np.logspace(np.log10(0.01), np.log10(10), 20)
 param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=PARAM_GRID_L1RATIOS)
 
 # Run nested cross-validation
 #estimator = CoxnetSurvivalAnalysis()
 #scaler = RobustScaler()
 outer_models = run_nested_cv_cox(X, y,
-                             param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS)
+                             param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS, top_n_variance = 10000)
 
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")

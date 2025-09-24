@@ -103,7 +103,7 @@ def filter_cpgs_univariate_cox(X_train: pd.DataFrame,
 
 # ==============================================================================
 
-def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto', scale_factor=None): #match l1 ratio
+def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto', top_n_variance=5000): #match l1 ratio
     """
     Estimate a suitable grid of alpha values for Coxnet hyperparameter tuning.
 
@@ -111,7 +111,6 @@ def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto', scale_
         X (DataFrame): Feature matrix.
         y (structured array): Survival labels (from sksurv).
         l1_ratio (float): Elastic net mixing parameter for alpha estimation.
-        alpha_min_ratio (float): Minimum ratio of alpha_max for grid.
         n_alphas (int): Number of alphas to generate.
 
     Returns:
@@ -122,9 +121,12 @@ def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto', scale_
     warnings.simplefilter("ignore", FitFailedWarning)
     warnings.simplefilter("ignore", UserWarning)
 
+    selected_cpgs = variance_filter(X, top_n=top_n_variance) #50000
+    X = X[selected_cpgs]
+
     pipe = make_pipeline(
-        #RobustScaler(), #StandardScaler(),#RobustScaler(), # ADD BACK
-        CoxnetSurvivalAnalysis(l1_ratio=l1_ratio, n_alphas=n_alphas, alpha_min_ratio=alpha_min_ratio)
+        #RobustScaler(), # ADD BACK
+        CoxnetSurvivalAnalysis(l1_ratio=l1_ratio, n_alphas=n_alphas,alpha_min_ratio=alpha_min_ratio)
     )
 
     pipe.fit(X, y)
@@ -297,14 +299,13 @@ def filter_cpgs_with_cox_lasso(X_train, y_train,
     log(f"{log_prefix}Variance filter applied: {X_var_filtered.shape[1]} CpGs remain.")
 
     # 2. Cox Lasso
-    cox_pipe = make_pipeline(#RobustScaler(),#StandardScaler(),#RobustScaler(), # ADD BACK
+    cox_pipe = make_pipeline(RobustScaler(),#RobustScaler(),#StandardScaler(),#RobustScaler(), # ADD BACK
                              CoxnetSurvivalAnalysis())
 
     # Estimate alphas
     # possible set min alpha to 0.5
     alphas = estimate_alpha_grid(X_var_filtered, y_train,
                                  l1_ratio=l1_ratio_values[0],
-                                 #alpha_min_ratio=1e-5,
                                  n_alphas=10)
 
     param_grid = {

@@ -14,7 +14,7 @@ from sksurv.linear_model import CoxnetSurvivalAnalysis
 from sksurv.metrics import cumulative_dynamic_auc, concordance_index_censored, brier_score, integrated_brier_score
 import matplotlib.pyplot as plt
 from sksurv.metrics import as_concordance_index_ipcw_scorer
-from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import RobustScaler, StandardScaler
 from src.utils import variance_filter #, estimate_alpha_grid
 
 # ==============================================================================
@@ -46,7 +46,7 @@ def define_param_grid(grid_alphas, grid_l1ratio=[0.9]):
 # ==============================================================================
 
 def run_nested_cv_cox(X, y, param_grid, 
-                  outer_cv_folds=5, inner_cv_folds=3):
+                  outer_cv_folds=5, inner_cv_folds=3, top_n_variance = 5000):
     """
     Run nested cross-validation for survival models (RSF, Coxnet, GBM, etc.).
 
@@ -74,9 +74,10 @@ def run_nested_cv_cox(X, y, param_grid,
     outer_cv = StratifiedKFold(n_splits=outer_cv_folds, shuffle=True, random_state=96)
     inner_cv = KFold(n_splits=inner_cv_folds, shuffle=True, random_state=96)
 
+    #scaler=RobustScaler() #StandardScaler()
     # Build pipeline with optional scaler
     pipe = make_pipeline(
-                         #RobustScaler(),
+                         #RobustScaler(), # ADD BACK
                          CoxnetSurvivalAnalysis())  # do not pass external base_estimator
 
     print(pipe.get_params().keys())
@@ -103,7 +104,7 @@ def run_nested_cv_cox(X, y, param_grid,
 
         try:
             # Apply filter function if provided
-            selected_cpgs = variance_filter(X_train, top_n=5000) #50000
+            selected_cpgs = variance_filter(X_train, top_n=top_n_variance) #50000
             X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
 
             # Fit inner CV model
@@ -115,7 +116,7 @@ def run_nested_cv_cox(X, y, param_grid,
 
             # --- REFIT with baseline model for survival function prediction ---
             refit_best_model = make_pipeline(
-                #RobustScaler(),
+                # RobustScaler(), # ADD BACK
                 CoxnetSurvivalAnalysis(
                     alphas=[best_params["estimator__coxnetsurvivalanalysis__alphas"][0]],
                     l1_ratio=best_params["estimator__coxnetsurvivalanalysis__l1_ratio"],
