@@ -159,11 +159,12 @@ y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 
 # Define hyperparameter grid
 if args.methylation_type == "adjusted":
-    scale_factor=0.01
+    alpha_min=0.25
 else:
-    scale_factor=0.1
-#scale_factor=None
-alphas = estimate_alpha_grid(X, y, l1_ratio=ALPHAS_ESTIMATION_L1RATIO, n_alphas=20, scale_factor=scale_factor)
+    alpha_min=0.25
+
+alphas = estimate_alpha_grid(X, y, l1_ratio=ALPHAS_ESTIMATION_L1RATIO, n_alphas=10,top_n_variance=10000,alpha_min_ratio=alpha_min)
+
 param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=PARAM_GRID_L1RATIOS)
 
 # Run nested cross-validation

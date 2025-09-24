@@ -263,3 +263,16 @@ webshot::webshot(
     vwidth = 1200,
     vheight = 800
 )
+
+
+#-------------------------------
+# Median follow-up for patients with no events
+#-------------------------------
+
+# Overall Survival (OS) - patients with no OS event
+median_os_followup <- median(clinical$OS_years[clinical$OS_event == "0"], na.rm = TRUE)
+cat("Median OS follow-up (no event):", median_os_followup, "years\n")
+
+# Recurrence-Free Interval (RFI) - patients with no RFI event
+median_rfi_followup <- median(clinical$RFi_years[clinical$RFi_event == "0"], na.rm = TRUE)
+cat("Median RFI follow-up (no event):", median_rfi_followup, "years\n")

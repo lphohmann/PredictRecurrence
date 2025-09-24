@@ -155,11 +155,22 @@ y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 # Define hyperparameter grid
 param_grid = define_param_grid()
 
+# Define hyperparameter grid
+if args.methylation_type == "adjusted":
+    alpha_min=0.2
+else:
+    alpha_min=0.1
+
 # Run nested cross-validation
 estimator = GradientBoostingSurvivalAnalysis(random_state=96)
+filter_func = lambda X_train, y_train: filter_cpgs_with_cox_lasso(X_train, y_train,
+                               initial_variance_top_n=10000,#50000,
+                               l1_ratio_values=[0.9],
+                               est_alpha_min=alpha_min)
+
 outer_models = run_nested_cv(X, y, base_estimator=estimator, 
                              param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS,  
-                             filter_function=filter_cpgs_with_cox_lasso)# model agnostic,
+                             filter_function=filter_func)# model agnostic,
 
 #outer_models = run_nested_cv(X, y, param_grid, OUTER_CV_FOLDS, INNER_CV_FOLDS)
 joblib.dump(outer_models, outfile_outermodels)

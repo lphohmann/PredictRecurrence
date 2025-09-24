@@ -124,6 +124,8 @@ def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto', top_n_
     selected_cpgs = variance_filter(X, top_n=top_n_variance) #50000
     X = X[selected_cpgs]
 
+    #log(f"ALPHA MIN RATIO: {alpha_min_ratio}")
+
     pipe = make_pipeline(
         #RobustScaler(), # ADD BACK
         CoxnetSurvivalAnalysis(l1_ratio=l1_ratio, n_alphas=n_alphas,alpha_min_ratio=alpha_min_ratio)
@@ -132,6 +134,7 @@ def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto', top_n_
     pipe.fit(X, y)
     alphas = pipe.named_steps["coxnetsurvivalanalysis"].alphas_
 
+    #log(f"Alpha grid: {alphas}")
     # Apply scaling to make grid more conservative
     #if scale_factor is not None:
     #    alphas = alphas * scale_factor
@@ -268,9 +271,10 @@ def variance_filter(X, y=None, min_variance=None, top_n=None):
 
 def filter_cpgs_with_cox_lasso(X_train, y_train,
                                initial_variance_top_n=5000,#50,#50000,
-                               l1_ratio_values=[0.5],
+                               l1_ratio_values=[0.9],
                                cox_lasso_cv_folds=5,
-                               log_prefix=""):
+                               log_prefix="",
+                               est_alpha_min="auto"):
     """
     Perform CpG filtering on training data using variance + Cox Lasso.
 
@@ -299,14 +303,15 @@ def filter_cpgs_with_cox_lasso(X_train, y_train,
     log(f"{log_prefix}Variance filter applied: {X_var_filtered.shape[1]} CpGs remain.")
 
     # 2. Cox Lasso
-    cox_pipe = make_pipeline(RobustScaler(),#RobustScaler(),#StandardScaler(),#RobustScaler(), # ADD BACK
+    cox_pipe = make_pipeline(#RobustScaler(),#RobustScaler(),#StandardScaler(),#RobustScaler(), # ADD BACK
                              CoxnetSurvivalAnalysis())
 
     # Estimate alphas
     # possible set min alpha to 0.5
     alphas = estimate_alpha_grid(X_var_filtered, y_train,
                                  l1_ratio=l1_ratio_values[0],
-                                 n_alphas=10)
+                                 n_alphas=10,top_n_variance=initial_variance_top_n,
+                                 alpha_min_ratio=est_alpha_min) #alpha_min
 
     param_grid = {
         'coxnetsurvivalanalysis__alphas': [[a] for a in alphas],

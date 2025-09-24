@@ -70,6 +70,13 @@ mpl.rcParams['ps.fonttype'] = 42
 
 def plot_auc_curves_multi(performances_dict, time_grid, outfile):
     plt.style.use('seaborn-whitegrid')
+    # then override fonts
+    plt.rcParams['axes.labelsize'] = 20
+    plt.rcParams['xtick.labelsize'] = 18
+    plt.rcParams['ytick.labelsize'] = 18
+    plt.rcParams['legend.fontsize'] = 18
+    plt.rcParams['font.size'] = 20
+
     plt.figure(figsize=(10, 6))
 
     for model_name, performance in performances_dict.items():
@@ -78,7 +85,7 @@ def plot_auc_curves_multi(performances_dict, time_grid, outfile):
 
     #plt.title("Time-dependent AUC(t) Comparison")
     plt.xlabel("Time")
-    plt.ylabel("AUC(t)")
+    plt.ylabel("mean AUC(t)")
     plt.ylim(0, 1)
     plt.legend(loc='lower right')
     plt.tight_layout()

@@ -159,7 +159,7 @@ y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 
 # Define hyperparameter grid
 if args.methylation_type == "adjusted":
-    alpha_min=0.01
+    alpha_min=0.2
 else:
     alpha_min=0.1
 
