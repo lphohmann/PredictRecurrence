@@ -75,7 +75,9 @@ def run_nested_cv_cox(X, y, param_grid,
     inner_cv = KFold(n_splits=inner_cv_folds, shuffle=True, random_state=96)
 
     # Build pipeline with optional scaler
-    pipe = make_pipeline(RobustScaler(),CoxnetSurvivalAnalysis())  # do not pass external base_estimator
+    pipe = make_pipeline(
+                         #RobustScaler(),
+                         CoxnetSurvivalAnalysis())  # do not pass external base_estimator
 
     print(pipe.get_params().keys())
 
@@ -101,7 +103,7 @@ def run_nested_cv_cox(X, y, param_grid,
 
         try:
             # Apply filter function if provided
-            selected_cpgs = variance_filter(X_train, top_n=50000)
+            selected_cpgs = variance_filter(X_train, top_n=5000) #50000
             X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
 
             # Fit inner CV model
@@ -113,7 +115,7 @@ def run_nested_cv_cox(X, y, param_grid,
 
             # --- REFIT with baseline model for survival function prediction ---
             refit_best_model = make_pipeline(
-                RobustScaler(),
+                #RobustScaler(),
                 CoxnetSurvivalAnalysis(
                     alphas=[best_params["estimator__coxnetsurvivalanalysis__alphas"][0]],
                     l1_ratio=best_params["estimator__coxnetsurvivalanalysis__l1_ratio"],

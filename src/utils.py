@@ -103,7 +103,7 @@ def filter_cpgs_univariate_cox(X_train: pd.DataFrame,
 
 # ==============================================================================
 
-def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio, scale_factor=None): #match l1 ratio
+def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto', scale_factor=None): #match l1 ratio
     """
     Estimate a suitable grid of alpha values for Coxnet hyperparameter tuning.
 
@@ -123,7 +123,7 @@ def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio, scale_factor=
     warnings.simplefilter("ignore", UserWarning)
 
     pipe = make_pipeline(
-        RobustScaler(), #StandardScaler(),#RobustScaler(), # ADD BACK
+        #RobustScaler(), #StandardScaler(),#RobustScaler(), # ADD BACK
         CoxnetSurvivalAnalysis(l1_ratio=l1_ratio, n_alphas=n_alphas, alpha_min_ratio=alpha_min_ratio)
     )
 
@@ -131,8 +131,8 @@ def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio, scale_factor=
     alphas = pipe.named_steps["coxnetsurvivalanalysis"].alphas_
 
     # Apply scaling to make grid more conservative
-    if scale_factor is not None:
-        alphas = alphas * scale_factor
+    #if scale_factor is not None:
+    #    alphas = alphas * scale_factor
 
     return alphas
 
@@ -297,14 +297,14 @@ def filter_cpgs_with_cox_lasso(X_train, y_train,
     log(f"{log_prefix}Variance filter applied: {X_var_filtered.shape[1]} CpGs remain.")
 
     # 2. Cox Lasso
-    cox_pipe = make_pipeline(RobustScaler(),#StandardScaler(),#RobustScaler(), # ADD BACK
+    cox_pipe = make_pipeline(#RobustScaler(),#StandardScaler(),#RobustScaler(), # ADD BACK
                              CoxnetSurvivalAnalysis())
 
     # Estimate alphas
     # possible set min alpha to 0.5
     alphas = estimate_alpha_grid(X_var_filtered, y_train,
                                  l1_ratio=l1_ratio_values[0],
-                                 alpha_min_ratio=1e-5,
+                                 #alpha_min_ratio=1e-5,
                                  n_alphas=10)
 
     param_grid = {

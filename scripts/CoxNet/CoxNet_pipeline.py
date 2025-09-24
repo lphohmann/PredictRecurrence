@@ -158,16 +158,17 @@ else:
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 
 # Define hyperparameter grid
-if args.methylation_type == "adjusted":
-    scale_factor=0.01
-else:
-    scale_factor=0.1
-alphas = estimate_alpha_grid(X, y, l1_ratio=ALPHAS_ESTIMATION_L1RATIO, n_alphas=20, scale_factor=scale_factor)
+#if args.methylation_type == "adjusted":
+#    scale_factor=0.01
+#else:
+#    scale_factor=0.1
+
+alphas = estimate_alpha_grid(X, y, l1_ratio=ALPHAS_ESTIMATION_L1RATIO, n_alphas=10, scale_factor=None)
 param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=PARAM_GRID_L1RATIOS)
 
 # Run nested cross-validation
-estimator = CoxnetSurvivalAnalysis()
-scaler = RobustScaler()
+#estimator = CoxnetSurvivalAnalysis()
+#scaler = RobustScaler()
 outer_models = run_nested_cv_cox(X, y,
                              param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS)
 
