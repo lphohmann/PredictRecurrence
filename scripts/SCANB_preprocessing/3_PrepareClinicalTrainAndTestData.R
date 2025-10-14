@@ -9,9 +9,11 @@ rm(list=ls())
 setwd("~/PhD_Workspace/PredictRecurrence/")
 #----------------------------------------------------------------------
 # packages
-#source("./scripts/src/")
-if (!require("pacman")) install.packages("pacman")
-pacman::p_load(data.table)
+# Install if needed
+if (!require("mice")) install.packages("mice")
+library(mice)
+library(data.table)
+
 source("./src/utils.R")
 #----------------------------------------------------------------------
 # input paths
@@ -25,9 +27,9 @@ dir.create(output.path, showWarnings = FALSE)
 outfile.0 <- paste0(output.path, "test_clinical.csv")
 outfile.1 <- paste0(output.path, "train_clinical.csv")
 dir.create("./data/train/train_subcohorts/", showWarnings = FALSE)
-outfile.2 <- "./data/train/train_subcohorts/ERpHER2n_train_ids.csv"
-outfile.3 <- "./data/train/train_subcohorts/TNBC_train_ids.csv"
-outfile.4 <- "./data/train/train_subcohorts/All_train_ids.csv"
+#outfile.2 <- "./data/train/train_subcohorts/ERpHER2n_train_ids.csv"
+#outfile.3 <- "./data/train/train_subcohorts/TNBC_train_ids.csv"
+#outfile.4 <- "./data/train/train_subcohorts/All_train_ids.csv"
 
 #######################################################################
 # clinical data
@@ -71,10 +73,40 @@ clin.dat$Group <- ifelse(
 
 clin.dat[clin.dat == ""] <- NA
 
-# train test data
-dim(clin.dat) #1347   16
+
+#----------------------------------------------------------------------
+# train
+# impute missing data for Age, Size.mm NHG LN
+
+# check missingness
+nrow(clin.dat)
+print(colSums(is.na(clin.dat[c("Age", "Size.mm", "NHG", "LN")])))
+# minimal impute (drop this block where you had your comment)
+mode_value <- function(x) {
+  ux <- na.omit(unique(x))
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+# Size.mm (numeric)
+clin.dat$Size.mm[is.na(clin.dat$Size.mm)] <- median(clin.dat$Size.mm, na.rm = TRUE)
+
+# LN (categorical)
+clin.dat$LN[is.na(clin.dat$LN)] <- mode_value(clin.dat$LN)
+
+# NHG (ordinal) -> mode + indicator
+clin.dat$NHG_missing <- as.integer(is.na(clin.dat$NHG))
+clin.dat$NHG[is.na(clin.dat$NHG)] <- mode_value(clin.dat$NHG)
+
+# check missingness again
+print(colSums(is.na(clin.dat[c("Age", "Size.mm", "NHG", "LN")])))
+
+# correct data taypeds for modeeling:
+#clin.dat$LN <- ifelse(clin.dat$LN == "N+", 1,
+#                          ifelse(clin.dat$LN == "N0", 0, NA))
+#clin.dat[c("Age","Size.mm","NHG","LN")] <- lapply(clin.dat[c("Age","Size.mm","NHG","LN")], as.numeric)
+
+#----------------------------------------------------------------------
 clin.dat.train <- clin.dat[clin.dat$Sample %in% train.ids,]
-dim(clin.dat.train)
 clin.dat.test <- clin.dat[clin.dat$Sample %in% test.ids,]
 dim(clin.dat.test)
 
@@ -91,6 +123,6 @@ TNBC_train_ids <- clin.dat.train$Sample[clin.dat.train$Group=="TNBC"]
 
 #table(clin.dat.train$Group)
 
-write.table(ERpHER2n_train_ids, file = outfile.2, row.names = FALSE, col.names = FALSE) #erp
-write.table(TNBC_train_ids, file = outfile.3, row.names = FALSE, col.names = FALSE) #tnbc
-write.table(train.ids, file = outfile.4, row.names = FALSE, col.names = FALSE) #all
+#write.table(ERpHER2n_train_ids, file = outfile.2, row.names = FALSE, col.names = FALSE) #erp
+#write.table(TNBC_train_ids, file = outfile.3, row.names = FALSE, col.names = FALSE) #tnbc
+#write.table(train.ids, file = outfile.4, row.names = FALSE, col.names = FALSE) #all

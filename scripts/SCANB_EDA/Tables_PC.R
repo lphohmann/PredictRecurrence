@@ -57,7 +57,7 @@ label(clinical.train$Age) <- "Age (years)"
 #label(clinical.train$NCN.PAM50) <- "PAM50 subtype"
 #label(clinical.train$OS_event) <- "OS Event"
 label(clinical.train$RFi_event) <- "RFI Event"
-#label(clinical.train$OS_years) <- "Overall Survival (years)"
+label(clinical.train$OS_years) <- "Overall Survival (years)"
 #label(clinical.train$RFi_years) <- "Recurrence-Free Interval (years)"
 label(clinical.train$Group) <- "Subgroup"
 clinical.train$Group <- factor(clinical.train$Group, levels = c("ER+HER2-","TNBC","Other"))
@@ -69,7 +69,7 @@ clinical.train$Group <- factor(clinical.train$Group, levels = c("ER+HER2-","TNBC
 clinical.train$LN <- factor(clinical.train$LN)
 #clinical.train$Group <- factor(clinical.train$Group, levels = c("ER+HER2-", "TNBC", "Other"))
 clinical.train$RFi_event <- factor(clinical.train$RFi_event, levels = c("0", "1"))
-#clinical.train$OS_event <- factor(clinical.train$OS_event, levels = c("0","1"))
+clinical.train$OS_event <- factor(clinical.train$OS_event, levels = c("0","1"))
 
 # Apply custom renders
 my.render.cont <- function(x) {
@@ -85,7 +85,7 @@ my.render.cat <- function(x) {
     }))
 }
 
-table_1 <- table1(~ LN + NHG + Age + Size.mm + RFi_event | Group,
+table_1 <- table1(~ LN + NHG + Age + Size.mm + RFi_event + OS_event | Group,
     data = clinical.train,
     render.continuous = my.render.cont,
     render.categorical = my.render.cat,
@@ -117,6 +117,7 @@ label(clinical.test$Size.mm) <- "Tumor Size (mm)"
 label(clinical.test$Age) <- "Age (years)"
 
 label(clinical.test$RFi_event) <- "RFI Event"
+label(clinical.test$OS_event) <- "OS Event"
 
 label(clinical.test$Group) <- "Subgroup"
 clinical.test$Group <- factor(clinical.test$Group, levels = c("ER+HER2-","TNBC","Other"))
@@ -125,6 +126,7 @@ clinical.test$Group <- factor(clinical.test$Group, levels = c("ER+HER2-","TNBC",
 
 clinical.test$LN <- factor(clinical.test$LN)
 clinical.test$RFi_event <- factor(clinical.test$RFi_event, levels = c("0", "1"))
+clinical.test$OS_event <- factor(clinical.test$OS_event, levels = c("0", "1"))
 
 # Apply custom renders
 my.render.cont <- function(x) {
@@ -140,7 +142,7 @@ my.render.cat <- function(x) {
     }))
 }
 
-table_2 <- table1(~ LN + NHG + Age + Size.mm + RFi_event | Group,
+table_2 <- table1(~ LN + NHG + Age + Size.mm + RFi_event + OS_event | Group,
     data = clinical.test,
     render.continuous = my.render.cont,
     render.categorical = my.render.cat,
@@ -198,7 +200,7 @@ clinical$Set <- factor(clinical$Set, levels = c("Train", "Test"))
 #    }))
 #}
 
-table_3 <- table1(~  LN + NHG + Age + Size.mm + RFi_event | Set, data = clinical,
+table_3 <- table1(~  LN + NHG + Age + Size.mm + RFi_event + OS_event | Set, data = clinical,
                 overall="Total",render.continuous=my.render.cont, 
                 render.categorical=my.render.cat,
 topclass="Rtable1-zebra")

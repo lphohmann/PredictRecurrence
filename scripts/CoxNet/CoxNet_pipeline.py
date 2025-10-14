@@ -17,6 +17,7 @@ from sksurv.util import Surv
 import argparse
 from sksurv.linear_model import CoxnetSurvivalAnalysis
 from sklearn.preprocessing import RobustScaler,StandardScaler
+from sklearn.preprocessing import OneHotEncoder
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
@@ -90,6 +91,9 @@ EVAL_TIME_GRID = np.arange(1, 5.1, 0.5)  # time points for metrics
 ALPHAS_ESTIMATION_L1RATIO = 0.9#[0.9]
 PARAM_GRID_L1RATIOS  = [0.9]#[0.9]
 
+#
+CLINVARS_INCLUDED = ["Age", "Size.mm", "NHG", "LN"] # None
+CLIN_CATEGORICAL = ["NHG", "LN"]
 # ==============================================================================
 # INPUT AND OUTPUT FILES
 # ==============================================================================
@@ -154,6 +158,33 @@ else:
     X = mvals.copy()
     log(f"No pre-filtered CpG file provided. Keeping all {X.shape[1]} CpGs.")
 
+# add clincial vars to X to put all trainign featuer sin one object
+if CLINVARS_INCLUDED is not None:
+
+    # 1) subset clinical data aligned to X
+    clin = clinical_data[CLINVARS_INCLUDED].loc[X.index]
+    # 2) one-hot encode the categorical clinical variables
+    encoder = OneHotEncoder(drop=None, dtype=float, sparse_output=False)
+    encoded = encoder.fit_transform(clin[CLIN_CATEGORICAL])
+    encoded_cols = encoder.get_feature_names_out(CLIN_CATEGORICAL).tolist()
+    # 3) make a DataFrame for the encoded columns
+    encoded_df = pd.DataFrame(encoded, columns=encoded_cols, index=X.index)
+    # 4) build the encoded clinical DataFrame (drop original categorical cols)
+    clin_encoded = pd.concat([clin.drop(columns=CLIN_CATEGORICAL), encoded_df], axis=1)
+    # 5) remove any original clinical columns from X to avoid duplicates (safe)
+    cols_to_remove = [c for c in CLINVARS_INCLUDED if c in X.columns]
+    if cols_to_remove:
+        X = X.drop(columns=cols_to_remove)
+    # 6) concatenate encoded clinical back into X
+    X = pd.concat([X, clin_encoded], axis=1)
+
+    # 7) build CLINVARS_INCLUDED_ENCODED: replace original categorical names with encoded column names
+    CLINVARS_INCLUDED_ENCODED = [c for c in CLINVARS_INCLUDED if c not in CLIN_CATEGORICAL] + encoded_cols
+    
+    log(f"Added {CLINVARS_INCLUDED_ENCODED} clinical variables. New X shape: {X.shape}")
+else:
+    log("No clinical variables added (CLINVARS_INCLUDED=None).")
+
 # Prepare survival labels (Surv object with event & time)
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 
@@ -163,7 +194,7 @@ if args.methylation_type == "adjusted":
 else:
     alpha_min=0.1
 
-alphas = estimate_alpha_grid(X, y, l1_ratio=ALPHAS_ESTIMATION_L1RATIO, n_alphas=10,top_n_variance=10000,alpha_min_ratio=alpha_min)
+alphas = estimate_alpha_grid(X, y, l1_ratio=ALPHAS_ESTIMATION_L1RATIO, n_alphas=10,top_n_variance=1000,alpha_min_ratio=alpha_min,clinvars_all=CLINVARS_INCLUDED_ENCODED)
 
 #alphas = np.logspace(np.log10(0.01), np.log10(10), 20)
 param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=PARAM_GRID_L1RATIOS)
@@ -172,7 +203,7 @@ param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=PARAM_GRID_L1RAT
 #estimator = CoxnetSurvivalAnalysis()
 #scaler = RobustScaler()
 outer_models = run_nested_cv_cox(X, y,
-                             param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS, top_n_variance = 10000)
+                             param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS, top_n_variance = 1000, dont_filter_vars=CLINVARS_INCLUDED_ENCODED)
 
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")

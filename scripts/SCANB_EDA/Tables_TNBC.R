@@ -55,7 +55,7 @@ label(clinical.train$Size.mm) <- "Tumor Size (mm)"
 #label(clinical.train$InvCa.type) <- "Inv. Cancer type"
 label(clinical.train$Age) <- "Age (years)"
 #label(clinical.train$NCN.PAM50) <- "PAM50 subtype"
-#label(clinical.train$OS_event) <- "OS Event"
+label(clinical.train$OS_event) <- "OS Event"
 label(clinical.train$RFi_event) <- "RFI Event"
 #label(clinical.train$OS_years) <- "Overall Survival (years)"
 #label(clinical.train$RFi_years) <- "Recurrence-Free Interval (years)"
@@ -68,7 +68,7 @@ label(clinical.train$RFi_event) <- "RFI Event"
 clinical.train$LN <- factor(clinical.train$LN)
 #clinical.train$Group <- factor(clinical.train$Group, levels = c("ER+HER2-", "TNBC", "Other"))
 clinical.train$RFi_event <- factor(clinical.train$RFi_event, levels = c("0", "1"))
-#clinical.train$OS_event <- factor(clinical.train$OS_event, levels = c("0","1"))
+clinical.train$OS_event <- factor(clinical.train$OS_event, levels = c("0","1"))
 
 # Apply custom renders
 my.render.cont <- function(x) {
@@ -84,7 +84,7 @@ my.render.cat <- function(x) {
     }))
 }
 
-table_1 <- table1(~ LN + NHG + Age + Size.mm + RFi_event,
+table_1 <- table1(~ LN + NHG + Age + Size.mm + RFi_event + OS_event,
     data = clinical.train,
     render.continuous = my.render.cont,
     render.categorical = my.render.cat,

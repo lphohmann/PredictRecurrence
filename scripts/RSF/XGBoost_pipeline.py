@@ -21,6 +21,7 @@ sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
 from src.utils import log, load_training_data, beta2m, apply_admin_censoring, run_nested_cv, summarize_outer_models, summarize_performance,select_best_model, variance_filter
 from src.plotting_functions import plot_brier_scores, plot_auc_curves
 from src.xgboost_functions import define_param_grid, evaluate_outer_models
+from xgbse.converters import convert_to_structured
 
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
@@ -150,7 +151,7 @@ else:
 
 # Prepare survival labels (Surv object with event & time)
 #y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
-from xgbse.converters import convert_to_structured
+
 y = convert_to_structured(clinical_data["RFi_years"], clinical_data["RFi_event"])
 
 

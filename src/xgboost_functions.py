@@ -10,6 +10,14 @@ import numpy as np
 from sksurv.metrics import (cumulative_dynamic_auc, concordance_index_censored,
                              brier_score, integrated_brier_score)
 
+import pandas as pd
+import numpy as np
+from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, KFold
+
+from sksurv.metrics import as_concordance_index_ipcw_scorer
+
+
 # ==============================================================================
 # FUNCTIONS
 # ==============================================================================
@@ -24,6 +32,122 @@ def define_param_grid(X=None, y=None):
     }
     print(f"Defined XGBSE parameter grid: {param_grid}")
     return param_grid
+
+# ==============================================================================
+
+
+
+def run_nested_cv(X, y, base_estimator, param_grid, 
+                  outer_cv_folds=5, inner_cv_folds=3, 
+                  filter_function=None,
+                  scaler=None):
+    """
+    Run nested cross-validation for survival models (RSF, Coxnet, GBM, etc.).
+
+    Args:
+        X (pd.DataFrame): Feature matrix.
+        y (structured array): Survival outcome (event, time).
+        base_estimator: Survival model (e.g. RandomSurvivalForest()).
+        param_grid (dict): Hyperparameter grid.
+        outer_cv_folds (int): Number of outer CV folds.
+        inner_cv_folds (int): Number of inner CV folds.
+        filter_function (callable): Function to filter features.
+                                    Must accept (X_train, y_train) and return list of columns.
+                                    If None, all features are used.
+        scaler (object or None): Optional sklearn scaler (e.g. RobustScaler()).
+                                 If provided, will be inserted before the estimator in the pipeline.
+
+    Returns:
+        list: Results from each outer fold with trained models and metadata.
+    """
+    
+    print(f"\n=== Running nested CV with {outer_cv_folds} outer folds "
+          f"and {inner_cv_folds} inner folds ===\n", flush=True)
+
+    event_labels = y["RFi_event"]
+    outer_cv = StratifiedKFold(n_splits=outer_cv_folds, shuffle=True, random_state=96)
+    inner_cv = KFold(n_splits=inner_cv_folds, shuffle=True, random_state=96)
+
+    # Build pipeline with optional scaler
+    if scaler is not None:
+        pipe = make_pipeline(scaler, base_estimator)
+        print(f"--> Using pipeline with {scaler.__class__.__name__}", flush=True)
+    else:
+        pipe = make_pipeline(base_estimator)
+        print("--> Using pipeline without scaler", flush=True)
+
+    print(pipe.get_params().keys())
+
+    # Default scorer = concordance index
+    scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
+
+    # Inner CV model selection
+    inner_model = GridSearchCV(
+        scorer_pipe,
+        param_grid=param_grid,
+        cv=inner_cv,
+        error_score=0.5,
+        n_jobs=-1,
+        refit=True
+    )
+
+    outer_models = []
+    for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X, event_labels)):
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y[train_idx], y[test_idx]
+        print(f"\nOuter fold {fold_num}: {sum(y_train['RFi_event'])} events "
+              f"in training set.", flush=True)
+
+        try:
+            # Apply filter function if provided
+            if filter_function is not None:
+                selected_cpgs = filter_function(X_train, y_train)
+                if not selected_cpgs:
+                    print(f"Skipping fold {fold_num} (no features selected).", flush=True)
+                    outer_models.append({
+                        "fold": fold_num,
+                        "model": None,
+                        "train_idx": train_idx,
+                        "test_idx": test_idx,
+                        "cv_results": None,
+                        "error": "No features selected by filter function",
+                        "selected_cpgs": None
+                    })
+                    continue
+                X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
+            else:
+                selected_cpgs = X_train.columns  # use all features
+
+            # Fit inner CV model
+            inner_model.fit(X_train, y_train)
+            best_model = inner_model.best_estimator_
+            best_params = inner_model.best_params_
+
+            print(f"\t--> Fold {fold_num}: Best params {best_params}", flush=True)
+
+            outer_models.append({
+                "fold": fold_num,
+                "model": best_model,
+                "train_idx": train_idx,
+                "test_idx": test_idx,
+                "cv_results": inner_model.cv_results_,
+                "error": None,
+                "selected_cpgs": selected_cpgs
+            })
+
+        except Exception as e:
+            print(f"Skipping fold {fold_num} due to error: {e}", flush=True)
+            outer_models.append({
+                "fold": fold_num,
+                "model": None,
+                "train_idx": train_idx,
+                "test_idx": test_idx,
+                "cv_results": None,
+                "error": str(e),
+                "selected_cpgs": None
+            })
+
+    return outer_models
 
 # ==============================================================================
 

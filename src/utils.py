@@ -13,12 +13,14 @@ from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import GridSearchCV, StratifiedKFold, KFold
 from sksurv.linear_model import CoxnetSurvivalAnalysis
 from sksurv.metrics import as_concordance_index_ipcw_scorer
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
 import warnings
 from sklearn.exceptions import FitFailedWarning
 from lifelines import CoxPHFitter
 from lifelines.utils import ConvergenceWarning
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import make_pipeline
+from sksurv.linear_model import CoxnetSurvivalAnalysis
 
 # ==============================================================================
 # FUNCTIONS
@@ -103,42 +105,76 @@ def filter_cpgs_univariate_cox(X_train: pd.DataFrame,
 
 # ==============================================================================
 
-def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto', top_n_variance=5000): #match l1 ratio
+from sklearn.compose import ColumnTransformer
+
+def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto',
+                        top_n_variance=5000, dont_filter_vars=None, dont_scale_vars=None):
     """
     Estimate a suitable grid of alpha values for Coxnet hyperparameter tuning.
+    Assumes categorical clinical variables are already one-hot encoded.
 
     Args:
-        X (DataFrame): Feature matrix.
+        X (pd.DataFrame): Feature matrix (including encoded clinical vars).
         y (structured array): Survival labels (from sksurv).
         l1_ratio (float): Elastic net mixing parameter for alpha estimation.
         n_alphas (int): Number of alphas to generate.
+        alpha_min_ratio: Passed to CoxnetSurvivalAnalysis.
+        top_n_variance (int): Number of top-variance features to keep (variance_filter).
+        clinvars_only_encoded (list or None): Encoded clinical variable names in X.
 
     Returns:
         np.array: Array of alpha values.
     """
+
     print(f"\n=== Estimating {n_alphas} alpha values for Coxnet tuning ===\n", flush=True)
 
     warnings.simplefilter("ignore", FitFailedWarning)
     warnings.simplefilter("ignore", UserWarning)
 
-    selected_cpgs = variance_filter(X, top_n=top_n_variance) #50000
+    # Filter CpGs by variance (keep clinvars)
+    selected_cpgs = variance_filter(X, top_n=top_n_variance, keep_vars=dont_filter_vars)
     X = X[selected_cpgs]
 
-    #log(f"ALPHA MIN RATIO: {alpha_min_ratio}")
+    # Determine preprocessing
+    if dont_scale_vars is not None:
+        print("Not scaling scecified variables.", flush=True)
 
-    pipe = make_pipeline(
-        #RobustScaler(), # ADD BACK
-        CoxnetSurvivalAnalysis(l1_ratio=l1_ratio, n_alphas=n_alphas,alpha_min_ratio=alpha_min_ratio)
-    )
+        # Continuous = everything not in encoded clin vars
+        scale_cols = [c for c in X.columns if c not in dont_scale_vars]
 
+        transformers = []
+        if len(scale_cols) > 0:
+            transformers.append(("scale", StandardScaler(), scale_cols))
+        if len(dont_scale_vars) > 0:
+            transformers.append(("passthrough_encoded", "passthrough", dont_scale_vars))
+
+        preproc = ColumnTransformer(transformers=transformers, remainder="drop")
+
+        pipe = make_pipeline(
+            preproc,
+            CoxnetSurvivalAnalysis(
+                l1_ratio=l1_ratio,
+                n_alphas=n_alphas,
+                alpha_min_ratio=alpha_min_ratio
+            )
+        )
+
+    else:
+        print("Using StandardScaler for all features.", flush=True)
+        pipe = make_pipeline(
+            StandardScaler(),
+            CoxnetSurvivalAnalysis(
+                l1_ratio=l1_ratio,
+                n_alphas=n_alphas,
+                alpha_min_ratio=alpha_min_ratio
+            )
+        )
+
+    # Fit to get alpha grid
     pipe.fit(X, y)
     alphas = pipe.named_steps["coxnetsurvivalanalysis"].alphas_
 
-    #log(f"Alpha grid: {alphas}")
-    # Apply scaling to make grid more conservative
-    #if scale_factor is not None:
-    #    alphas = alphas * scale_factor
-
+    print(f"Estimated {len(alphas)} alpha values.", flush=True)
     return alphas
 
 # ==============================================================================
@@ -241,7 +277,53 @@ def m2beta(m):
 
 # ==============================================================================
 
-def variance_filter(X, y=None, min_variance=None, top_n=None):
+def variance_filter(X, y=None, min_variance=None, top_n=None, keep_vars=None):
+    """
+    Filter features based on variance. Always keeps keep_vars.
+    
+    Args:
+        X (pd.DataFrame): Feature matrix (samples x features).
+        y (pd.Series, optional): Unused, kept for API compatibility.
+        min_variance (float, optional): Minimum variance threshold to retain features.
+        top_n (int, optional): Number of top features to select by variance.
+        keep_vars (str or iterable of str, optional): Columns to always keep.
+    
+    Returns:
+        list: Selected column names (keep_vars first, then selected features by variance).
+    """
+
+    # Normalize keep_vars to a list
+    if keep_vars is None:
+        keep_list = []
+    elif isinstance(keep_vars, str):
+        keep_list = [keep_vars]
+    else:
+        keep_list = list(keep_vars)
+
+    # Columns to compute variance on = all except keep_vars
+    pool_cols = [c for c in X.columns if c not in keep_list]
+
+    if min_variance is None and top_n is None:
+        raise ValueError("Either min_variance or top_n must be specified")
+
+    # Compute variance
+    variances = X[pool_cols].var(axis=0)
+
+    # Select features
+    if min_variance is not None:
+        selected = variances[variances >= min_variance].index.tolist()
+    else:
+        top_n = min(top_n, len(variances))
+        selected = variances.sort_values(ascending=False).head(top_n).index.tolist()
+
+    # Combine keep_vars first
+    final_selected = keep_list + selected
+
+    print(f"{len(final_selected)} features selected (including {len(keep_list)} keep_vars).")
+    return final_selected
+
+
+'''def variance_filter(X, y=None, min_variance=None, top_n=None):
     """
     Filter features (CpGs) based on variance. Expects CpGs as columns and patients as rows.
     
@@ -266,7 +348,7 @@ def variance_filter(X, y=None, min_variance=None, top_n=None):
     
     log(f"Filter applied: {len(selected_features.tolist())} CpGs remain after filtering.")
     return selected_features.tolist()
-
+'''
 # ==============================================================================
 
 def filter_cpgs_with_cox_lasso(X_train, y_train,

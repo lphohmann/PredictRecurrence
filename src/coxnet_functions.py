@@ -14,8 +14,11 @@ from sksurv.linear_model import CoxnetSurvivalAnalysis
 from sksurv.metrics import cumulative_dynamic_auc, concordance_index_censored, brier_score, integrated_brier_score
 import matplotlib.pyplot as plt
 from sksurv.metrics import as_concordance_index_ipcw_scorer
-from sklearn.preprocessing import RobustScaler, StandardScaler
+from sklearn.preprocessing import RobustScaler, StandardScaler, OneHotEncoder
 from src.utils import variance_filter #, estimate_alpha_grid
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import make_pipeline
+from sksurv.linear_model import CoxnetSurvivalAnalysis
 
 # ==============================================================================
 # FUNCTIONS
@@ -46,7 +49,8 @@ def define_param_grid(grid_alphas, grid_l1ratio=[0.9]):
 # ==============================================================================
 
 def run_nested_cv_cox(X, y, param_grid, 
-                  outer_cv_folds=5, inner_cv_folds=3, top_n_variance = 5000):
+                  outer_cv_folds=5, inner_cv_folds=3, top_n_variance = 5000, 
+                  dont_filter_vars=None, dont_scale_vars=None):
     """
     Run nested cross-validation for survival models (RSF, Coxnet, GBM, etc.).
 
@@ -74,26 +78,11 @@ def run_nested_cv_cox(X, y, param_grid,
     outer_cv = StratifiedKFold(n_splits=outer_cv_folds, shuffle=True, random_state=96)
     inner_cv = KFold(n_splits=inner_cv_folds, shuffle=True, random_state=96)
 
-    #scaler=RobustScaler() #StandardScaler()
-    # Build pipeline with optional scaler
-    pipe = make_pipeline(
-                         #RobustScaler(), # ADD BACK
-                         CoxnetSurvivalAnalysis())  # do not pass external base_estimator
-
-    print(pipe.get_params().keys())
-
-    # Default scorer = concordance index
-    scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
-
-    # Inner CV model selection
-    inner_model = GridSearchCV(
-        scorer_pipe,
-        param_grid=param_grid,
-        cv=inner_cv,
-        error_score=0.5,
-        n_jobs=-1,
-        refit=True
-    )
+    # If no clinical vars, pre-build a simple pipeline to reuse
+    if dont_scale_vars is None: 
+        simple_pipe = make_pipeline(StandardScaler(), CoxnetSurvivalAnalysis())
+    
+    
 
     outer_models = []
     for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X, event_labels)):
@@ -104,8 +93,52 @@ def run_nested_cv_cox(X, y, param_grid,
 
         try:
             # Apply filter function if provided
-            selected_cpgs = variance_filter(X_train, top_n=top_n_variance) #50000
+            selected_cpgs = variance_filter(X_train, top_n=top_n_variance, keep_vars=dont_filter_vars) #50000
             X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
+
+            # build inner cv here
+            if dont_filter_vars is not None:
+                # Determine which of the selected columns are clinical vs CpGs
+                # selected_cpgs already preserves keep_vars first (if you use that)
+                clin_in_sel = [c for c in dont_filter_vars if c in selected_cpgs]
+                # treat categorical clinical vars (e.g., NHG, LN) with one-hot; rest continuous
+                categorical_clin = [c for c in clin_in_sel if c in ("NHG", "LN")]
+                continuous_clin = [c for c in clin_in_sel if c not in categorical_clin]
+
+                # CpGs are the remaining selected columns
+                cpg_cols = [c for c in selected_cpgs if c not in dont_filter_vars]
+
+                # Full continuous columns = continuous clinical + CpGs
+                continuous_cols = continuous_clin + cpg_cols
+
+                # Build ColumnTransformer now that selected_cpgs are known
+                transformers = []
+                if len(continuous_cols) > 0:
+                    transformers.append(("scale", StandardScaler(), continuous_cols))
+                if len(categorical_clin) > 0:
+                    transformers.append(("onehot", OneHotEncoder(drop=None, dtype=float, sparse_output=False), categorical_clin))
+
+                preproc = ColumnTransformer(transformers=transformers, remainder="drop")
+                pipe = make_pipeline(preproc, CoxnetSurvivalAnalysis())
+
+            else:
+                # reuse simple pipeline when no clinical vars
+                pipe = simple_pipe
+
+            print(pipe.get_params().keys())
+
+            # Default scorer = concordance index
+            scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
+
+            # Inner CV model selection
+            inner_model = GridSearchCV(
+                scorer_pipe,
+                param_grid=param_grid,
+                cv=inner_cv,
+                error_score=0.5,
+                n_jobs=-1,
+                refit=True
+            )
 
             # Fit inner CV model
             inner_model.fit(X_train, y_train)
@@ -115,18 +148,32 @@ def run_nested_cv_cox(X, y, param_grid,
             print(f"\t--> Fold {fold_num}: Best params {best_params}", flush=True)
 
             # --- REFIT with baseline model for survival function prediction ---
-            refit_best_model = make_pipeline(
-                # RobustScaler(), # ADD BACK
-                CoxnetSurvivalAnalysis(
-                    alphas=[best_params["estimator__coxnetsurvivalanalysis__alphas"][0]],
-                    l1_ratio=best_params["estimator__coxnetsurvivalanalysis__l1_ratio"],
-                    fit_baseline_model=True)
+            # -------------------------
+            # minimal refit using same preproc
+            # -------------------------
+            best_params = inner_model.best_params_
+            # keys used previously — adjust if your param names differ
+            best_alphas = best_params["estimator__coxnetsurvivalanalysis__alphas"]
+            best_l1 = best_params["estimator__coxnetsurvivalanalysis__l1_ratio"]
+
+            # pick a single alpha like you did before
+            alpha_to_use = best_alphas[0] if hasattr(best_alphas, "__len__") else best_alphas
+
+            # reuse the same preprocessing step for refit (if exists); else StandardScaler
+            if 'preproc' in locals() and dont_filter_vars:
+                refit_preproc = preproc
+            else:
+                refit_preproc = StandardScaler()
+
+            refit_pipe = make_pipeline(
+                refit_preproc,
+                CoxnetSurvivalAnalysis(alphas=[alpha_to_use], l1_ratio=best_l1, fit_baseline_model=True)
             )
-            refit_best_model.fit(X_train, y_train)
+            refit_pipe.fit(X_train, y_train)
 
             outer_models.append({
                 "fold": fold_num,
-                "model": refit_best_model,
+                "model": refit_pipe,
                 "train_idx": train_idx,
                 "test_idx": test_idx,
                 "cv_results": inner_model.cv_results_,
