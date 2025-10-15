@@ -191,10 +191,21 @@ y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 # Define hyperparameter grid
 if args.methylation_type == "adjusted":
     alpha_min=0.2
-else:
+elif args.methylation_type == "unadjusted":
     alpha_min=0.1
+else:
+    alpha_min="auto"
+    
 
-alphas = estimate_alpha_grid(X, y, l1_ratio=ALPHAS_ESTIMATION_L1RATIO, n_alphas=10,top_n_variance=1000,alpha_min_ratio=alpha_min,clinvars_all=CLINVARS_INCLUDED_ENCODED)
+print(f"dont_filter_vars: {CLINVARS_INCLUDED_ENCODED}")
+print(f"dont_scale_vars: {encoded_cols}")
+print(f"dont_penalize_vars: {CLINVARS_INCLUDED_ENCODED}")
+
+alphas = estimate_alpha_grid(X, y, l1_ratio=ALPHAS_ESTIMATION_L1RATIO, n_alphas=10,
+                             top_n_variance=10,alpha_min_ratio=alpha_min,
+                             dont_filter_vars=CLINVARS_INCLUDED_ENCODED,
+                             dont_scale_vars=encoded_cols,
+                             dont_penalize_vars=CLINVARS_INCLUDED_ENCODED)
 
 #alphas = np.logspace(np.log10(0.01), np.log10(10), 20)
 param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=PARAM_GRID_L1RATIOS)
@@ -203,7 +214,9 @@ param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=PARAM_GRID_L1RAT
 #estimator = CoxnetSurvivalAnalysis()
 #scaler = RobustScaler()
 outer_models = run_nested_cv_cox(X, y,
-                             param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS, top_n_variance = 1000, dont_filter_vars=CLINVARS_INCLUDED_ENCODED)
+                             param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS, top_n_variance = 10, dont_filter_vars=CLINVARS_INCLUDED_ENCODED,
+                             dont_scale_vars=encoded_cols,
+                             dont_penalize_vars=CLINVARS_INCLUDED_ENCODED)
 
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")

@@ -108,7 +108,8 @@ def filter_cpgs_univariate_cox(X_train: pd.DataFrame,
 from sklearn.compose import ColumnTransformer
 
 def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto',
-                        top_n_variance=5000, dont_filter_vars=None, dont_scale_vars=None):
+                        top_n_variance=5000, dont_filter_vars=None, dont_scale_vars=None,
+                        dont_penalize_vars=None):
     """
     Estimate a suitable grid of alpha values for Coxnet hyperparameter tuning.
     Assumes categorical clinical variables are already one-hot encoded.
@@ -148,27 +149,41 @@ def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto',
         if len(dont_scale_vars) > 0:
             transformers.append(("passthrough_encoded", "passthrough", dont_scale_vars))
 
-        preproc = ColumnTransformer(transformers=transformers, remainder="drop")
+        preproc = ColumnTransformer(transformers=transformers, 
+                                    verbose_feature_names_out=False,
+                                    remainder="drop")
 
-        pipe = make_pipeline(
-            preproc,
-            CoxnetSurvivalAnalysis(
-                l1_ratio=l1_ratio,
-                n_alphas=n_alphas,
-                alpha_min_ratio=alpha_min_ratio
-            )
-        )
+        # Get feature order after transformation
+        preproc.fit(X)  
+        feature_names = preproc.get_feature_names_out()
 
+    
     else:
-        print("Using StandardScaler for all features.", flush=True)
-        pipe = make_pipeline(
-            StandardScaler(),
-            CoxnetSurvivalAnalysis(
-                l1_ratio=l1_ratio,
-                n_alphas=n_alphas,
-                alpha_min_ratio=alpha_min_ratio
-            )
-        )
+        # All features scaled
+        preproc = StandardScaler()
+        #preproc.fit(X)  
+        feature_names = X.columns.values  # order is preserved
+
+    # ---------------------------
+    # Build penalty factor vector
+    # ---------------------------
+
+    penalty_factor = np.ones(len(feature_names), dtype=float)
+    if dont_penalize_vars is not None:
+        for i, fname in enumerate(feature_names):
+            # if feature name matches one to not penalize
+            if fname in dont_penalize_vars:
+                penalty_factor[i] = 0.0
+
+    # ---------------------------
+    # Construct inner CV pipeline
+    # ---------------------------
+    pipe = make_pipeline(preproc,
+                         CoxnetSurvivalAnalysis(l1_ratio=l1_ratio,
+                                                n_alphas=n_alphas,
+                                                alpha_min_ratio=alpha_min_ratio
+                                                )
+                        )
 
     # Fit to get alpha grid
     pipe.fit(X, y)
