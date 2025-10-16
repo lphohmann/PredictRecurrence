@@ -623,13 +623,13 @@ def run_nested_cv(X, y, base_estimator, param_grid,
     return outer_models
 
 # ==============================================================================
-
+'''
 def summarize_performance(performance):
     """
     Print summary statistics (mean ± std) for evaluation metrics across folds.
     Ignores NaNs in the calculations.
     """
-    print("\n=== RSF Evaluation Summary ===\n", flush=True)
+    print("\n=== Evaluation Summary ===\n", flush=True)
     
     cindexes = [p["cindex"] for p in performance]
     auc5y = [p["auc_at_5y"] for p in performance if p["auc_at_5y"] is not None]
@@ -641,6 +641,45 @@ def summarize_performance(performance):
         print(f"AUC@5y: mean={np.nanmean(auc5y):.3f} ± {np.nanstd(auc5y):.3f}")
     print(f"Mean AUC over times: {np.nanmean(mean_aucs):.3f} ± {np.nanstd(mean_aucs):.3f}")
     print(f"Integrated Brier Score (IBS): {np.nanmean(ibs_vals):.3f} ± {np.nanstd(ibs_vals):.3f}")
+'''
+import numpy as np
+from scipy.stats import t
+
+def summarize_performance(performance):
+    """
+    Print summary statistics for evaluation metrics across folds.
+    Shows mean ± SE (standard error of the mean) and 95% CI of the mean.
+    Ignores NaNs in the calculations.
+    """
+    print("\n=== Evaluation Summary ===\n", flush=True)
+    
+    def mean_se_ci(vals):
+        vals = np.array(vals)
+        vals = vals[~np.isnan(vals)]
+        n = len(vals)
+        mean = np.mean(vals)
+        std = np.std(vals, ddof=1)        # sample standard deviation
+        se = std / np.sqrt(n)              # standard error of the mean
+        ci95 = t.ppf(0.975, df=n-1) * se  # 95% CI using t-distribution
+        return mean, se, ci95
+
+    cindexes = [p["cindex"] for p in performance]
+    auc5y = [p["auc_at_5y"] for p in performance if p["auc_at_5y"] is not None]
+    mean_aucs = [p["mean_auc"] for p in performance]
+    ibs_vals = [p["ibs"] for p in performance]
+
+    mean, se, ci95 = mean_se_ci(cindexes)
+    print(f"C-index: mean={mean:.3f} ± {se:.3f} (SE), 95% CI ±{ci95:.3f}")
+
+    if auc5y:
+        mean, se, ci95 = mean_se_ci(auc5y)
+        print(f"AUC@5y: mean={mean:.3f} ± {se:.3f} (SE), 95% CI ±{ci95:.3f}")
+
+    mean, se, ci95 = mean_se_ci(mean_aucs)
+    print(f"Mean AUC over times: mean={mean:.3f} ± {se:.3f} (SE), 95% CI ±{ci95:.3f}")
+
+    mean, se, ci95 = mean_se_ci(ibs_vals)
+    print(f"Integrated Brier Score (IBS): mean={mean:.3f} ± {se:.3f} (SE), 95% CI ±{ci95:.3f}")
 
 # ==============================================================================
 

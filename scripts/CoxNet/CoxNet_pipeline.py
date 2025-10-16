@@ -56,13 +56,15 @@ parser = argparse.ArgumentParser(description="Train CoxNet.")
 parser.add_argument("--cohort_name", type=str, required=True,
                     choices=COHORT_TRAIN_IDS_PATHS.keys(), 
                     help="Name of the cohort to process")
-parser.add_argument("--methylation_type", type=str, choices=METHYLATION_DATA_PATHS.keys(), required=True,
+parser.add_argument("--methylation_type", type=str, 
+                    choices=METHYLATION_DATA_PATHS.keys(), 
+                    required=True,
                     help="Type of methylation data")
 parser.add_argument("--train_cpgs", type=str, default=None,
                     help="Set of CpGs for training")
 
 parser.add_argument("--data_mode", type=str, 
-                    choices=["clinical", "methylation", "combined"], default="combined",
+                    choices=["clinical", "methylation", "combined"], required=True,
                     help="Which data to use: clinical only, methylation only, or both")
 
 
@@ -70,6 +72,9 @@ parser.add_argument("--data_mode", type=str,
 parser.add_argument("--output_base_dir", type=str, default="./output/CoxNet",
                     help="Base output directory")
 args = parser.parse_args()
+
+if args.data_mode == "clinical":
+    print("Note: Methylation type not considered when using clinical-only data mode.")
 
 # ==============================================================================
 # PARAMS
@@ -79,7 +84,16 @@ args = parser.parse_args()
 current_output_dir = os.path.join(
     args.output_base_dir,
     args.cohort_name,
-    args.methylation_type.capitalize())
+    args.data_mode.capitalize())
+
+# Subfolder name
+if args.data_mode == "clinical":
+    subtype_folder = "None"  # keep folder depth consistent
+else:
+    subtype_folder = args.methylation_type.capitalize()  # could be Unadjusted/Adjusted etc.
+
+current_output_dir = os.path.join(current_output_dir, subtype_folder)
+
 os.makedirs(current_output_dir, exist_ok=True)
 
 # Logfile is now directly in the cohort's output directory
@@ -89,9 +103,9 @@ sys.stdout = logfile
 sys.stderr = logfile
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 3
-OUTER_CV_FOLDS = 5
-EVAL_TIME_GRID = np.arange(1, 5.1, 0.5)  # time points for metrics
+INNER_CV_FOLDS = 5
+OUTER_CV_FOLDS = 10
+EVAL_TIME_GRID = np.arange(1.5, 5.1, 0.5)  # time points for metrics
 
 # type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
 ALPHAS_ESTIMATION_L1RATIO = 0.7#[0.9]
@@ -105,7 +119,7 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    TOP_N_VARIANCE_FILTER = 5000
+    TOP_N_VARIANCE_FILTER = 10000
 else:
     TOP_N_VARIANCE_FILTER = 0
 
@@ -222,15 +236,23 @@ print(f"dont_penalize_vars: {clinvars_included_encoded}")
 
 alphas = estimate_alpha_grid(X, y, 
                              l1_ratio=ALPHAS_ESTIMATION_L1RATIO, 
-                             n_alphas=10,
+                             n_alphas=30,
                              top_n_variance=TOP_N_VARIANCE_FILTER,
                              alpha_min_ratio=alpha_min,
                              dont_filter_vars=clinvars_included_encoded,
                              dont_scale_vars=encoded_cols,
                              dont_penalize_vars=clinvars_included_encoded)
 
+log(f"Estimated alphas: {alphas}")
+n_trim = 10
+if len(alphas) > n_trim:
+    alphas_trimmed = alphas[:-n_trim]
+else:
+    alphas_trimmed = alphas
+log(f"Alphas used for tuning (trimmed smallest): {alphas_trimmed}")
+
 #alphas = np.logspace(np.log10(0.01), np.log10(10), 20)
-param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=PARAM_GRID_L1RATIOS)
+param_grid = define_param_grid(grid_alphas=alphas_trimmed, grid_l1ratio=PARAM_GRID_L1RATIOS)
 
 # Run nested cross-validation
 #estimator = CoxnetSurvivalAnalysis()
