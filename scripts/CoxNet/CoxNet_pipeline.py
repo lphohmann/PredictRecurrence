@@ -60,6 +60,12 @@ parser.add_argument("--methylation_type", type=str, choices=METHYLATION_DATA_PAT
                     help="Type of methylation data")
 parser.add_argument("--train_cpgs", type=str, default=None,
                     help="Set of CpGs for training")
+
+parser.add_argument("--data_mode", type=str, 
+                    choices=["clinical", "methylation", "combined"], default="combined",
+                    help="Which data to use: clinical only, methylation only, or both")
+
+
 # defaults, no need to change usually
 parser.add_argument("--output_base_dir", type=str, default="./output/CoxNet",
                     help="Base output directory")
@@ -88,12 +94,21 @@ OUTER_CV_FOLDS = 5
 EVAL_TIME_GRID = np.arange(1, 5.1, 0.5)  # time points for metrics
 
 # type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
-ALPHAS_ESTIMATION_L1RATIO = 0.9#[0.9]
-PARAM_GRID_L1RATIOS  = [0.9]#[0.9]
+ALPHAS_ESTIMATION_L1RATIO = 0.7#[0.9]
+PARAM_GRID_L1RATIOS  = [0.7]#[0.9]
 
-#
-CLINVARS_INCLUDED = ["Age", "Size.mm", "NHG", "LN"] # None
-CLIN_CATEGORICAL = ["NHG", "LN"]
+if args.data_mode in ["clinical", "combined"]:
+    CLINVARS_INCLUDED = ["Age", "Size.mm", "NHG", "LN"]
+    CLIN_CATEGORICAL = ["NHG", "LN"]
+else:
+    CLINVARS_INCLUDED = None
+    CLIN_CATEGORICAL = None
+
+if args.data_mode in ["methylation", "combined"]:
+    TOP_N_VARIANCE_FILTER = 5000
+else:
+    TOP_N_VARIANCE_FILTER = 0
+
 # ==============================================================================
 # INPUT AND OUTPUT FILES
 # ==============================================================================
@@ -122,6 +137,7 @@ log(f"Methylation data file: {METHYLATION_DATA_PATHS[args.methylation_type]}")
 log(f"Clinical data file: {INFILE_CLINICAL}")
 log(f"Filtered CpG set data file: {infile_cpg_ids}")
 log(f"Output directory: {current_output_dir}")
+log(f"Training features mode: {args.data_mode}")
 
 # Load and preprocess data (same as CoxNet pipeline)
 train_ids = pd.read_csv(infile_train_ids, header=None).iloc[:, 0].tolist()
@@ -130,9 +146,10 @@ beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, in
 log("Loaded methylation and clinical data.")
 mvals = beta2m(beta_matrix, beta_threshold=0.001)
 
-# apply censoring at 5 years
-# censoring cutoff > max evaluation time
-clinical_data = apply_admin_censoring(clinical_data, "RFi_years", "RFi_event", time_cutoff=5.5, inplace=False)
+# apply censoring at 5 years for tnbc only
+# censoring cutoff > max evaluation time#
+if args.cohort_name == "TNBC":
+    clinical_data = apply_admin_censoring(clinical_data, "RFi_years", "RFi_event", time_cutoff=5.5, inplace=False)
 
 # Subset to only include prefiltered CpGs if infile is provided
 if infile_cpg_ids is not None:
@@ -178,34 +195,39 @@ if CLINVARS_INCLUDED is not None:
     # 6) concatenate encoded clinical back into X
     X = pd.concat([X, clin_encoded], axis=1)
 
-    # 7) build CLINVARS_INCLUDED_ENCODED: replace original categorical names with encoded column names
-    CLINVARS_INCLUDED_ENCODED = [c for c in CLINVARS_INCLUDED if c not in CLIN_CATEGORICAL] + encoded_cols
+    # 7) build clinvars_included_encoded: replace original categorical names with encoded column names
+    clinvars_included_encoded = [c for c in CLINVARS_INCLUDED if c not in CLIN_CATEGORICAL] + encoded_cols
     
-    log(f"Added {CLINVARS_INCLUDED_ENCODED} clinical variables. New X shape: {X.shape}")
+    log(f"Added {clinvars_included_encoded} clinical variables. New X shape: {X.shape}")
 else:
+    clinvars_included_encoded = None
+    encoded_cols = None
     log("No clinical variables added (CLINVARS_INCLUDED=None).")
 
 # Prepare survival labels (Surv object with event & time)
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
 
 # Define hyperparameter grid
-if args.methylation_type == "adjusted":
-    alpha_min=0.2
-elif args.methylation_type == "unadjusted":
-    alpha_min=0.1
-else:
-    alpha_min="auto"
+#if args.methylation_type == "adjusted":
+#    alpha_min=0.2
+#elif args.methylation_type == "unadjusted":
+#    alpha_min=0.1
+
+alpha_min=0.1
     
 
-print(f"dont_filter_vars: {CLINVARS_INCLUDED_ENCODED}")
+print(f"dont_filter_vars: {clinvars_included_encoded}")
 print(f"dont_scale_vars: {encoded_cols}")
-print(f"dont_penalize_vars: {CLINVARS_INCLUDED_ENCODED}")
+print(f"dont_penalize_vars: {clinvars_included_encoded}")
 
-alphas = estimate_alpha_grid(X, y, l1_ratio=ALPHAS_ESTIMATION_L1RATIO, n_alphas=10,
-                             top_n_variance=10,alpha_min_ratio=alpha_min,
-                             dont_filter_vars=CLINVARS_INCLUDED_ENCODED,
+alphas = estimate_alpha_grid(X, y, 
+                             l1_ratio=ALPHAS_ESTIMATION_L1RATIO, 
+                             n_alphas=10,
+                             top_n_variance=TOP_N_VARIANCE_FILTER,
+                             alpha_min_ratio=alpha_min,
+                             dont_filter_vars=clinvars_included_encoded,
                              dont_scale_vars=encoded_cols,
-                             dont_penalize_vars=CLINVARS_INCLUDED_ENCODED)
+                             dont_penalize_vars=clinvars_included_encoded)
 
 #alphas = np.logspace(np.log10(0.01), np.log10(10), 20)
 param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=PARAM_GRID_L1RATIOS)
@@ -214,9 +236,12 @@ param_grid = define_param_grid(grid_alphas=alphas, grid_l1ratio=PARAM_GRID_L1RAT
 #estimator = CoxnetSurvivalAnalysis()
 #scaler = RobustScaler()
 outer_models = run_nested_cv_cox(X, y,
-                             param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS, top_n_variance = 10, dont_filter_vars=CLINVARS_INCLUDED_ENCODED,
+                             param_grid=param_grid, 
+                             outer_cv_folds=OUTER_CV_FOLDS, 
+                             inner_cv_folds=INNER_CV_FOLDS, 
+                             top_n_variance = TOP_N_VARIANCE_FILTER, dont_filter_vars=clinvars_included_encoded,
                              dont_scale_vars=encoded_cols,
-                             dont_penalize_vars=CLINVARS_INCLUDED_ENCODED)
+                             dont_penalize_vars=clinvars_included_encoded)
 
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")

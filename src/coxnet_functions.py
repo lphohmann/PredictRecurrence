@@ -10,7 +10,7 @@ import numpy as np
 import math
 from sklearn.model_selection import GridSearchCV, KFold, StratifiedKFold
 from sklearn.pipeline import make_pipeline
-from sksurv.linear_model import CoxnetSurvivalAnalysis
+from sksurv.linear_model import CoxnetSurvivalAnalysis, CoxPHSurvivalAnalysis
 from sksurv.metrics import cumulative_dynamic_auc, concordance_index_censored, brier_score, integrated_brier_score
 import matplotlib.pyplot as plt
 from sksurv.metrics import as_concordance_index_ipcw_scorer
@@ -18,7 +18,6 @@ from sklearn.preprocessing import RobustScaler, StandardScaler, OneHotEncoder
 from src.utils import variance_filter #, estimate_alpha_grid
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import make_pipeline
-from sksurv.linear_model import CoxnetSurvivalAnalysis
 
 # ==============================================================================
 # FUNCTIONS
@@ -126,7 +125,7 @@ def run_nested_cv_cox(X, y, param_grid,
                 preproc.fit(X_train)
                 feature_names = preproc.get_feature_names_out()
 
-                print("Pipeline feature names:", feature_names)
+                #print("Pipeline feature names:", feature_names)
 
             else:
                 # All features scaled
@@ -144,16 +143,36 @@ def run_nested_cv_cox(X, y, param_grid,
                     if fname in dont_penalize_vars:
                         penalty_factor[i] = 0.0
 
-            print(penalty_factor)
+            #print(penalty_factor)
+
+            # ---------------------------
+            # For case that only clinical vars use coxph
+            # ---------------------------
+
+            if np.all(penalty_factor == 0.0):
+                penalty_factor[:] = 1e-8
+                # Use Coxnet with very small ridge penalty
+                print("All features unpenalized -> using near-unpenalized Coxnet for this fold.", flush=True)
+                estimator_cls = CoxnetSurvivalAnalysis
+                estimator_kwargs = {"penalty_factor": penalty_factor,
+                                    "l1_ratio": 0.0,         # force pure ridge
+                                    "fit_baseline_model": True
+                                    }
+
+            else:
+                estimator_cls = CoxnetSurvivalAnalysis
+                estimator_kwargs = {"penalty_factor": penalty_factor}
 
             # ---------------------------
             # Construct inner CV pipeline
             # ---------------------------
+
             pipe = make_pipeline(
                 preproc,
-                CoxnetSurvivalAnalysis(penalty_factor=penalty_factor)
+                estimator_cls(**estimator_kwargs)
+                #CoxnetSurvivalAnalysis(penalty_factor=penalty_factor)
             )
-            print(pipe.get_params().keys())
+            #print(pipe.get_params().keys())
 
             # Wrap with scorer for inner CV
             scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
@@ -311,7 +330,6 @@ def evaluate_outer_models_coxnet(outer_models, X, y, time_grid):
     return performance
 
 # ==============================================================================
-
 def print_selected_cpgs_counts(outer_models):
     """
     Print the number and names of non-zero coefficient CpGs 
@@ -331,6 +349,7 @@ def print_selected_cpgs_counts(outer_models):
         if model is None:
             print(f"Fold {fold}: no model", flush=True)
             continue
+
         if selected_features is None:
             print(f"Fold {fold}: no selected features recorded", flush=True)
             continue
@@ -340,8 +359,7 @@ def print_selected_cpgs_counts(outer_models):
 
         # Get non-zero coefficients
         coefs = coxnet.coef_.flatten()
-
-        print(coxnet.coef_)
+        #print(coxnet.coef_)
 
         nonzero_mask = coefs != 0
 
@@ -350,4 +368,6 @@ def print_selected_cpgs_counts(outer_models):
 
         print(f"Fold {fold}: {len(selected_cpgs)} CpGs selected", flush=True)
         print(f"  CpGs: {selected_cpgs.tolist()}", flush=True)
+
+
 
