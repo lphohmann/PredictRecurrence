@@ -49,6 +49,7 @@ def define_param_grid(grid_alphas, grid_l1ratio=[0.9]):
 
 def run_nested_cv_cox(X, y, param_grid, 
                       outer_cv_folds=5, inner_cv_folds=3, top_n_variance=5000, 
+                      filter_func=None,
                       dont_filter_vars=None, dont_scale_vars=None,
                       dont_penalize_vars=None):
     """
@@ -98,7 +99,11 @@ def run_nested_cv_cox(X, y, param_grid,
             # ---------------------------
             
             # Keep top variance features in X_train but always include dont_filter_vars
-            selected_cpgs = variance_filter(X_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
+            #selected_cpgs = variance_filter(X_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
+            
+            # TEST THIS; ADD ARGUMENT HERE AND ALSO IN THE ESTIMATE ALPHA
+            selected_cpgs = filter_func(X_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
+
             # Subset both train and test to the selected features for this fold
             X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
 

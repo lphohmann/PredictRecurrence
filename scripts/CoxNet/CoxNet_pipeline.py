@@ -21,7 +21,7 @@ from sklearn.preprocessing import OneHotEncoder
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, estimate_alpha_grid
+from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, estimate_alpha_grid, variance_filter, cox_filter
 from src.plotting_functions import plot_brier_scores, plot_auc_curves
 from src.coxnet_functions import define_param_grid, evaluate_outer_models_coxnet, run_nested_cv_cox, print_selected_cpgs_counts
 
@@ -119,9 +119,9 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    TOP_N_VARIANCE_FILTER = 10000
+    FILTER_KEEP_N = 10000
 else:
-    TOP_N_VARIANCE_FILTER = 0
+    FILTER_KEEP_N = 0
 
 # ==============================================================================
 # INPUT AND OUTPUT FILES
@@ -234,10 +234,27 @@ print(f"dont_filter_vars: {clinvars_included_encoded}")
 print(f"dont_scale_vars: {encoded_cols}")
 print(f"dont_penalize_vars: {clinvars_included_encoded}")
 
+# set filter func
+#cox_filter(X, y, time_col='RFi_years', event_col='RFi_event', top_n=None, keep_vars=None)
+#filter_func = lambda X_train, y_train: filter_cpgs_with_cox_lasso(X_train, y_train,
+#                               initial_variance_top_n=10000,#50000,
+#                               l1_ratio_values=[0.9],
+#                               est_alpha_min=alpha_min)
+
+
+#selected_cpgs = filter_function(X_train, y_train)
+
+# Keep top variance features in X_train but always include dont_filter_vars
+filter_func = lambda X, y=None, **kwargs: variance_filter(X, **kwargs)
+#filter_func = lambda X, y=None, **kwargs: cox_filter(X, y=y, **kwargs)
+
+
+
 alphas = estimate_alpha_grid(X, y, 
                              l1_ratio=ALPHAS_ESTIMATION_L1RATIO, 
                              n_alphas=30,
-                             top_n_variance=TOP_N_VARIANCE_FILTER,
+                             top_n_variance=FILTER_KEEP_N,
+                             filter_function=filter_func,
                              alpha_min_ratio=alpha_min,
                              dont_filter_vars=clinvars_included_encoded,
                              dont_scale_vars=encoded_cols,
