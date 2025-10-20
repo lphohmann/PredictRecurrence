@@ -245,7 +245,10 @@ print(f"dont_penalize_vars: {clinvars_included_encoded}")
 #selected_cpgs = filter_function(X_train, y_train)
 
 # Keep top variance features in X_train but always include dont_filter_vars
-filter_func = lambda X, y=None, **kwargs: variance_filter(X, **kwargs)
+
+filter_func = lambda X, y=None, **kwargs: variance_filter(X, y=y, **kwargs)
+
+
 #filter_func = lambda X, y=None, **kwargs: cox_filter(X, y=y, **kwargs)
 
 
@@ -254,7 +257,7 @@ alphas = estimate_alpha_grid(X, y,
                              l1_ratio=ALPHAS_ESTIMATION_L1RATIO, 
                              n_alphas=30,
                              top_n_variance=FILTER_KEEP_N,
-                             filter_function=filter_func,
+                             filter_func=filter_func,
                              alpha_min_ratio=alpha_min,
                              dont_filter_vars=clinvars_included_encoded,
                              dont_scale_vars=encoded_cols,
@@ -278,7 +281,9 @@ outer_models = run_nested_cv_cox(X, y,
                              param_grid=param_grid, 
                              outer_cv_folds=OUTER_CV_FOLDS, 
                              inner_cv_folds=INNER_CV_FOLDS, 
-                             top_n_variance = TOP_N_VARIANCE_FILTER, dont_filter_vars=clinvars_included_encoded,
+                             top_n_variance = FILTER_KEEP_N, 
+                             filter_func=filter_func,
+                             dont_filter_vars=clinvars_included_encoded,
                              dont_scale_vars=encoded_cols,
                              dont_penalize_vars=clinvars_included_encoded)
 
