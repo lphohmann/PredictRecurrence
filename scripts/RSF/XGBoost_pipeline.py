@@ -15,12 +15,13 @@ import pandas as pd
 import joblib
 from sksurv.util import Surv
 import argparse
+from sklearn.preprocessing import OneHotEncoder
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import log, load_training_data, beta2m, apply_admin_censoring, run_nested_cv, summarize_outer_models, summarize_performance,select_best_model, variance_filter
+from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, estimate_alpha_grid, variance_filter, cox_filter
 from src.plotting_functions import plot_brier_scores, plot_auc_curves
-from src.xgboost_functions import define_param_grid, evaluate_outer_models
+from src.xgboost_functions import define_param_grid, evaluate_outer_models_xgbse, run_nested_cv_xgbse, _extract_event_time_from_structured, _extract_event_time_from_structured
 from xgbse.converters import convert_to_structured
 
 # Set working directory
@@ -50,18 +51,29 @@ INFILE_CLINICAL = "./data/train/train_clinical.csv"
 # COMMAND LINE ARGUMENTS
 # ==============================================================================
 
-parser = argparse.ArgumentParser(description="Train RSF.")
+parser = argparse.ArgumentParser(description="Train XGBoost.")
 parser.add_argument("--cohort_name", type=str, required=True,
                     choices=COHORT_TRAIN_IDS_PATHS.keys(), 
                     help="Name of the cohort to process")
-parser.add_argument("--methylation_type", type=str, choices=METHYLATION_DATA_PATHS.keys(), required=True,
+parser.add_argument("--methylation_type", type=str, 
+                    choices=METHYLATION_DATA_PATHS.keys(), 
+                    required=True,
                     help="Type of methylation data")
 parser.add_argument("--train_cpgs", type=str, default=None,
                     help="Set of CpGs for training")
+
+parser.add_argument("--data_mode", type=str, 
+                    choices=["clinical", "methylation", "combined"], required=True,
+                    help="Which data to use: clinical only, methylation only, or both")
+
+
 # defaults, no need to change usually
-parser.add_argument("--output_base_dir", type=str, default="./output/RSF",
+parser.add_argument("--output_base_dir", type=str, default="./output/XGBoost",
                     help="Base output directory")
 args = parser.parse_args()
+
+if args.data_mode == "clinical":
+    print("Note: Methylation type not considered when using clinical-only data mode.")
 
 # ==============================================================================
 # PARAMS
@@ -71,7 +83,16 @@ args = parser.parse_args()
 current_output_dir = os.path.join(
     args.output_base_dir,
     args.cohort_name,
-    args.methylation_type.capitalize())
+    args.data_mode.capitalize())
+
+# Subfolder name
+if args.data_mode == "clinical":
+    subtype_folder = "None"  # keep folder depth consistent
+else:
+    subtype_folder = args.methylation_type.capitalize()  # could be Unadjusted/Adjusted etc.
+
+current_output_dir = os.path.join(current_output_dir, subtype_folder)
+
 os.makedirs(current_output_dir, exist_ok=True)
 
 # Logfile is now directly in the cohort's output directory
@@ -81,9 +102,21 @@ sys.stdout = logfile
 sys.stderr = logfile
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 3
-OUTER_CV_FOLDS = 5
-EVAL_TIME_GRID = np.arange(1, 5.1, 0.5)  # time points for metrics
+INNER_CV_FOLDS = 5
+OUTER_CV_FOLDS = 10
+EVAL_TIME_GRID = np.arange(1.5, 5.1, 0.5)  # time points for metrics
+
+if args.data_mode in ["clinical", "combined"]:
+    CLINVARS_INCLUDED = ["Age", "Size.mm", "NHG", "LN"]
+    CLIN_CATEGORICAL = ["NHG", "LN"]
+else:
+    CLINVARS_INCLUDED = None
+    CLIN_CATEGORICAL = None
+
+if args.data_mode in ["methylation", "combined"]:
+    FILTER_KEEP_N = 10000
+else:
+    FILTER_KEEP_N = 0
 
 # ==============================================================================
 # INPUT AND OUTPUT FILES
@@ -106,13 +139,14 @@ outfile_performance = os.path.join(current_output_dir, "outer_cv_performance.pkl
 # ==============================================================================
 
 start_time = time.time()
-log(f"RSF pipeline started at: {time.ctime(start_time)}")
+log(f"XGBoost pipeline started at: {time.ctime(start_time)}")
 log(f"Processing Cohort: {args.cohort_name}, Methylation Type: {args.methylation_type}")
 log(f"Train IDs file: {COHORT_TRAIN_IDS_PATHS[args.cohort_name]}")
 log(f"Methylation data file: {METHYLATION_DATA_PATHS[args.methylation_type]}")
 log(f"Clinical data file: {INFILE_CLINICAL}")
 log(f"Filtered CpG set data file: {infile_cpg_ids}")
 log(f"Output directory: {current_output_dir}")
+log(f"Training features mode: {args.data_mode}")
 
 # Load and preprocess data (same as CoxNet pipeline)
 train_ids = pd.read_csv(infile_train_ids, header=None).iloc[:, 0].tolist()
@@ -120,10 +154,10 @@ log("Loaded training IDs.")
 beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, infile_clinical)
 log("Loaded methylation and clinical data.")
 mvals = beta2m(beta_matrix, beta_threshold=0.001)
-
-# apply censoring at 5 years
-# censoring cutoff > max evaluation time
-clinical_data = apply_admin_censoring(clinical_data, "RFi_years", "RFi_event", time_cutoff=5.5, inplace=False)
+# apply censoring at 5 years for tnbc only
+# censoring cutoff > max evaluation time#
+if args.cohort_name == "TNBC":
+    clinical_data = apply_admin_censoring(clinical_data, "RFi_years", "RFi_event", time_cutoff=5.5, inplace=False)
 
 # Subset to only include prefiltered CpGs if infile is provided
 if infile_cpg_ids is not None:
@@ -149,42 +183,70 @@ else:
     X = mvals.copy()
     log(f"No pre-filtered CpG file provided. Keeping all {X.shape[1]} CpGs.")
 
-# Prepare survival labels (Surv object with event & time)
-#y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
+# add clincial vars to X to put all trainign featuer sin one object
+if CLINVARS_INCLUDED is not None:
 
+    # 1) subset clinical data aligned to X
+    clin = clinical_data[CLINVARS_INCLUDED].loc[X.index]
+    # 2) one-hot encode the categorical clinical variables
+    encoder = OneHotEncoder(drop=None, dtype=float, sparse_output=False)
+    encoded = encoder.fit_transform(clin[CLIN_CATEGORICAL])
+    encoded_cols = encoder.get_feature_names_out(CLIN_CATEGORICAL).tolist()
+    # 3) make a DataFrame for the encoded columns
+    encoded_df = pd.DataFrame(encoded, columns=encoded_cols, index=X.index)
+    # 4) build the encoded clinical DataFrame (drop original categorical cols)
+    clin_encoded = pd.concat([clin.drop(columns=CLIN_CATEGORICAL), encoded_df], axis=1)
+    # 5) remove any original clinical columns from X to avoid duplicates (safe)
+    cols_to_remove = [c for c in CLINVARS_INCLUDED if c in X.columns]
+    if cols_to_remove:
+        X = X.drop(columns=cols_to_remove)
+    # 6) concatenate encoded clinical back into X
+    X = pd.concat([X, clin_encoded], axis=1)
+
+    # 7) build clinvars_included_encoded: replace original categorical names with encoded column names
+    clinvars_included_encoded = [c for c in CLINVARS_INCLUDED if c not in CLIN_CATEGORICAL] + encoded_cols
+    
+    log(f"Added {clinvars_included_encoded} clinical variables. New X shape: {X.shape}")
+else:
+    clinvars_included_encoded = None
+    encoded_cols = None
+    log("No clinical variables added (CLINVARS_INCLUDED=None).")
+
+
+# HERE make sure its the right format
+# clinical_data has columns: "RFi_years" (time) and "RFi_event" (event/censoring)
 y = convert_to_structured(clinical_data["RFi_years"], clinical_data["RFi_event"])
+# Rename structured array fields
+y = y.astype([('RFi_event', y.dtype[0]), ('RFi_years', y.dtype[1])])
 
+# pritn settings
+print(f"dont_filter_vars: {clinvars_included_encoded}")
+print(f"dont_scale_vars: {encoded_cols}")
+print(f"dont_penalize_vars: {clinvars_included_encoded}")
+
+# defienf ilter functions 
+filter_func = lambda X, y=None, **kwargs: variance_filter(X, y=y, **kwargs)
 
 # Define hyperparameter grid
-
-
 param_grid = define_param_grid(X, y)
 
-
 # Run nested cross-validation
-#estimator = RandomSurvivalForest(random_state=96)
-from xgbse import XGBSEDebiasedBCE
-estimator = XGBSEDebiasedBCE() #other xgbse models (e.g. XGBSEKaplanNeighbors, XGBSEBootstrapEstimator).
+outer_models = run_nested_cv_xgbse(X, y,
+                             param_grid=param_grid, 
+                             outer_cv_folds=OUTER_CV_FOLDS, 
+                             inner_cv_folds=INNER_CV_FOLDS, 
+                             top_n_variance = FILTER_KEEP_N, 
+                             filter_func=filter_func,
+                             dont_filter_vars=clinvars_included_encoded,
+                             dont_scale_vars=encoded_cols,
+                             dont_penalize_vars=clinvars_included_encoded)
 
-
-
-#filter_func = lambda X_train, y_train: variance_filter(X_train, y_train, top_n=1000)
-filter_func = lambda X_train, y_train: filter_cpgs_with_cox_lasso(X_train, y_train,
-                               initial_variance_top_n=5000,#50000,
-                               l1_ratio_values=[0.5])
-
-#filter_cpgs_with_cox_lasso
-outer_models = run_nested_cv(X, y, base_estimator=estimator, 
-                             param_grid=param_grid, outer_cv_folds=OUTER_CV_FOLDS, inner_cv_folds=INNER_CV_FOLDS,  
-                             filter_function=filter_func)# model agnostic,
-
-#outer_models = run_nested_cv(X, y, param_grid, OUTER_CV_FOLDS, INNER_CV_FOLDS)
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")
 
 # Summarize and evaluate performance
 summarize_outer_models(outer_models)
-model_performances = evaluate_outer_models(outer_models, X, y, EVAL_TIME_GRID)
+model_performances = evaluate_outer_models_xgbse(outer_models, X, y, EVAL_TIME_GRID)
 joblib.dump(model_performances, outfile_performance)
 print(f"Saved model performances to: {outfile_performance}")
 
@@ -207,6 +269,6 @@ if best_outer_fold:
     log(f"Best model (fold {best_outer_fold['fold']}) saved to: {outfile_bestfold}")
 
 end_time = time.time()
-log(f"RSF pipeline ended at: {time.ctime(end_time)}")
+log(f"Pipeline ended at: {time.ctime(end_time)}")
 log(f"Total execution time: {(end_time - start_time) / 60:.2f} minutes.")
 logfile.close()
