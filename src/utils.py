@@ -30,13 +30,26 @@ import numpy as np
 from lifelines import CoxPHFitter
 from statsmodels.stats.multitest import multipletests
 
-def cox_filter(X, y, time_col='RFi_years', event_col='RFi_event', top_n=None, keep_vars=None):
+import pandas as pd
+import numpy as np
+from lifelines import CoxPHFitter
+from lifelines.utils import datetimes_to_durations
+from statsmodels.stats.multitest import multipletests
+
+def cox_filter(X, y, time_col='RFi_years', event_col='RFi_event',
+               top_n=None, keep_vars=None, prefilter=None):
     """
     Filter features based on univariate Cox regression and BH-adjusted p-values.
     Always keeps keep_vars.
-    Now also supports y as a structured array from sksurv.Surv.from_dataframe().
+    Supports y as a DataFrame or a structured array (e.g. from sksurv).
     """
-    # --- NEW: Convert structured array y (from sksurv) to DataFrame ---
+
+    # --- optional prefilter using a user function variance_filter (unchanged) ---
+    if prefilter is not None:
+        selected_cpgs = variance_filter(X, top_n=prefilter, keep_vars=keep_vars)
+        X = X[selected_cpgs]
+
+    # --- Convert structured array y (from sksurv) to DataFrame if needed ---
     if not isinstance(y, pd.DataFrame):
         try:
             y = pd.DataFrame({time_col: y[time_col], event_col: y[event_col]})
@@ -44,44 +57,84 @@ def cox_filter(X, y, time_col='RFi_years', event_col='RFi_event', top_n=None, ke
             raise ValueError("y must be a DataFrame or a structured array with fields "
                              f"'{time_col}' and '{event_col}'")
 
-    # Normalize keep_vars
+    # --- Ensure keep_vars list ---
     if keep_vars is None:
         keep_list = []
     elif isinstance(keep_vars, str):
         keep_list = [keep_vars]
     else:
         keep_list = list(keep_vars)
-    
+
     pool_cols = [c for c in X.columns if c not in keep_list]
-    
+
     if top_n is None:
         top_n = len(pool_cols)
-    
+
     if top_n == 0:
         print(f"Top_n=0, returning only keep_vars ({len(keep_list)} features).")
         return keep_list
-    
+
+    # --- Normalize y columns to numeric/boolean lifelines-friendly types ---
+    y_clean = y[[time_col, event_col]].copy()
+
+    # If time is datetime-like, convert to durations (float) and origin (we discard origin)
+    if pd.api.types.is_datetime64_any_dtype(y_clean[time_col]) or \
+       np.issubdtype(y_clean[time_col].dtype, np.datetime64) :
+        durations, origins = datetimes_to_durations(y_clean[time_col], y_clean[event_col])
+        y_clean[time_col] = durations
+        # datetimes_to_durations returns boolean-ish events; ensure boolean/int
+        y_clean[event_col] = y_clean[event_col].astype(bool)
+    else:
+        # coerce time to numeric (float). invalid -> NaN (will be dropped per-feature)
+        y_clean[time_col] = pd.to_numeric(y_clean[time_col], errors='coerce')
+        # coerce event to bool (or int 0/1)
+        if y_clean[event_col].dtype == object:
+            # try converting common string tokens
+            lower = y_clean[event_col].str.lower()
+            mapped = lower.map({'y': True, 'yes': True, 'true': True, '1': True,
+                                'n': False, 'no': False, 'false': False, '0': False})
+            if mapped.isna().any():
+                # fallback to to_numeric then bool
+                y_clean[event_col] = pd.to_numeric(y_clean[event_col], errors='coerce').fillna(0).astype(bool)
+            else:
+                y_clean[event_col] = mapped.astype(bool)
+        else:
+            y_clean[event_col] = y_clean[event_col].astype(bool)
+
     pvals = {}
     for feature in pool_cols:
-        df = pd.concat([y[[time_col, event_col]], X[[feature]]], axis=1).dropna()
+        # Build per-feature df, coerce feature to numeric
+        df = pd.concat([y_clean, X[[feature]]], axis=1).copy()
+        # coerce feature column to numeric; non-numeric -> NaN (dropped)
+        df[feature] = pd.to_numeric(df[feature], errors='coerce')
+        df = df.dropna()
+        if df.shape[0] < 3:
+            # Not enough data to fit a model reliably; assign p=1.0
+            pvals[feature] = 1.0
+            continue
+
         cph = CoxPHFitter()
         try:
-            cph.fit(df, duration_col=time_col, event_col=event_col)
+            cph.fit(df, duration_col=time_col, event_col=event_col, show_progress=False)
+            # summary may have index name equal to feature
             pval = cph.summary.loc[feature, 'p']
         except Exception:
+            # catch and assign non-significant if fit fails
             pval = 1.0
         pvals[feature] = pval
-    
+
+    # multiple testing correction
     features, raw_pvals = zip(*pvals.items())
     _, bh_adj, _, _ = multipletests(raw_pvals, method='fdr_bh')
-    
+
     bh_df = pd.DataFrame({'feature': features, 'bh_p': bh_adj})
     bh_df.sort_values('bh_p', inplace=True)
-    
+
     top_features = bh_df.head(top_n)['feature'].tolist()
     final_selected = keep_list + top_features
     print(f"{len(final_selected)} features selected (including {len(keep_list)} keep_vars).")
     return final_selected
+
 
 # ==============================================================================
 
@@ -90,6 +143,7 @@ def filter_cpgs_univariate_cox(X_train: pd.DataFrame,
                                y_train, 
                                time_col="RFi_years", 
                                event_col="RFi_event", 
+                               prefilter=None,
                                top_n=5000,
                                penalizer_value=0.01):
     """
@@ -111,6 +165,8 @@ def filter_cpgs_univariate_cox(X_train: pd.DataFrame,
     Returns:
         list: Selected CpG IDs.
     """
+
+
     # Convert y_train to DataFrame if it is structured array
     if isinstance(y_train, np.ndarray) and y_train.dtype.names is not None:
         y_df = pd.DataFrame({

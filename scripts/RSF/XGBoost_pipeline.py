@@ -19,10 +19,10 @@ from sklearn.preprocessing import OneHotEncoder
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, estimate_alpha_grid, variance_filter, cox_filter
+from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models,select_best_model, variance_filter, cox_filter
 from src.plotting_functions import plot_brier_scores, plot_auc_curves
-from src.xgboost_functions import define_param_grid, evaluate_outer_models_xgbse, run_nested_cv_xgbse, _extract_event_time_from_structured, _extract_event_time_from_structured
-from xgbse.converters import convert_to_structured
+from src.xgboost_functions import define_param_grid, evaluate_outer_models_xgb, run_nested_cv_xgb, summarize_performance
+#from xgbse.converters import convert_to_structured
 
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
@@ -102,8 +102,8 @@ sys.stdout = logfile
 sys.stderr = logfile
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 5
-OUTER_CV_FOLDS = 10
+INNER_CV_FOLDS = 3
+OUTER_CV_FOLDS = 5
 EVAL_TIME_GRID = np.arange(1.5, 5.1, 0.5)  # time points for metrics
 
 if args.data_mode in ["clinical", "combined"]:
@@ -114,7 +114,7 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    FILTER_KEEP_N = 10000
+    FILTER_KEEP_N = 5000
 else:
     FILTER_KEEP_N = 0
 
@@ -215,9 +215,11 @@ else:
 
 # HERE make sure its the right format
 # clinical_data has columns: "RFi_years" (time) and "RFi_event" (event/censoring)
-y = convert_to_structured(clinical_data["RFi_years"], clinical_data["RFi_event"])
+y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
+
+#y = convert_to_structured(clinical_data["RFi_years"], clinical_data["RFi_event"])
 # Rename structured array fields
-y = y.astype([('RFi_event', y.dtype[0]), ('RFi_years', y.dtype[1])])
+#y = y.astype([('RFi_event', y.dtype[0]), ('RFi_years', y.dtype[1])])
 
 # pritn settings
 print(f"dont_filter_vars: {clinvars_included_encoded}")
@@ -225,13 +227,16 @@ print(f"dont_scale_vars: {encoded_cols}")
 print(f"dont_penalize_vars: {clinvars_included_encoded}")
 
 # defienf ilter functions 
-filter_func = lambda X, y=None, **kwargs: variance_filter(X, y=y, **kwargs)
+filter_func = lambda X, y=None, **kwargs: cox_filter(X, y=y, prefilter = 10000, **kwargs)
+
+cox_filter
+#filter_func = lambda X, y=None, **kwargs: variance_filter(X, y=y, **kwargs)
 
 # Define hyperparameter grid
 param_grid = define_param_grid(X, y)
 
 # Run nested cross-validation
-outer_models = run_nested_cv_xgbse(X, y,
+outer_models = run_nested_cv_xgb(X, y,
                              param_grid=param_grid, 
                              outer_cv_folds=OUTER_CV_FOLDS, 
                              inner_cv_folds=INNER_CV_FOLDS, 
@@ -246,7 +251,7 @@ log(f"Saved outer CV models to: {outfile_outermodels}")
 
 # Summarize and evaluate performance
 summarize_outer_models(outer_models)
-model_performances = evaluate_outer_models_xgbse(outer_models, X, y, EVAL_TIME_GRID)
+model_performances = evaluate_outer_models_xgb(outer_models, X, y, EVAL_TIME_GRID)
 joblib.dump(model_performances, outfile_performance)
 print(f"Saved model performances to: {outfile_performance}")
 
@@ -257,7 +262,7 @@ ibs_array = np.array([p["ibs"] for p in model_performances])
 
 # Plot performance metrics
 log("Generating performance plots.")
-plot_brier_scores(brier_array, ibs_array, folds, EVAL_TIME_GRID, outfile_brierplot)
+#plot_brier_scores(brier_array, ibs_array, folds, EVAL_TIME_GRID, outfile_brierplot)
 plot_auc_curves(model_performances, EVAL_TIME_GRID, outfile_aucplot)
 summarize_performance(model_performances)
 
