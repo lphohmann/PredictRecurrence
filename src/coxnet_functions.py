@@ -18,9 +18,105 @@ from sklearn.preprocessing import RobustScaler, StandardScaler, OneHotEncoder
 from src.utils import variance_filter #, estimate_alpha_grid
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import make_pipeline
+import warnings
+from sklearn.exceptions import FitFailedWarning
 
 # ==============================================================================
 # FUNCTIONS
+# ==============================================================================
+
+def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto',
+                        top_n_variance=5000, 
+                        filter_func=None,
+                        dont_filter_vars=None, dont_scale_vars=None,
+                        dont_penalize_vars=None):
+    """
+    Estimate a suitable grid of alpha values for Coxnet hyperparameter tuning.
+    Assumes categorical clinical variables are already one-hot encoded.
+
+    Args:
+        X (pd.DataFrame): Feature matrix (including encoded clinical vars).
+        y (structured array): Survival labels (from sksurv).
+        l1_ratio (float): Elastic net mixing parameter for alpha estimation.
+        n_alphas (int): Number of alphas to generate.
+        alpha_min_ratio: Passed to CoxnetSurvivalAnalysis.
+        top_n_variance (int): Number of top-variance features to keep (variance_filter).
+        clinvars_only_encoded (list or None): Encoded clinical variable names in X.
+
+    Returns:
+        np.array: Array of alpha values.
+    """
+
+    print(f"\n=== Estimating {n_alphas} alpha values for Coxnet tuning ===\n", flush=True)
+
+    warnings.simplefilter("ignore", FitFailedWarning)
+    warnings.simplefilter("ignore", UserWarning)
+
+    # Filter CpGs by variance (keep clinvars)
+    
+    # TEST THIS; ADD ARGUMENT HERE AND ALSO IN THE ESTIMATE ALPHA
+    selected_cpgs = filter_func(X,y, top_n=top_n_variance, keep_vars=dont_filter_vars)
+    
+    #selected_cpgs = variance_filter(X, top_n=top_n_variance, keep_vars=dont_filter_vars)
+    X = X[selected_cpgs]
+
+    # Determine preprocessing
+    if dont_scale_vars is not None:
+        print("Not scaling scecified variables.", flush=True)
+
+        # Continuous = everything not in encoded clin vars
+        scale_cols = [c for c in X.columns if c not in dont_scale_vars]
+
+        transformers = []
+        if len(scale_cols) > 0:
+            transformers.append(("scale", StandardScaler(), scale_cols))
+        if len(dont_scale_vars) > 0:
+            transformers.append(("passthrough_encoded", "passthrough", dont_scale_vars))
+
+        preproc = ColumnTransformer(transformers=transformers, 
+                                    verbose_feature_names_out=False,
+                                    remainder="drop")
+
+        # Get feature order after transformation
+        preproc.fit(X)  
+        feature_names = preproc.get_feature_names_out()
+
+    
+    else:
+        # All features scaled
+        preproc = StandardScaler()
+        #preproc.fit(X)  
+        feature_names = X.columns.values  # order is preserved
+
+    # ---------------------------
+    # Build penalty factor vector
+    # ---------------------------
+
+    penalty_factor = np.ones(len(feature_names), dtype=float)
+    if dont_penalize_vars is not None:
+        for i, fname in enumerate(feature_names):
+            # if feature name matches one to not penalize
+            if fname in dont_penalize_vars:
+                penalty_factor[i] = 0.0
+
+    # ---------------------------
+    # Construct inner CV pipeline
+    # ---------------------------
+    pipe = make_pipeline(preproc,
+                         CoxnetSurvivalAnalysis(l1_ratio=l1_ratio,
+                                                n_alphas=n_alphas,
+                                                alpha_min_ratio=alpha_min_ratio
+                                                )
+                        )
+
+    # Fit to get alpha grid
+    pipe.fit(X, y)
+    alphas = pipe.named_steps["coxnetsurvivalanalysis"].alphas_
+
+    print(f"Estimated {len(alphas)} alpha values.", flush=True)
+    return alphas
+
+# ==============================================================================
 # ==============================================================================
 
 def run_nested_cv_coxnet(X, y, param_grid, 
@@ -77,7 +173,6 @@ def run_nested_cv_coxnet(X, y, param_grid,
             # Keep top variance features in X_train but always include dont_filter_vars
             #selected_cpgs = variance_filter(X_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
             
-            # TEST THIS; ADD ARGUMENT HERE AND ALSO IN THE ESTIMATE ALPHA
             selected_cpgs = filter_func(X_train, y_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
 
             # Subset both train and test to the selected features for this fold
@@ -221,94 +316,6 @@ def run_nested_cv_coxnet(X, y, param_grid,
     # Done with outer CV
     # ---------------------------
     return outer_models
-
-
-# ==============================================================================
-def evaluate_outer_models_coxnet(outer_models, X, y, time_grid):
-    """
-    Evaluate performance of Coxnet models from outer CV folds.
-
-    For each fold, computes:
-    - AUC(t) over the specified time grid
-    - Mean AUC
-    - AUC at 5 years
-    - Brier score at each time point
-    - Integrated Brier Score (IBS)
-    - Concordance index (C-index)
-
-    Skips folds where the model is missing or linear predictor values indicate overflow risk.
-
-    Args:
-        outer_models (list): List of dicts with trained models and fold metadata.
-        X (pd.DataFrame): Feature matrix.
-        y (structured array): Survival outcome.
-        time_grid (np.ndarray): Time points to evaluate metrics.
-
-    Returns:
-        list of dicts: One dictionary per fold with performance metrics.
-    """
-
-    print("\n=== Evaluating Coxnet outer models ===\n", flush=True)
-    performance = []
-
-    for entry in outer_models:
-        fold = entry["fold"]
-        print(f"Evaluating fold {fold}...", flush=True)
-
-        if entry["model"] is None:
-            print(f"  Skipping fold {fold} (no model)", flush=True)
-            continue
-
-        model = entry["model"]
-        test_idx = entry["test_idx"]
-        train_idx = entry["train_idx"]
-
-        # Subset data
-        selected_features = entry.get("selected_cpgs", X.columns)
-        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
-        y_train, y_test = y[train_idx], y[test_idx]
-
-        print(f"  Fold {fold} - test set min time: {y_test['RFi_years'].min():.3f}, max time: {y_test['RFi_years'].max():.3f}", flush=True)
-        print(f"  Fold {fold} - train set min time: {y_train['RFi_years'].min():.3f}, max time: {y_train['RFi_years'].max():.3f}", flush=True)
-
-        # Subset X_test
-        X_test = X_test[selected_features]
-
-        # Compute linear predictor and check for overflow
-        #coefs = model.named_steps["coxnetsurvivalanalysis"].coef_
-        #linear_pred = X_test @ coefs
-        #if linear_pred.max().item() > 700 or linear_pred.min().item() < -700:
-        #    print(f"  ⚠️ Fold {fold} skipped due to overflow risk.", flush=True)
-        #    continue
-
-        # Predict risk scores and survival functions
-        pred_scores = model.predict(X_test)
-        surv_funcs = model.predict_survival_function(X_test)
-        preds = np.row_stack([[fn(t) for t in time_grid] for fn in surv_funcs])
-
-        # Compute time-dependent AUC
-        auc, mean_auc = cumulative_dynamic_auc(y_train, y_test, pred_scores, times=time_grid)
-
-        # Compute C-index
-        cindex = concordance_index_censored(y_test["RFi_event"], y_test["RFi_years"], pred_scores)[0]
-
-        # Compute Brier scores and IBS
-        brier_scores = brier_score(y_train, y_test, preds, time_grid)[1]
-        ibs = integrated_brier_score(y_train, y_test, preds, time_grid)
-
-        performance.append({
-            "fold": fold,
-            "auc": auc,
-            "mean_auc": mean_auc,
-            "auc_at_5y": auc[np.where(time_grid == 5.0)[0][0]] if 5.0 in time_grid else None,
-            "brier_t": brier_scores,
-            "ibs": ibs,
-            "cindex": cindex
-        })
-
-        print(f"  Fold {fold} - C-index: {cindex:.3f}, Mean AUC: {mean_auc:.3f}, IBS: {ibs:.3f}", flush=True)
-
-    return performance
 
 # ==============================================================================
 def print_selected_cpgs_counts_coxnet(outer_models):

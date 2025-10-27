@@ -15,15 +15,13 @@ import pandas as pd
 import joblib
 from sksurv.util import Surv
 import argparse
-from sksurv.linear_model import CoxnetSurvivalAnalysis
-from sklearn.preprocessing import RobustScaler,StandardScaler
 from sklearn.preprocessing import OneHotEncoder
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, estimate_alpha_grid, variance_filter, subset_methylation
+from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, variance_filter, subset_methylation, evaluate_outer_models
 from src.plotting_functions import plot_brier_scores, plot_auc_curves
-from src.coxnet_functions import evaluate_outer_models_coxnet, run_nested_cv_coxnet, print_selected_cpgs_counts_coxnet
+from src.coxnet_functions import run_nested_cv_coxnet, print_selected_cpgs_counts_coxnet, estimate_alpha_grid
 
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
@@ -259,7 +257,9 @@ log(f"Saved outer CV models to: {outfile_outermodels}")
 print_selected_cpgs_counts_coxnet(outer_models)
 
 # evaluate performance
-model_performances = evaluate_outer_models_coxnet(outer_models, X, y, EVAL_TIME_GRID)
+model_performances = evaluate_outer_models(outer_models, X, y, EVAL_TIME_GRID)
+
+#model_performances = evaluate_outer_models_coxnet(outer_models, X, y, EVAL_TIME_GRID)
 joblib.dump(model_performances, outfile_performance)
 print(f"Saved model performances to: {outfile_performance}")
 
