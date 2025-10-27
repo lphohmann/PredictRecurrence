@@ -227,10 +227,9 @@ print(f"dont_scale_vars: {encoded_cols}")
 print(f"dont_penalize_vars: {clinvars_included_encoded}")
 
 # defienf ilter functions 
-filter_func = lambda X, y=None, **kwargs: cox_filter(X, y=y, prefilter = 10000, **kwargs)
+#filter_func = lambda X, y=None, **kwargs: cox_filter(X, y=y, prefilter = 10000, output_dir = current_output_dir,  **kwargs)
 
-cox_filter
-#filter_func = lambda X, y=None, **kwargs: variance_filter(X, y=y, **kwargs)
+filter_func = lambda X, y=None, **kwargs: variance_filter(X, y=y, **kwargs)
 
 # Define hyperparameter grid
 param_grid = define_param_grid(X, y)

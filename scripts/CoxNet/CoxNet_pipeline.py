@@ -21,9 +21,9 @@ from sklearn.preprocessing import OneHotEncoder
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, estimate_alpha_grid, variance_filter, cox_filter
+from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, estimate_alpha_grid, variance_filter, subset_methylation
 from src.plotting_functions import plot_brier_scores, plot_auc_curves
-from src.coxnet_functions import define_param_grid, evaluate_outer_models_coxnet, run_nested_cv_cox, print_selected_cpgs_counts
+from src.coxnet_functions import evaluate_outer_models_coxnet, run_nested_cv_coxnet, print_selected_cpgs_counts_coxnet
 
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
@@ -53,22 +53,23 @@ INFILE_CLINICAL = "./data/train/train_clinical.csv"
 # ==============================================================================
 
 parser = argparse.ArgumentParser(description="Train CoxNet.")
+# cohort
 parser.add_argument("--cohort_name", type=str, required=True,
                     choices=COHORT_TRAIN_IDS_PATHS.keys(), 
                     help="Name of the cohort to process")
+# trainign features
+parser.add_argument("--data_mode", type=str, 
+                    choices=["clinical", "methylation", "combined"], required=True,
+                    help="Which data to use: clinical only, methylation only, or both")
+# methylation data type
 parser.add_argument("--methylation_type", type=str, 
                     choices=METHYLATION_DATA_PATHS.keys(), 
                     required=True,
                     help="Type of methylation data")
+# prefilter cpg input
 parser.add_argument("--train_cpgs", type=str, default=None,
                     help="Set of CpGs for training")
-
-parser.add_argument("--data_mode", type=str, 
-                    choices=["clinical", "methylation", "combined"], required=True,
-                    help="Which data to use: clinical only, methylation only, or both")
-
-
-# defaults, no need to change usually
+# output dir
 parser.add_argument("--output_base_dir", type=str, default="./output/CoxNet",
                     help="Base output directory")
 args = parser.parse_args()
@@ -77,7 +78,7 @@ if args.data_mode == "clinical":
     print("Note: Methylation type not considered when using clinical-only data mode.")
 
 # ==============================================================================
-# PARAMS
+# OUTPUT DIRECTORY
 # ==============================================================================
 
 # Cohort-specific output directories
@@ -93,40 +94,13 @@ else:
     subtype_folder = args.methylation_type.capitalize()  # could be Unadjusted/Adjusted etc.
 
 current_output_dir = os.path.join(current_output_dir, subtype_folder)
-
 os.makedirs(current_output_dir, exist_ok=True)
-
-# Logfile is now directly in the cohort's output directory
-logfile_path = os.path.join(current_output_dir, "pipeline_run.log")
-logfile = open(logfile_path, "w")
-sys.stdout = logfile
-sys.stderr = logfile
-
-# Data preprocessing parameters
-INNER_CV_FOLDS = 5
-OUTER_CV_FOLDS = 10
-EVAL_TIME_GRID = np.arange(1.5, 5.1, 0.5)  # time points for metrics
-
-# type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
-ALPHAS_ESTIMATION_L1RATIO = 0.7#[0.9]
-PARAM_GRID_L1RATIOS  = [0.7]#[0.9]
-
-if args.data_mode in ["clinical", "combined"]:
-    CLINVARS_INCLUDED = ["Age", "Size.mm", "NHG", "LN"]
-    CLIN_CATEGORICAL = ["NHG", "LN"]
-else:
-    CLINVARS_INCLUDED = None
-    CLIN_CATEGORICAL = None
-
-if args.data_mode in ["methylation", "combined"]:
-    FILTER_KEEP_N = 10000
-else:
-    FILTER_KEEP_N = 0
 
 # ==============================================================================
 # INPUT AND OUTPUT FILES
 # ==============================================================================
 
+# input files
 infile_train_ids = COHORT_TRAIN_IDS_PATHS[args.cohort_name]
 infile_betavalues = METHYLATION_DATA_PATHS[args.methylation_type] 
 infile_clinical = INFILE_CLINICAL
@@ -138,6 +112,44 @@ outfile_brierplot = os.path.join(current_output_dir, "brier_scores.png")
 outfile_aucplot = os.path.join(current_output_dir, "auc_curves.png")
 outfile_bestfold = os.path.join(current_output_dir, "best_outer_fold.pkl")
 outfile_performance = os.path.join(current_output_dir, "outer_cv_performance.pkl")
+
+# Logfile directly in the output directory
+logfile_path = os.path.join(current_output_dir, "pipeline_run.log")
+logfile = open(logfile_path, "w")
+sys.stdout = logfile
+sys.stderr = logfile
+
+# ==============================================================================
+# PARAMS
+# ==============================================================================
+
+# Data preprocessing parameters
+INNER_CV_FOLDS = 5
+OUTER_CV_FOLDS = 10
+
+# type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
+ALPHAS_ESTIMATION_L1RATIO = 0.7#[0.9]
+PARAM_GRID_L1RATIOS  = [0.7]#[0.9]
+
+if args.cohort_name == "TNBC":
+    # ensure censoring cutoff > max evaluation time!
+    ADMIN_CENSORING_CUTOFF = 5.5
+    EVAL_TIME_GRID = np.arange(1.5, 5.1, 0.5)  # time points for metrics
+else:
+    ADMIN_CENSORING_CUTOFF = None
+    EVAL_TIME_GRID = np.arange(1.5, 10.1, 0.5)  # time points for metrics
+
+if args.data_mode in ["clinical", "combined"]:
+    CLINVARS_INCLUDED = ["Age", "Size.mm", "NHG", "LN"]
+    CLIN_CATEGORICAL = ["NHG", "LN"]
+else:
+    CLINVARS_INCLUDED = None
+    CLIN_CATEGORICAL = None
+
+if args.data_mode in ["methylation", "combined"]:
+    FILTER_KEEP_N = 1000
+else:
+    FILTER_KEEP_N = 0 # no methlyation data included
 
 # ==============================================================================
 # MAIN PIPELINE
@@ -153,65 +165,40 @@ log(f"Filtered CpG set data file: {infile_cpg_ids}")
 log(f"Output directory: {current_output_dir}")
 log(f"Training features mode: {args.data_mode}")
 
-# Load and preprocess data (same as CoxNet pipeline)
+# Load and preprocess data
 train_ids = pd.read_csv(infile_train_ids, header=None).iloc[:, 0].tolist()
-log("Loaded training IDs.")
 beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, infile_clinical)
-log("Loaded methylation and clinical data.")
+
+# convert to M-values
 mvals = beta2m(beta_matrix, beta_threshold=0.001)
 
 # apply censoring at 5 years for tnbc only
-# censoring cutoff > max evaluation time#
-if args.cohort_name == "TNBC":
-    clinical_data = apply_admin_censoring(clinical_data, "RFi_years", "RFi_event", time_cutoff=5.5, inplace=False)
+if ADMIN_CENSORING_CUTOFF is not None: 
+    clinical_data = apply_admin_censoring(clinical_data, "RFi_years", "RFi_event", time_cutoff=ADMIN_CENSORING_CUTOFF, inplace=False)
 
 # Subset to only include prefiltered CpGs if infile is provided
 if infile_cpg_ids is not None:
-    with open(infile_cpg_ids, 'r') as f:
-        selected_cpg_ids = [line.strip() for line in f if line.strip()] # empy line would be skipped
-    log(f"Successfully loaded {len(selected_cpg_ids)} pre-filtered CpG IDs.")
+    mvals = subset_methylation(mvals,infile_cpg_ids)
 
-    # --- Subset mvals to only include prefiltered CpGs ---
-    valid_selected_cpg_ids = [cpg for cpg in selected_cpg_ids if cpg in mvals.columns]
-    missing_cpgs = [cpg for cpg in selected_cpg_ids if cpg not in mvals.columns]
-
-    if missing_cpgs:
-        log(f"Warning: {len(missing_cpgs)} CpGs from the input file are not in the training data: {missing_cpgs}")
-
-    if len(valid_selected_cpg_ids) == 0:
-        log("Error: No valid pre-filtered CpGs found in the current methylation data columns.")
-        raise ValueError("No valid CpGs to proceed with.")
-    
-    X = mvals[valid_selected_cpg_ids]
-    log(f"Successfully subsetted methylation data to {X.shape[1]} pre-filtered CpGs.")
-else:
-    # Keep all CpGs
-    X = mvals.copy()
-    log(f"No pre-filtered CpG file provided. Keeping all {X.shape[1]} CpGs.")
+X = mvals.copy()
 
 # add clincial vars to X to put all trainign featuer sin one object
 if CLINVARS_INCLUDED is not None:
-
-    # 1) subset clinical data aligned to X
+    # subset clinical data aligned to X
     clin = clinical_data[CLINVARS_INCLUDED].loc[X.index]
-    # 2) one-hot encode the categorical clinical variables
+    # one-hot encode the categorical clinical variables
     encoder = OneHotEncoder(drop=None, dtype=float, sparse_output=False)
     encoded = encoder.fit_transform(clin[CLIN_CATEGORICAL])
     encoded_cols = encoder.get_feature_names_out(CLIN_CATEGORICAL).tolist()
-    # 3) make a DataFrame for the encoded columns
+    # make a DataFrame for the encoded columns
     encoded_df = pd.DataFrame(encoded, columns=encoded_cols, index=X.index)
-    # 4) build the encoded clinical DataFrame (drop original categorical cols)
+    # build the encoded clinical DataFrame (drop original categorical cols)
     clin_encoded = pd.concat([clin.drop(columns=CLIN_CATEGORICAL), encoded_df], axis=1)
-    # 5) remove any original clinical columns from X to avoid duplicates (safe)
-    cols_to_remove = [c for c in CLINVARS_INCLUDED if c in X.columns]
-    if cols_to_remove:
-        X = X.drop(columns=cols_to_remove)
-    # 6) concatenate encoded clinical back into X
-    X = pd.concat([X, clin_encoded], axis=1)
+    # concatenate encoded clinical back into X
+    X = pd.concat([X, clin_encoded], axis=1).copy()
 
-    # 7) build clinvars_included_encoded: replace original categorical names with encoded column names
+    # build clinvars_included_encoded: replace original categorical names with encoded column names
     clinvars_included_encoded = [c for c in CLINVARS_INCLUDED if c not in CLIN_CATEGORICAL] + encoded_cols
-    
     log(f"Added {clinvars_included_encoded} clinical variables. New X shape: {X.shape}")
 else:
     clinvars_included_encoded = None
@@ -220,45 +207,20 @@ else:
 
 # Prepare survival labels (Surv object with event & time)
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
-
-# Define hyperparameter grid
-#if args.methylation_type == "adjusted":
-#    alpha_min=0.2
-#elif args.methylation_type == "unadjusted":
-#    alpha_min=0.1
-
-alpha_min=0.1
     
-
-print(f"dont_filter_vars: {clinvars_included_encoded}")
-print(f"dont_scale_vars: {encoded_cols}")
-print(f"dont_penalize_vars: {clinvars_included_encoded}")
+log(f"dont_filter_vars: {clinvars_included_encoded}")
+log(f"dont_scale_vars: {encoded_cols}")
+log(f"dont_penalize_vars: {clinvars_included_encoded}")
 
 # set filter func
-#cox_filter(X, y, time_col='RFi_years', event_col='RFi_event', top_n=None, keep_vars=None)
-#filter_func = lambda X_train, y_train: filter_cpgs_with_cox_lasso(X_train, y_train,
-#                               initial_variance_top_n=10000,#50000,
-#                               l1_ratio_values=[0.9],
-#                               est_alpha_min=alpha_min)
-
-
-#selected_cpgs = filter_function(X_train, y_train)
-
-# Keep top variance features in X_train but always include dont_filter_vars
-
 filter_func = lambda X, y=None, **kwargs: variance_filter(X, y=y, **kwargs)
-
-
-#filter_func = lambda X, y=None, **kwargs: cox_filter(X, y=y, **kwargs)
-
-
 
 alphas = estimate_alpha_grid(X, y, 
                              l1_ratio=ALPHAS_ESTIMATION_L1RATIO, 
                              n_alphas=30,
                              top_n_variance=FILTER_KEEP_N,
                              filter_func=filter_func,
-                             alpha_min_ratio=alpha_min,
+                             alpha_min_ratio=0.1,
                              dont_filter_vars=clinvars_included_encoded,
                              dont_scale_vars=encoded_cols,
                              dont_penalize_vars=clinvars_included_encoded)
@@ -269,15 +231,18 @@ if len(alphas) > n_trim:
     alphas_trimmed = alphas[:-n_trim]
 else:
     alphas_trimmed = alphas
-log(f"Alphas used for tuning (trimmed smallest): {alphas_trimmed}")
+log(f"Alphas used for tuning (trimmed smallest; n_trim = {n_trim}): {alphas_trimmed}")
 
 #alphas = np.logspace(np.log10(0.01), np.log10(10), 20)
-param_grid = define_param_grid(grid_alphas=alphas_trimmed, grid_l1ratio=PARAM_GRID_L1RATIOS)
+param_grid = {
+    # diff string if i dont use a pipe (remove estimator__)
+    "estimator__coxnetsurvivalanalysis__alphas": [[alpha] for alpha in alphas_trimmed],  
+    "estimator__coxnetsurvivalanalysis__l1_ratio": PARAM_GRID_L1RATIOS
+    }
+print(f"\nDefined parameter grid:\n{param_grid}\n", flush=True)
 
 # Run nested cross-validation
-#estimator = CoxnetSurvivalAnalysis()
-#scaler = RobustScaler()
-outer_models = run_nested_cv_cox(X, y,
+outer_models = run_nested_cv_coxnet(X, y,
                              param_grid=param_grid, 
                              outer_cv_folds=OUTER_CV_FOLDS, 
                              inner_cv_folds=INNER_CV_FOLDS, 
@@ -290,23 +255,21 @@ outer_models = run_nested_cv_cox(X, y,
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")
 
-# Summarize and evaluate performance
-summarize_outer_models(outer_models)
-print_selected_cpgs_counts(outer_models)
+# print selected features
+print_selected_cpgs_counts_coxnet(outer_models)
 
+# evaluate performance
 model_performances = evaluate_outer_models_coxnet(outer_models, X, y, EVAL_TIME_GRID)
 joblib.dump(model_performances, outfile_performance)
 print(f"Saved model performances to: {outfile_performance}")
 
-# Extract arrays for plotting
+# Plot performance metrics
 folds = [p["fold"] for p in model_performances]
 brier_array = np.array([p["brier_t"] for p in model_performances])
 ibs_array = np.array([p["ibs"] for p in model_performances])
-
-# Plot performance metrics
-log("Generating performance plots.")
 plot_brier_scores(brier_array, ibs_array, folds, EVAL_TIME_GRID, outfile_brierplot)
 plot_auc_curves(model_performances, EVAL_TIME_GRID, outfile_aucplot)
+summarize_outer_models(outer_models)
 summarize_performance(model_performances)
 
 # Select and save the best model (by chosen metric)

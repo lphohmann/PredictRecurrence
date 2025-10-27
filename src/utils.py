@@ -25,23 +25,41 @@ from sksurv.linear_model import CoxnetSurvivalAnalysis
 # ==============================================================================
 # FUNCTIONS
 # ==============================================================================
-import pandas as pd
+
+import os
+import math
 import numpy as np
+import pandas as pd
 from lifelines import CoxPHFitter
 from statsmodels.stats.multitest import multipletests
-
-import pandas as pd
+import matplotlib.pyplot as plt
+import os
+import math
 import numpy as np
+import pandas as pd
 from lifelines import CoxPHFitter
 from lifelines.utils import datetimes_to_durations
 from statsmodels.stats.multitest import multipletests
+import matplotlib.pyplot as plt
 
 def cox_filter(X, y, time_col='RFi_years', event_col='RFi_event',
-               top_n=None, keep_vars=None, prefilter=None):
+               top_n=None, keep_vars=None, prefilter=None,
+               output_dir=None, save_csv=True, save_plots=True,
+               plot_prefix='coxfilter', show_plots=False):
     """
     Filter features based on univariate Cox regression and BH-adjusted p-values.
     Always keeps keep_vars.
     Supports y as a DataFrame or a structured array (e.g. from sksurv).
+
+    Additional args:
+      output_dir: folder to save results (CSV + PNGs). If None, no files are written.
+      save_csv: whether to write a CSV summary (requires output_dir)
+      save_plots: whether to write PNG plots (requires output_dir)
+      plot_prefix: prefix for plot filenames
+      show_plots: whether to call plt.show() after creating each plot (useful in notebooks)
+    Returns:
+      final_selected: list of kept + top features (same as before)
+      summary_df: DataFrame with per-feature stats (p, bh_p, coef, HR, HR_CI_lower, HR_CI_upper)
     """
 
     # --- optional prefilter using a user function variance_filter (unchanged) ---
@@ -72,7 +90,8 @@ def cox_filter(X, y, time_col='RFi_years', event_col='RFi_event',
 
     if top_n == 0:
         print(f"Top_n=0, returning only keep_vars ({len(keep_list)} features).")
-        return keep_list
+        summary_df = pd.DataFrame(columns=['feature', 'p', 'bh_p', 'coef', 'hr', 'hr_ci_lower', 'hr_ci_upper'])
+        return keep_list, summary_df
 
     # --- Normalize y columns to numeric/boolean lifelines-friendly types ---
     y_clean = y[[time_col, event_col]].copy()
@@ -82,142 +101,205 @@ def cox_filter(X, y, time_col='RFi_years', event_col='RFi_event',
        np.issubdtype(y_clean[time_col].dtype, np.datetime64) :
         durations, origins = datetimes_to_durations(y_clean[time_col], y_clean[event_col])
         y_clean[time_col] = durations
-        # datetimes_to_durations returns boolean-ish events; ensure boolean/int
+        # datetimes_to_durations returns boolean-ish events; ensure boolean
         y_clean[event_col] = y_clean[event_col].astype(bool)
     else:
         # coerce time to numeric (float). invalid -> NaN (will be dropped per-feature)
         y_clean[time_col] = pd.to_numeric(y_clean[time_col], errors='coerce')
         # coerce event to bool (or int 0/1)
         if y_clean[event_col].dtype == object:
-            # try converting common string tokens
-            lower = y_clean[event_col].str.lower()
+            lower = y_clean[event_col].astype(str).str.lower()
             mapped = lower.map({'y': True, 'yes': True, 'true': True, '1': True,
                                 'n': False, 'no': False, 'false': False, '0': False})
             if mapped.isna().any():
-                # fallback to to_numeric then bool
                 y_clean[event_col] = pd.to_numeric(y_clean[event_col], errors='coerce').fillna(0).astype(bool)
             else:
                 y_clean[event_col] = mapped.astype(bool)
         else:
             y_clean[event_col] = y_clean[event_col].astype(bool)
 
+    # Storage for results
+    results = []
     pvals = {}
+
     for feature in pool_cols:
         # Build per-feature df, coerce feature to numeric
         df = pd.concat([y_clean, X[[feature]]], axis=1).copy()
-        # coerce feature column to numeric; non-numeric -> NaN (dropped)
         df[feature] = pd.to_numeric(df[feature], errors='coerce')
         df = df.dropna()
         if df.shape[0] < 3:
-            # Not enough data to fit a model reliably; assign p=1.0
+            # Not enough data to fit a model reliably; assign p=1.0 and NaNs for coef
             pvals[feature] = 1.0
+            results.append({
+                'feature': feature, 'p': 1.0, 'coef': np.nan, 'se_coef': np.nan,
+                'hr': np.nan, 'hr_ci_lower': np.nan, 'hr_ci_upper': np.nan,
+                'n_obs': df.shape[0]
+            })
             continue
 
         cph = CoxPHFitter()
         try:
             cph.fit(df, duration_col=time_col, event_col=event_col, show_progress=False)
-            # summary may have index name equal to feature
-            pval = cph.summary.loc[feature, 'p']
+            # lifelines summary: 'coef' and 'se(coef)' usually present
+            summary = cph.summary
+            # attempt to read coef and se
+            if feature in summary.index:
+                coef = float(summary.loc[feature, 'coef'])
+                # try various possible names for se column
+                se = None
+                for col_name in ['se(coef)', 'se(coef)']:  # repetitive but clear
+                    if col_name in summary.columns:
+                        se = float(summary.loc[feature, col_name])
+                        break
+                # sometimes lifelines names are 'se(coef)'
+                if se is None:
+                    # fallback: try 'var' or compute from confidence intervals if available
+                    for alt in ['z', 'p']:
+                        if alt in summary.columns:
+                            # can't reliably get se from z without coef; skip se
+                            se = np.nan
+                pval = float(summary.loc[feature, 'p']) if 'p' in summary.columns else 1.0
+            else:
+                # If the index name does not match the feature, attempt to extract first row
+                first_row = summary.iloc[0]
+                coef = float(first_row.get('coef', np.nan))
+                se = float(first_row.get('se(coef)', np.nan)) if 'se(coef)' in first_row.index else np.nan
+                pval = float(first_row.get('p', 1.0))
         except Exception:
-            # catch and assign non-significant if fit fails
+            coef = np.nan
+            se = np.nan
             pval = 1.0
+
+        # compute hazard ratio and CI from coef & se if available
+        if (not np.isnan(coef)) and (not np.isnan(se)):
+            hr = math.exp(coef)
+            z = 1.96  # approximate 95% CI
+            lower = math.exp(coef - z * se)
+            upper = math.exp(coef + z * se)
+        elif not np.isnan(coef):
+            hr = math.exp(coef)
+            lower = np.nan
+            upper = np.nan
+        else:
+            hr = np.nan
+            lower = np.nan
+            upper = np.nan
+
         pvals[feature] = pval
+        results.append({
+            'feature': feature,
+            'p': pval,
+            'coef': coef,
+            'se_coef': se,
+            'hr': hr,
+            'hr_ci_lower': lower,
+            'hr_ci_upper': upper,
+            'n_obs': df.shape[0]
+        })
 
     # multiple testing correction
-    features, raw_pvals = zip(*pvals.items())
+    features_list = [r['feature'] for r in results]
+    raw_pvals = [r['p'] for r in results]
+    # ensure length > 0
+    if len(raw_pvals) == 0:
+        raise RuntimeError("No features were tested.")
+
     _, bh_adj, _, _ = multipletests(raw_pvals, method='fdr_bh')
 
-    bh_df = pd.DataFrame({'feature': features, 'bh_p': bh_adj})
-    bh_df.sort_values('bh_p', inplace=True)
+    # assemble summary dataframe
+    summary_df = pd.DataFrame(results)
+    summary_df['bh_p'] = bh_adj
+    # order by bh_p ascending
+    summary_df.sort_values('bh_p', inplace=True)
 
-    top_features = bh_df.head(top_n)['feature'].tolist()
+    # select top features
+    top_features = summary_df.head(top_n)['feature'].tolist()
     final_selected = keep_list + top_features
     print(f"{len(final_selected)} features selected (including {len(keep_list)} keep_vars).")
-    return final_selected
 
+    # write outputs if requested
+    if output_dir is not None:
+        os.makedirs(output_dir, exist_ok=True)
 
-# ==============================================================================
+        if save_csv:
+            csv_path = os.path.join(output_dir, f"{plot_prefix}_cox_summary.csv")
+            summary_df.to_csv(csv_path, index=False)
+            print(f"Saved CSV summary to: {csv_path}")
 
-
-def filter_cpgs_univariate_cox(X_train: pd.DataFrame, 
-                               y_train, 
-                               time_col="RFi_years", 
-                               event_col="RFi_event", 
-                               prefilter=None,
-                               top_n=5000,
-                               penalizer_value=0.01):
-    """
-    Filter CpGs using univariate Cox regression.
-
-    Steps:
-      1. Run univariate Cox regression for each CpG in X_train.
-      2. Rank CpGs by p-value (adjusted for multiple testing).
-      3. Return top_n CpG IDs with smallest adjusted p-values.
-
-    Args:
-        X_train (pd.DataFrame): CpG matrix (samples x CpGs).
-        y_train (structured array or DataFrame): Survival labels (must contain time_col & event_col if DataFrame).
-        time_col (str): Column name for survival time in y_train (if DataFrame).
-        event_col (str): Column name for event indicator in y_train (if DataFrame).
-        top_n (int): Number of top CpGs to keep.
-        penalizer_value (float): L2 penalizer for CoxPHFitter.
-
-    Returns:
-        list: Selected CpG IDs.
-    """
-
-
-    # Convert y_train to DataFrame if it is structured array
-    if isinstance(y_train, np.ndarray) and y_train.dtype.names is not None:
-        y_df = pd.DataFrame({
-            time_col: y_train[time_col],
-            event_col: y_train[event_col]
-        }, index=X_train.index)
-    else:
-        y_df = y_train.copy()
-
-    results = []
-    total_cpgs = X_train.shape[1]
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=ConvergenceWarning)
-        warnings.simplefilter("ignore", category=RuntimeWarning)
-
-        for i, cpg in enumerate(X_train.columns):
-            if (i + 1) % 5000 == 0 or (i + 1) == total_cpgs:
-                print(f"  Processing CpG {i + 1}/{total_cpgs}...")
-
-            df = pd.concat([y_df[[time_col, event_col]].copy(), X_train[[cpg]]], axis=1).dropna()
-            df.columns = ["time", "event", "cpg_value"]
-
-            if df["cpg_value"].nunique() <= 1:
-                results.append({"CpG_ID": cpg, "pval": np.nan})
-                continue
-
+        if save_plots:
+            # 1) histogram of raw p-values
             try:
-                cph = CoxPHFitter(penalizer=penalizer_value)
-                cph.fit(df, duration_col="time", event_col="event")
-                summary = cph.summary.loc["cpg_value"]
-                results.append({"CpG_ID": cpg, "pval": summary["p"]})
+                plt.figure(figsize=(6,4))
+                plt.hist(summary_df['p'].dropna(), bins=50)
+                plt.xlabel('Raw p-value')
+                plt.ylabel('Count')
+                plt.title('Histogram of raw p-values')
+                p1 = os.path.join(output_dir, f"{plot_prefix}_pval_hist.png")
+                plt.tight_layout()
+                plt.savefig(p1, dpi=150)
+                if show_plots:
+                    plt.show()
+                plt.close()
+                print(f"Saved: {p1}")
             except Exception as e:
-                print(f"Warning: Failed for {cpg}: {e}", flush=True)
-                results.append({"CpG_ID": cpg, "pval": np.nan})
+                print("Failed to create raw p-value histogram:", e)
 
-    df_results = pd.DataFrame(results)
+            # 2) histogram of BH-adjusted p-values
+            try:
+                plt.figure(figsize=(6,4))
+                plt.hist(summary_df['bh_p'].dropna(), bins=50)
+                plt.xlabel('BH-adjusted p-value')
+                plt.ylabel('Count')
+                plt.title('Histogram of BH-adjusted p-values')
+                p2 = os.path.join(output_dir, f"{plot_prefix}_bh_pval_hist.png")
+                plt.tight_layout()
+                plt.savefig(p2, dpi=150)
+                if show_plots:
+                    plt.show()
+                plt.close()
+                print(f"Saved: {p2}")
+            except Exception as e:
+                print("Failed to create BH p-value histogram:", e)
 
-    # Adjust p-values using Benjamini-Hochberg
-    pvals = df_results["pval"].values
-    mask = ~pd.isna(pvals)
-    padj = np.full_like(pvals, np.nan, dtype=np.float64)
-    padj[mask] = multipletests(pvals[mask], method='fdr_bh')[1]
-    df_results["padj"] = padj
+            # 3) histogram of hazard ratios (HR)
+            try:
+                plt.figure(figsize=(6,4))
+                plt.hist(summary_df['hr'].dropna(), bins=50)
+                plt.xlabel('Hazard ratio (HR)')
+                plt.ylabel('Count')
+                plt.title('Histogram of hazard ratios')
+                p3 = os.path.join(output_dir, f"{plot_prefix}_hr_hist.png")
+                plt.tight_layout()
+                plt.savefig(p3, dpi=150)
+                if show_plots:
+                    plt.show()
+                plt.close()
+                print(f"Saved: {p3}")
+            except Exception as e:
+                print("Failed to create HR histogram:", e)
 
-    # Sort by adjusted p-value and select top_n
-    df_results = df_results.sort_values("padj")
-    selected_cpgs = df_results["CpG_ID"].iloc[:top_n].tolist()
+            # 4) volcano-style plot: log(HR) vs -log10(p)
+            try:
+                plot_df = summary_df.dropna(subset=['hr', 'p']).copy()
+                plot_df['log_hr'] = np.log(plot_df['hr'].replace(0, np.nan))
+                plot_df['minus_log10_p'] = -np.log10(plot_df['p'].replace(0, np.nextafter(0, 1)))
+                plt.figure(figsize=(6,5))
+                plt.scatter(plot_df['log_hr'], plot_df['minus_log10_p'], s=10)
+                plt.axvline(0, color='k', linewidth=0.5)
+                plt.xlabel('log(HR)')
+                plt.ylabel('-log10(p)')
+                plt.title('Volcano-style: log(HR) vs -log10(p)')
+                p4 = os.path.join(output_dir, f"{plot_prefix}_volcano.png")
+                plt.tight_layout()
+                plt.savefig(p4, dpi=150)
+                if show_plots:
+                    plt.show()
+                plt.close()
+                print(f"Saved: {p4}")
+            except Exception as e:
+                print("Failed to create volcano plot:", e)
 
-    print(f"Selected {len(selected_cpgs)} CpGs by univariate Cox filter.")
-    return selected_cpgs
+    return final_selected, summary_df
 
 # ==============================================================================
 
@@ -344,6 +426,8 @@ def load_training_data(train_ids, beta_path, clinical_path):
     # align dataframes
     beta_matrix = beta_matrix.loc[train_ids]
 
+    print("Loaded training data.")
+
     return beta_matrix, clinical_data
 
 # ==============================================================================
@@ -379,6 +463,7 @@ def apply_admin_censoring(df, time_col, event_col, time_cutoff=5.0, inplace=Fals
     df_to_use.loc[mask, time_col] = time_cutoff
     df_to_use.loc[mask, event_col] = 0
 
+    print(f"Applied administrative censoring at {time_cutoff} for outcome {time_col} ; {event_col}.")
     return df_to_use
 
 # ==============================================================================
@@ -458,113 +543,6 @@ def variance_filter(X, y=None, min_variance=None, top_n=None, keep_vars=None):
 
     print(f"{len(final_selected)} features selected (including {len(keep_list)} keep_vars).")
     return final_selected
-
-
-'''def variance_filter(X, y=None, min_variance=None, top_n=None):
-    """
-    Filter features (CpGs) based on variance. Expects CpGs as columns and patients as rows.
-    
-    Args:
-        X (pd.DataFrame): Feature matrix (samples x features).
-        top_n (int, optional): Number of top features to select based on variance.
-        min_variance (float, optional): Minimum variance threshold to retain features.
-    
-    Returns:
-        list: Selected CpG IDs (column names).
-    """
-
-    log(f"Starting CpG filtering on training fold ({X.shape[1]} CpGs).")
-    variances = X.var(axis=0)
-    
-    if min_variance is not None:
-        selected_features = variances[variances >= min_variance].index
-    elif top_n is not None:
-        selected_features = variances.sort_values(ascending=False).head(top_n).index
-    else:
-        raise ValueError("Either min_variance or top_n must be specified")
-    
-    log(f"Filter applied: {len(selected_features.tolist())} CpGs remain after filtering.")
-    return selected_features.tolist()
-'''
-# ==============================================================================
-
-def filter_cpgs_with_cox_lasso(X_train, y_train,
-                               initial_variance_top_n=5000,#50,#50000,
-                               l1_ratio_values=[0.9],
-                               cox_lasso_cv_folds=5,
-                               log_prefix="",
-                               est_alpha_min="auto"):
-    """
-    Perform CpG filtering on training data using variance + Cox Lasso.
-
-    Steps:
-      1. Variance filter
-      2. Cox Lasso feature selection on training fold
-      3. Return list of CpGs with non-zero coefficients
-
-    Args:
-        X_train (pd.DataFrame): Training methylation data (samples x CpGs).
-        y_train (structured array): Survival labels (Surv object).
-        initial_variance_top_n (int): Keep top N CpGs by variance before Cox Lasso.
-        l1_ratio_values (list): L1 ratios to test in Cox Lasso.
-        cox_lasso_cv_folds (int): Inner CV folds for Cox Lasso hyperparam tuning.
-        log_prefix (str): Prefix for log messages (e.g. "[Fold 1] ").
-
-    Returns:
-        list: CpG IDs selected in this training fold.
-    """
-    log(f"{log_prefix}Starting CpG filtering on training fold ({X_train.shape[1]} CpGs).")
-
-    # 1. Variance filter
-    #X_var_filtered = variance_filter(X_train, top_n=initial_variance_top_n)
-    selected_by_variance = variance_filter(X_train, top_n=initial_variance_top_n)
-    X_var_filtered = X_train[selected_by_variance]
-    log(f"{log_prefix}Variance filter applied: {X_var_filtered.shape[1]} CpGs remain.")
-
-    # 2. Cox Lasso
-    cox_pipe = make_pipeline(#RobustScaler(),#RobustScaler(),#StandardScaler(),#RobustScaler(), # ADD BACK
-                             CoxnetSurvivalAnalysis())
-
-    # Estimate alphas
-    # possible set min alpha to 0.5
-    alphas = estimate_alpha_grid(X_var_filtered, y_train,
-                                 l1_ratio=l1_ratio_values[0],
-                                 n_alphas=10,top_n_variance=initial_variance_top_n,
-                                 alpha_min_ratio=est_alpha_min) #alpha_min
-
-    param_grid = {
-        'coxnetsurvivalanalysis__alphas': [[a] for a in alphas],
-        'coxnetsurvivalanalysis__l1_ratio': l1_ratio_values
-    }
-
-    event_indicator = y_train["RFi_event"]  
-    stratifier = StratifiedKFold(n_splits=cox_lasso_cv_folds, shuffle=True, random_state=42)
-    inner_cv = stratifier.split(X_var_filtered, event_indicator)
-
-    grid_search = GridSearchCV(
-        estimator=cox_pipe,
-        param_grid=param_grid,
-        cv=inner_cv,
-        n_jobs=-1,
-        error_score=0,
-        verbose=0
-    )
-
-    grid_search.fit(X_var_filtered, y_train)
-    best_model = grid_search.best_estimator_
-
-    # Print optimal parameters
-    log(f"{log_prefix}Optimal parameters found in Cox Lasso/Net filter:")
-    log(f"{log_prefix}{grid_search.best_params_}")
-
-    # 3. Extract non-zero CpGs
-    cox_estimator = best_model.named_steps['coxnetsurvivalanalysis']
-    coefs = pd.Series(cox_estimator.coef_.flatten(), index=X_var_filtered.columns)
-
-    selected_cpgs = coefs[coefs != 0].index.tolist()
-    log(f"{log_prefix}Cox Lasso selected {len(selected_cpgs)} CpGs.")
-
-    return selected_cpgs
 
 # ==============================================================================
 
@@ -681,25 +659,7 @@ def run_nested_cv(X, y, base_estimator, param_grid,
     return outer_models
 
 # ==============================================================================
-'''
-def summarize_performance(performance):
-    """
-    Print summary statistics (mean ± std) for evaluation metrics across folds.
-    Ignores NaNs in the calculations.
-    """
-    print("\n=== Evaluation Summary ===\n", flush=True)
-    
-    cindexes = [p["cindex"] for p in performance]
-    auc5y = [p["auc_at_5y"] for p in performance if p["auc_at_5y"] is not None]
-    mean_aucs = [p["mean_auc"] for p in performance]
-    ibs_vals = [p["ibs"] for p in performance]
 
-    print(f"C-index: mean={np.nanmean(cindexes):.3f} ± {np.nanstd(cindexes):.3f}")
-    if auc5y:
-        print(f"AUC@5y: mean={np.nanmean(auc5y):.3f} ± {np.nanstd(auc5y):.3f}")
-    print(f"Mean AUC over times: {np.nanmean(mean_aucs):.3f} ± {np.nanstd(mean_aucs):.3f}")
-    print(f"Integrated Brier Score (IBS): {np.nanmean(ibs_vals):.3f} ± {np.nanstd(ibs_vals):.3f}")
-'''
 import numpy as np
 from scipy.stats import t
 
@@ -770,3 +730,25 @@ def summarize_outer_models(outer_models):
         print(f"  Selected_cpgs: {len(entry['selected_cpgs']) if entry['selected_cpgs'] is not None else 0}")
 
 # ==============================================================================
+
+def subset_methylation(mval_matrix,cpg_ids_file):
+    with open(cpg_ids_file, 'r') as f:
+        cpg_ids = [line.strip() for line in f if line.strip()] # empy line would be skipped
+    print(f"Successfully loaded {len(cpg_ids)} CpG IDs for pre-filtering.")
+
+    valid_cpgs = [cpg for cpg in cpg_ids if cpg in mval_matrix.columns]
+    missing_cpgs = [cpg for cpg in cpg_ids if cpg not in mval_matrix.columns]
+    
+    if missing_cpgs:
+        print(f"Warning: {len(missing_cpgs)} CpGs from the input file are not in the training data: {missing_cpgs}")
+
+    if len(valid_cpgs) == 0:
+        print("Error: No valid pre-filtered CpGs found in the current methylation data columns.")
+        raise ValueError("No valid CpGs to proceed with.")
+
+    mval_matrix_filtered = mval_matrix.loc[:, valid_cpgs].copy()
+    print(f"Successfully subsetted methylation data to {mval_matrix_filtered.shape[1]} pre-filtered CpGs.")
+
+    return mval_matrix_filtered
+
+# ==============================================================================   

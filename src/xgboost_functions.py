@@ -85,15 +85,19 @@ def run_nested_cv_xgb(X, y, param_grid,
     outer_models = []
 
     for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X, event_labels)):
-        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
-        y_train, y_test = y[train_idx], y[test_idx]
+        X_train = X.iloc[train_idx].copy()
+        X_test = X.iloc[test_idx].copy()
+        y_train = y[train_idx].copy()
+        y_test = y[test_idx].copy()
+
         print(f"\nOuter fold {fold_num}: {sum(y_train['RFi_event'])} events in training set.", flush=True)
 
         preproc = None 
 
         try:
             selected_cpgs = filter_func(X_train, y_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
-            X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
+            X_train = X_train[selected_cpgs].copy()
+            X_test = X_test[selected_cpgs].copy()
 
             if dont_scale_vars is not None:
                 print("Not scaling specified variables.", flush=True)
@@ -122,6 +126,7 @@ def run_nested_cv_xgb(X, y, param_grid,
             )
             #if you have more RAM and want full parallelism: set RandomizedSearchCV(n_jobs=-1) and set XGBRegressor(n_jobs=1)
             #scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
+            
             inner_model = RandomizedSearchCV(
                 estimator=pipe,
                 param_distributions=param_grid,
@@ -135,8 +140,8 @@ def run_nested_cv_xgb(X, y, param_grid,
             best_params = inner_model.best_params_
             print(f"\t--> Fold {fold_num}: Best params {best_params}", flush=True)
 
-            best_xgb_params = {k.replace("estimator__xgbregressor__", ""): v
-                               for k, v in best_params.items() if k.startswith("estimator__xgbregressor__")}
+            best_xgb_params = {k.replace("xgbregressor__", ""): v
+                   for k, v in best_params.items() if k.startswith("xgbregressor__")}
 
             refit_pipe = make_pipeline(
                 preproc,

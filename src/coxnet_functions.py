@@ -23,31 +23,7 @@ from sklearn.pipeline import make_pipeline
 # FUNCTIONS
 # ==============================================================================
 
-# idea use univar cox filtering of cpgs (only fors for coxmodels as outherwise dicard nonlinear effects)
-
-
-def define_param_grid(grid_alphas, grid_l1ratio=[0.9]):
-    """
-    Define the final parameter grid for GridSearchCV using estimated alphas.
-
-    Args:
-        estimated_alphas (array-like): Array of alpha values.
-        param_grid_l1ratio (list): List of l1_ratio values to try.
-
-    Returns:
-        dict: Parameter grid for GridSearchCV.
-    """
-    param_grid = {
-        "estimator__coxnetsurvivalanalysis__alphas": [[alpha] for alpha in grid_alphas], # diff string if i dont use a pipe (remove estimator__)
-        "estimator__coxnetsurvivalanalysis__l1_ratio": grid_l1ratio
-    }
-    print(f"\nDefined parameter grid:\n{param_grid}\n", flush=True)
-    return param_grid
-
-
-# ==============================================================================
-
-def run_nested_cv_cox(X, y, param_grid, 
+def run_nested_cv_coxnet(X, y, param_grid, 
                       outer_cv_folds=5, inner_cv_folds=3, top_n_variance=5000, 
                       filter_func=None,
                       dont_filter_vars=None, dont_scale_vars=None,
@@ -335,7 +311,7 @@ def evaluate_outer_models_coxnet(outer_models, X, y, time_grid):
     return performance
 
 # ==============================================================================
-def print_selected_cpgs_counts(outer_models):
+def print_selected_cpgs_counts_coxnet(outer_models):
     """
     Print the number and names of non-zero coefficient CpGs 
     for each outer fold Coxnet model.
