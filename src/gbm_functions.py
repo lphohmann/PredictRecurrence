@@ -20,8 +20,7 @@ from sksurv.ensemble import GradientBoostingSurvivalAnalysis
 def run_nested_cv_gbm(X, y, param_grid, 
                       outer_cv_folds=5, inner_cv_folds=3, top_n_variance=5000, 
                       filter_func=None,
-                      dont_filter_vars=None, dont_scale_vars=None,
-                      dont_penalize_vars=None):
+                      dont_filter_vars=None, dont_scale_vars=None):
     """
     Run nested cross-validation for survival models (RSF, Coxnet, GBM, etc.).
 

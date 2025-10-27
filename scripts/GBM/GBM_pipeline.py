@@ -204,18 +204,17 @@ y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
     
 log(f"dont_filter_vars: {clinvars_included_encoded}")
 log(f"dont_scale_vars: {encoded_cols}")
-log(f"dont_penalize_vars: {clinvars_included_encoded}")
 
 # set filter func
 filter_func = lambda X, y=None, **kwargs: variance_filter(X, y=y, **kwargs)
 
 param_grid = {
-        "estimator__gradientboostingsurvivalanalysis__n_estimators": [200, 500],
-        "estimator__gradientboostingsurvivalanalysis__learning_rate": [0.01, 0.05],
-        "estimator__gradientboostingsurvivalanalysis__max_depth": [3, 4], # 
-        "estimator__gradientboostingsurvivalanalysis__subsample": [0.7, 0.8], # Force subsampling
-        "estimator__gradientboostingsurvivalanalysis__min_samples_leaf": [10, 20], # 
-        "estimator__gradientboostingsurvivalanalysis__loss": ["coxph"]
+    "estimator__gradientboostingsurvivalanalysis__learning_rate": [0.005, 0.01, 0.02, 0.05],
+    "estimator__gradientboostingsurvivalanalysis__n_estimators": [200, 500],
+    "estimator__gradientboostingsurvivalanalysis__max_depth": [1, 2, 3],
+    "estimator__gradientboostingsurvivalanalysis__subsample": [0.6, 0.8, 1.0],
+    "estimator__gradientboostingsurvivalanalysis__min_samples_leaf": [5, 10],
+    "estimator__gradientboostingsurvivalanalysis__max_features": [0.05, 0.1, 0.25]
     }
 print(f"\nDefined parameter grid:\n{param_grid}\n", flush=True)
 
@@ -227,8 +226,7 @@ outer_models = run_nested_cv_gbm(X, y,
                              top_n_variance = FILTER_KEEP_N, 
                              filter_func=filter_func,
                              dont_filter_vars=clinvars_included_encoded,
-                             dont_scale_vars=encoded_cols,
-                             dont_penalize_vars=clinvars_included_encoded)
+                             dont_scale_vars=encoded_cols)
 
 
 joblib.dump(outer_models, outfile_outermodels)
