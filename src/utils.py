@@ -281,7 +281,7 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
         list of dicts: One dictionary per fold with performance metrics.
     """
 
-    print("\n=== Evaluating Coxnet outer models ===\n", flush=True)
+    print("\n=== Evaluating outer models ===\n", flush=True)
     performance = []
 
     for entry in outer_models:

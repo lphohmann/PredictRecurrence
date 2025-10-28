@@ -19,7 +19,7 @@ from sklearn.preprocessing import OneHotEncoder
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, evaluate_outer_models, variance_filter, subset_methylation
+from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, evaluate_outer_models, variance_filter, subset_methylation, univariate_cox_filter
 from src.plotting_functions import plot_brier_scores, plot_auc_curves
 from src.gbm_functions import run_nested_cv_gbm
 
@@ -123,7 +123,7 @@ sys.stderr = logfile
 
 # Data preprocessing parameters
 INNER_CV_FOLDS = 2
-OUTER_CV_FOLDS = 3
+OUTER_CV_FOLDS = 2
 
 if args.cohort_name == "TNBC":
     # ensure censoring cutoff > max evaluation time!
@@ -141,8 +141,10 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    FILTER_KEEP_N = 100
+    VARIANCE_PREFILTER = 100
+    FILTER_KEEP_N = 50
 else:
+    VARIANCE_PREFILTER = 0
     FILTER_KEEP_N = 0 # no methlyation data included
 
 # ==============================================================================
@@ -199,6 +201,11 @@ else:
     encoded_cols = None
     log("No clinical variables added (CLINVARS_INCLUDED=None).")
 
+# outcome-agnostic variance prefilter
+selected_cpgs = variance_filter(X, top_n=VARIANCE_PREFILTER,keep_vars=clinvars_included_encoded)
+X = X[selected_cpgs].copy()
+log(f"Applied variance prefilter. New X shape: {X.shape}")
+
 # Prepare survival labels (Surv object with event & time)
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
     
@@ -206,7 +213,7 @@ log(f"dont_filter_vars: {clinvars_included_encoded}")
 log(f"dont_scale_vars: {encoded_cols}")
 
 # set filter func
-filter_func = lambda X, y=None, **kwargs: variance_filter(X, y=y, **kwargs)
+filter_func = lambda X, y=None, **kwargs: univariate_cox_filter(X, y=y, **kwargs)
 
 param_grid = {
     "estimator__gradientboostingsurvivalanalysis__learning_rate": [0.005, 0.01, 0.02, 0.05],

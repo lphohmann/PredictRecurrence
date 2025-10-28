@@ -122,8 +122,8 @@ sys.stderr = logfile
 # ==============================================================================
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 3
-OUTER_CV_FOLDS = 5
+INNER_CV_FOLDS = 2
+OUTER_CV_FOLDS = 2
 
 # type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
 ALPHAS_ESTIMATION_L1RATIO = 0.7#[0.9]
@@ -145,8 +145,8 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    VARIANCE_PREFILTER = 1000
-    FILTER_KEEP_N = 100
+    VARIANCE_PREFILTER = 100
+    FILTER_KEEP_N = 50
 else:
     VARIANCE_PREFILTER = 0
     FILTER_KEEP_N = 0 # no methlyation data included

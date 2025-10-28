@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 ################################################################################
-# Script: Compare model performances across multiple types
+# Script: Compare performances across multiple approaches
 # Author: Lennart Hohmann
 ################################################################################
 
@@ -32,8 +32,8 @@ parser.add_argument(
     choices=["TNBC", "ERpHER2n", "All"]
 )
 parser.add_argument(
-    "--model_type",
-    choices=["CoxNet", "XGBoost"]
+    "--data_type",
+    choices=["Clinical", "Combined", "Methylation"]
 )
 args = parser.parse_args()
 
@@ -42,28 +42,29 @@ args = parser.parse_args()
 ################################################################################
 
 cohort = args.cohort 
-model_type = args.model_type
+data_type = args.data_type
 
 # Dictionary of model names -> saved performance files
 MODELS = {
-    "C": f"./output/{model_type}/{cohort}/Clinical/None/outer_cv_performance.pkl",
-    "C+M(unadj)": f"./output/{model_type}/{cohort}/Combined/Unadjusted/outer_cv_performance.pkl",
-    #"C+M(adj)": f"./output/{model_type}/{cohort}/Combined/Adjusted/outer_cv_performance.pkl",
-    "M(unadj)": f"./output/{model_type}/{cohort}/Methylation/Unadjusted/outer_cv_performance.pkl",
-    #"M(adj)": f"./output/{model_type}/{cohort}/Methylation/Adjusted/outer_cv_performance.pkl"
+    f"CoxNet_{cohort}_{data_type}": f"./output/CoxNet/{cohort}/{data_type}/None/outer_cv_performance.pkl",
+    f"RSF_{cohort}_{data_type}": f"./output/RSF/{cohort}/{data_type}/Unadjusted/outer_cv_performance.pkl",
+    f"GBM_{cohort}_{data_type}": f"./output/GBM/{cohort}/{data_type}/Unadjusted/outer_cv_performance.pkl",
     }
 
-EVAL_TIME_GRID = np.arange(1.5, 5.1, 0.5)  # time points for metrics
+if cohort == "TNBC":
+    EVAL_TIME_GRID = np.arange(1.5, 5.1, 0.5)  # time points for metrics
+else:
+    EVAL_TIME_GRID = np.arange(1.5, 10.1, 0.5)  # time points for metrics
 
 ################################################################################
 # OUTPUT FILES
 ################################################################################
 
-OUTPUT_DIR = f"./output/Model_validation/{model_type}/{cohort}/"
+OUTPUT_DIR = f"./output/Model_validation/Across_approaches/{data_type}/{cohort}/"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-OUTFILE_AUC = os.path.join(OUTPUT_DIR, f"auc_comparison_{model_type}_{cohort}.pdf")
-OUTFILE_BRIER = os.path.join(OUTPUT_DIR, f"brier_comparison_{model_type}_{cohort}.pdf")
+OUTFILE_AUC = os.path.join(OUTPUT_DIR, f"auc_comparison_{cohort}_{data_type}.pdf")
+OUTFILE_BRIER = os.path.join(OUTPUT_DIR, f"brier_comparison_{cohort}_{data_type}.pdf")
 
 ################################################################################
 # FUNCTIONS
@@ -141,8 +142,6 @@ def plot_brier_scores_multi(performances_dict, time_grid, outfile):
 performances = {name: load(file) for name, file in MODELS.items()}
 
 log("Generating comparison plots.")
-if model_type == "XGBoost":
-    plot_auc_curves_multi(performances, EVAL_TIME_GRID, OUTFILE_AUC)
-else:
-    plot_auc_curves_multi(performances, EVAL_TIME_GRID, OUTFILE_AUC)
-    plot_brier_scores_multi(performances, EVAL_TIME_GRID, OUTFILE_BRIER)
+
+plot_auc_curves_multi(performances, EVAL_TIME_GRID, OUTFILE_AUC)
+plot_brier_scores_multi(performances, EVAL_TIME_GRID, OUTFILE_BRIER)
