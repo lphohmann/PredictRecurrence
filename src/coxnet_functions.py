@@ -170,9 +170,6 @@ def run_nested_cv_coxnet(X, y, param_grid,
             # Feature filtering (fold-specific)
             # ---------------------------
             
-            # Keep top variance features in X_train but always include dont_filter_vars
-            #selected_cpgs = variance_filter(X_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
-            
             selected_cpgs = filter_func(X_train, y_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
 
             # Subset both train and test to the selected features for this fold

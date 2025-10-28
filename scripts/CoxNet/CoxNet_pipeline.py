@@ -19,7 +19,7 @@ from sklearn.preprocessing import OneHotEncoder
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, variance_filter, subset_methylation, evaluate_outer_models
+from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, variance_filter, subset_methylation, evaluate_outer_models, univariate_cox_filter
 from src.plotting_functions import plot_brier_scores, plot_auc_curves
 from src.coxnet_functions import run_nested_cv_coxnet, print_selected_cpgs_counts_coxnet, estimate_alpha_grid
 
@@ -122,8 +122,8 @@ sys.stderr = logfile
 # ==============================================================================
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 5
-OUTER_CV_FOLDS = 10
+INNER_CV_FOLDS = 3
+OUTER_CV_FOLDS = 5
 
 # type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
 ALPHAS_ESTIMATION_L1RATIO = 0.7#[0.9]
@@ -145,8 +145,10 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    FILTER_KEEP_N = 1000
+    VARIANCE_PREFILTER = 1000
+    FILTER_KEEP_N = 100
 else:
+    VARIANCE_PREFILTER = 0
     FILTER_KEEP_N = 0 # no methlyation data included
 
 # ==============================================================================
@@ -203,6 +205,11 @@ else:
     encoded_cols = None
     log("No clinical variables added (CLINVARS_INCLUDED=None).")
 
+# outcome-agnostic variance prefilter
+selected_cpgs = variance_filter(X, top_n=VARIANCE_PREFILTER,keep_vars=clinvars_included_encoded)
+X = X[selected_cpgs].copy()
+log(f"Applied variance prefilter. New X shape: {X.shape}")
+
 # Prepare survival labels (Surv object with event & time)
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
     
@@ -211,7 +218,8 @@ log(f"dont_scale_vars: {encoded_cols}")
 log(f"dont_penalize_vars: {clinvars_included_encoded}")
 
 # set filter func
-filter_func = lambda X, y=None, **kwargs: variance_filter(X, y=y, **kwargs)
+#filter_func = lambda X, y=None, **kwargs: variance_filter(X, y=y, **kwargs)
+filter_func = lambda X, y=None, **kwargs: univariate_cox_filter(X, y=y, **kwargs)
 
 alphas = estimate_alpha_grid(X, y, 
                              l1_ratio=ALPHAS_ESTIMATION_L1RATIO, 

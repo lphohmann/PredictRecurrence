@@ -11,6 +11,9 @@ import numpy as np
 import os
 import math
 from sksurv.metrics import cumulative_dynamic_auc, concordance_index_censored, brier_score, integrated_brier_score
+from lifelines import CoxPHFitter
+from joblib import Parallel, delayed
+import warnings
 
 # ==============================================================================
 
@@ -252,9 +255,8 @@ def subset_methylation(mval_matrix,cpg_ids_file):
 
     return mval_matrix_filtered
 
-# ==============================================================================   
-
 # ==============================================================================
+
 def evaluate_outer_models(outer_models, X, y, time_grid):
     """
     Evaluate performance of models from outer CV folds.
@@ -342,3 +344,114 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
         print(f"  Fold {fold} - C-index: {cindex:.3f}, Mean AUC: {mean_auc:.3f}, IBS: {ibs:.3f}", flush=True)
 
     return performance
+
+# ==============================================================================   
+
+def _fit_univar_cox(col_series, y_time, y_event):
+    """
+    Fit a univariate Cox proportional hazards model using lifelines
+    and return the p-value for that single variable.
+    Returns np.nan if the fit fails or the variable is invalid.
+    """
+
+    # --- 1. Build a small dataframe expected by lifelines ---
+    df = pd.DataFrame({
+        "time": y_time,
+        "event": y_event,
+        "x": col_series
+    }).dropna()
+
+    # --- 2. Skip if no variance ---
+    if df["x"].var() == 0.0:
+        return np.nan
+
+    try:
+        # --- 3. Fit the one-variable Cox model ---
+        cph = CoxPHFitter()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # silence convergence warnings
+            cph.fit(df, duration_col="time", event_col="event", show_progress=False)
+
+        # --- 4. Extract p-value directly from the summary table ---
+        # cph.summary has one row (index 'x') and a 'p' column with the p-value
+        pval = float(cph.summary.loc["x", "p"])
+
+        # --- 5. Return the p-value as a float ---
+        return pval
+
+    except Exception:
+        # If the fit fails for any reason (singularity, overflow, etc.), return NaN
+        return np.nan
+
+# ==============================================================================   
+
+def univariate_cox_filter(X, y, top_n=None, keep_vars=None, n_jobs=8):
+    """
+    Univariate Cox PH filter (API-compatible with your variance_filter).
+
+    Args:
+        X (pd.DataFrame): samples x features.
+        y (structured array): survival array with fields 'RFi_time' and 'RFi_event'.
+        top_n (int, optional): select this many features with smallest p-values.
+        keep_vars (str or iterable, optional): columns to always keep.
+        n_jobs (int): number of parallel jobs for feature-wise fitting (joblib).
+
+    Returns:
+        list: selected column names (keep_vars first, then selected features).
+    """
+
+    # normalize keep_vars
+    if keep_vars is None:
+        keep_list = []
+    elif isinstance(keep_vars, str):
+        keep_list = [keep_vars]
+    else:
+        keep_list = list(keep_vars)
+
+    # check required fields in y
+    try:
+        y_time = y["RFi_years"]
+        y_event = y["RFi_event"]
+    except Exception as e:
+        raise ValueError("univariate_cox_filter expects y to have 'RFi_time' and 'RFi_event' fields.") from e
+
+    # features to test
+    pool_cols = [c for c in X.columns if c not in keep_list]
+    if len(pool_cols) == 0:
+        print("No features to test (all columns are in keep_vars).")
+        return keep_list
+
+    # Compute univariate Cox p-values in parallel.
+    # - 'n_jobs' controls number of threads; -1 uses all cores. 
+    # - 'prefer="threads"' avoids pickling large DataFrames.
+    results = Parallel(n_jobs=n_jobs, prefer="threads")(
+        delayed(_fit_univar_cox)(
+            X[col], y_time, y_event
+        ) for col in pool_cols
+    )
+
+    pvals = pd.Series(results, index=pool_cols, name="pvalue")
+
+    # drop NaNs (failed fits / zero variance)
+    pvals = pvals.dropna()
+
+    if pvals.empty:
+        print("All univariate Cox fits failed or had insufficient data; returning keep_vars only.")
+        return keep_list
+
+    # Selection logic:  top_n
+    top_n = min(int(top_n), len(pvals)) # cant select more features than in pvals
+    selected = pvals.sort_values().head(top_n).index.tolist()
+    
+    # final list: keep_vars first (preserve order), then selected (avoid duplicates)
+    final_selected = keep_list + [c for c in selected if c not in keep_list]
+
+    # Print info about selected features
+    print(f"{len(final_selected)} features selected by univariate Cox "
+        f"({len(keep_list)} kept, {len(selected)} from tests).")
+    
+    selected_pvals = pvals.loc[selected]
+    print(f"Selected p-values: min={selected_pvals.min():.4g}, "
+        f"max={selected_pvals.max():.4g}, median={selected_pvals.median():.4g}")
+
+    return final_selected
