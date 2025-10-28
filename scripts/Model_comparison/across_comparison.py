@@ -87,7 +87,7 @@ def plot_auc_curves_multi(performances_dict, time_grid, outfile):
 
     for model_name, performance in performances_dict.items():
         mean_auc_curve = np.mean([p["auc"] for p in performance], axis=0)
-        plt.plot(time_grid, mean_auc_curve, lw=2, label=f'{model_name} Mean AUC')
+        plt.plot(time_grid, mean_auc_curve, lw=2, label=f'{model_name}')
 
     #plt.title(f"{cohort}")
     plt.xlabel("Time")
@@ -109,7 +109,7 @@ def plot_brier_scores_multi(performances_dict, time_grid, outfile):
     # Time-dependent Brier scores
     for i, (model_name, perf) in enumerate(performances_dict.items()):
         mean_brier = np.mean([p["brier_t"] for p in perf], axis=0)
-        ax1.plot(time_grid, mean_brier, lw=2, color=colors[i], label=f'{model_name} Mean Brier')
+        ax1.plot(time_grid, mean_brier, lw=2, color=colors[i], label=f'{model_name}')
     
     #ax1.set_title("Time-dependent Brier Score Comparison")
     ax1.set_xlabel("Time")
@@ -121,7 +121,7 @@ def plot_brier_scores_multi(performances_dict, time_grid, outfile):
     model_names = list(performances_dict.keys())
     ibs_values = [np.mean([p["ibs"] for p in performances_dict[m]]) for m in model_names]
     bars = ax2.bar(model_names, ibs_values, color=colors, edgecolor='black', alpha=0.85)
-    ax2.set_title("Integrated Brier Score (IBS) per Model")
+    #ax2.set_title("Integrated Brier Score (IBS) per Model")
     ax2.set_ylabel("IBS")
     ax2.set_ylim(0, max(ibs_values) * 1.1)
     for bar in bars:

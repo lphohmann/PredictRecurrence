@@ -72,10 +72,26 @@ OUTFILE_BRIER = os.path.join(OUTPUT_DIR, f"brier_comparison_{model_type}_{cohort
 import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['ps.fonttype'] = 42
+def _time_vector_from_perf(p, fallback_time_grid):
+    """Return a time vector for a performance entry.
+    If the entry stores a time vector under common keys, use it.
+    Otherwise infer a linear time vector spanning fallback_time_grid with the same length as the saved curve.
+    """
+    for key in ("time_grid", "times", "eval_times", "t_eval"):
+        if key in p:
+            return np.asarray(p[key], dtype=float)
+    # infer from length of available curve
+    if "auc" in p:
+        n = len(p["auc"])
+    elif "brier_t" in p:
+        n = len(p["brier_t"])
+    else:
+        return np.asarray(fallback_time_grid, dtype=float)
+    return np.linspace(np.min(fallback_time_grid), np.max(fallback_time_grid), n)
+
 
 def plot_auc_curves_multi(performances_dict, time_grid, outfile):
     plt.style.use('seaborn-whitegrid')
-    # then override fonts
     plt.rcParams['axes.labelsize'] = 20
     plt.rcParams['xtick.labelsize'] = 18
     plt.rcParams['ytick.labelsize'] = 18
@@ -85,10 +101,35 @@ def plot_auc_curves_multi(performances_dict, time_grid, outfile):
     plt.figure(figsize=(10, 6))
 
     for model_name, performance in performances_dict.items():
-        mean_auc_curve = np.mean([p["auc"] for p in performance], axis=0)
-        plt.plot(time_grid, mean_auc_curve, lw=2, label=f'{model_name} Mean AUC')
+        interp_curves = []
+        for p in performance:
+            if "auc" not in p:
+                raise KeyError(f"Missing 'auc' in performance entry for {model_name}")
 
-    #plt.title(f"{cohort}")
+            y = np.asarray(p["auc"], dtype=float)
+            t = _time_vector_from_perf(p, time_grid)
+
+            # ensure times sorted
+            if np.any(np.diff(t) < 0):
+                order = np.argsort(t)
+                t = t[order]
+                y = y[order]
+
+            # mask valid region for this entry
+            valid_mask = time_grid <= np.max(t)
+            if valid_mask.any():
+                y_sub = np.interp(time_grid[valid_mask], t, y)
+            else:
+                y_sub = np.array([])
+
+            y_full = np.full_like(time_grid, np.nan, dtype=float)
+            y_full[valid_mask] = y_sub
+            interp_curves.append(y_full)
+
+        # mean ignoring NaNs so curves stop where data ends
+        mean_auc_curve = np.nanmean(np.vstack(interp_curves), axis=0)
+        plt.plot(time_grid, mean_auc_curve, lw=2, label=f'{model_name}')
+
     plt.xlabel("Time")
     plt.ylabel("mean AUC(t)")
     plt.ylim(0, 1)
@@ -105,12 +146,34 @@ def plot_brier_scores_multi(performances_dict, time_grid, outfile):
 
     colors = plt.cm.tab10(np.arange(len(performances_dict)))
 
-    # Time-dependent Brier scores
+    # Time-dependent Brier
     for i, (model_name, perf) in enumerate(performances_dict.items()):
-        mean_brier = np.mean([p["brier_t"] for p in perf], axis=0)
-        ax1.plot(time_grid, mean_brier, lw=2, color=colors[i], label=f'{model_name} Mean Brier')
-    
-    #ax1.set_title("Time-dependent Brier Score Comparison")
+        interp_curves = []
+        for p in perf:
+            if "brier_t" not in p:
+                raise KeyError(f"Missing 'brier_t' in performance entry for {model_name}")
+
+            y = np.asarray(p["brier_t"], dtype=float)
+            t = _time_vector_from_perf(p, time_grid)
+
+            if np.any(np.diff(t) < 0):
+                order = np.argsort(t)
+                t = t[order]
+                y = y[order]
+
+            valid_mask = time_grid <= np.max(t)
+            if valid_mask.any():
+                y_sub = np.interp(time_grid[valid_mask], t, y)
+            else:
+                y_sub = np.array([])
+
+            y_full = np.full_like(time_grid, np.nan, dtype=float)
+            y_full[valid_mask] = y_sub
+            interp_curves.append(y_full)
+
+        mean_brier = np.nanmean(np.vstack(interp_curves), axis=0)
+        ax1.plot(time_grid, mean_brier, lw=2, color=colors[i], label=f'{model_name}')
+
     ax1.set_xlabel("Time")
     ax1.set_ylabel("Brier Score")
     ax1.set_ylim(0, 0.5)
@@ -118,18 +181,23 @@ def plot_brier_scores_multi(performances_dict, time_grid, outfile):
 
     # IBS bar chart
     model_names = list(performances_dict.keys())
-    ibs_values = [np.mean([p["ibs"] for p in performances_dict[m]]) for m in model_names]
+    ibs_values = []
+    for m in model_names:
+        vals = [p["ibs"] for p in performances_dict[m] if "ibs" in p]
+        if not vals:
+            raise KeyError(f"No 'ibs' values found for model {m}")
+        ibs_values.append(np.mean(vals))
+
     bars = ax2.bar(model_names, ibs_values, color=colors, edgecolor='black', alpha=0.85)
-    ax2.set_title("Integrated Brier Score (IBS) per Model")
+    #ax2.set_title("Integrated Brier Score (IBS) per Model")
     ax2.set_ylabel("IBS")
     ax2.set_ylim(0, max(ibs_values) * 1.1)
     for bar in bars:
         yval = bar.get_height()
         ax2.text(bar.get_x() + bar.get_width()/2.0, yval + 0.005, f'{yval:.3f}', ha='center')
-    
-    #plt.title(f"{cohort}")
+
     plt.tight_layout()
-    plt.savefig(outfile, format="pdf", dpi=300)  # <-- save as PDF
+    plt.savefig(outfile, format="pdf", dpi=300)
     plt.close()
     log(f"Saved Brier comparison plot to {outfile}")
 
