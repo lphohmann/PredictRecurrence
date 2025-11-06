@@ -54,11 +54,11 @@ def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto',
 
     # Filter CpGs by variance (keep clinvars)
     
-    # TEST THIS; ADD ARGUMENT HERE AND ALSO IN THE ESTIMATE ALPHA
-    selected_cpgs = filter_func(X,y, top_n=top_n_variance, keep_vars=dont_filter_vars)
-    
-    #selected_cpgs = variance_filter(X, top_n=top_n_variance, keep_vars=dont_filter_vars)
-    X = X[selected_cpgs]
+    if filter_func is not None:
+        selected_cpgs = filter_func(X,y, top_n=top_n_variance, keep_vars=dont_filter_vars)
+        
+        #selected_cpgs = variance_filter(X, top_n=top_n_variance, keep_vars=dont_filter_vars)
+        X = X[selected_cpgs]
 
     # Determine preprocessing
     if dont_scale_vars is not None:
@@ -170,10 +170,11 @@ def run_nested_cv_coxnet(X, y, param_grid,
             # Feature filtering (fold-specific)
             # ---------------------------
             
-            selected_cpgs = filter_func(X_train, y_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
+            if filter_func is not None:
+                selected_cpgs = filter_func(X_train, y_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
 
-            # Subset both train and test to the selected features for this fold
-            X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
+                # Subset both train and test to the selected features for this fold
+                X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
 
             # ---------------------------
             # Build pipeline for inner CV (must be constructed per-fold because columns changed)
@@ -224,7 +225,7 @@ def run_nested_cv_coxnet(X, y, param_grid,
 
             if np.all(penalty_factor == 0.0):
                 penalty_factor[:] = 1e-8
-                # Use Coxnet with very small ridge penalty
+                # Use Coxnet with very small ridge penalty, basically non-penalized for only clin vars
                 print("All features unpenalized -> using near-unpenalized Coxnet for this fold.", flush=True)
                 estimator_cls = CoxnetSurvivalAnalysis
                 estimator_kwargs = {"penalty_factor": penalty_factor,

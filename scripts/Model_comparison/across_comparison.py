@@ -46,7 +46,7 @@ data_type = args.data_type
 
 # Dictionary of model names -> saved performance files
 MODELS = {
-    f"CoxNet_{cohort}_{data_type}": f"./output/CoxNet/{cohort}/{data_type}/None/outer_cv_performance.pkl",
+    f"CoxNet_{cohort}_{data_type}": f"./output/CoxNet/{cohort}/{data_type}/Unadjusted/outer_cv_performance.pkl",
     f"RSF_{cohort}_{data_type}": f"./output/RSF/{cohort}/{data_type}/Unadjusted/outer_cv_performance.pkl",
     f"GBM_{cohort}_{data_type}": f"./output/GBM/{cohort}/{data_type}/Unadjusted/outer_cv_performance.pkl",
     }

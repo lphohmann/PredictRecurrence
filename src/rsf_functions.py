@@ -69,11 +69,12 @@ def run_nested_cv_rsf(X, y, param_grid,
             # Feature filtering (fold-specific)
             # ---------------------------
             
-            # Keep top variance features in X_train but always include dont_filter_vars
-            selected_cpgs = filter_func(X_train, y_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
+            if filter_func is not None:
+                # Keep top variance features in X_train but always include dont_filter_vars
+                selected_cpgs = filter_func(X_train, y_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
 
-            # Subset both train and test to the selected features for this fold
-            X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
+                # Subset both train and test to the selected features for this fold
+                X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
 
             # ---------------------------
             # Build pipeline for inner CV (must be constructed per-fold because columns changed)
