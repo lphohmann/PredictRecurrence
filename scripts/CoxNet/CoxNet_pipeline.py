@@ -145,11 +145,11 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    VARIANCE_PREFILTER = 50000
-    FILTER_KEEP_N = 5000
+    VARIANCE_PREFILTER = 20000
+    #FILTER_KEEP_N = 5000 # outer loop filter, deactivated for coxnet
 else:
     VARIANCE_PREFILTER = 0
-    FILTER_KEEP_N = 0 # no methlyation data included
+    #FILTER_KEEP_N = 0 # no methlyation data included
 
 # ==============================================================================
 # MAIN PIPELINE
@@ -206,9 +206,9 @@ else:
     log("No clinical variables added (CLINVARS_INCLUDED=None).")
 
 # outcome-agnostic variance prefilter
-selected_cpgs = variance_filter(X, top_n=VARIANCE_PREFILTER,keep_vars=clinvars_included_encoded)
-X = X[selected_cpgs].copy()
-log(f"Applied variance prefilter. New X shape: {X.shape}")
+#selected_cpgs = variance_filter(X, top_n=VARIANCE_PREFILTER,keep_vars=clinvars_included_encoded)
+#X = X[selected_cpgs].copy()
+#log(f"Applied variance prefilter. New X shape: {X.shape}")
 
 # Prepare survival labels (Surv object with event & time)
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
@@ -218,15 +218,12 @@ log(f"dont_scale_vars: {encoded_cols}")
 log(f"dont_penalize_vars: {clinvars_included_encoded}")
 
 # set filter func
-#filter_func = lambda X, y=None, **kwargs: variance_filter(X, y=y, **kwargs)
-#filter_func = lambda X, y=None, **kwargs: univariate_cox_filter(X, y=y, **kwargs)
-filter_func = None 
+filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, top_n=VARIANCE_PREFILTER, **kwargs)
 
 alphas = estimate_alpha_grid(X, y, 
                              l1_ratio=ALPHAS_ESTIMATION_L1RATIO, 
                              n_alphas=30,
-                             top_n_variance=FILTER_KEEP_N,
-                             filter_func=filter_func,
+                             filter_func_1=filter_func_1,
                              alpha_min_ratio=0.1,
                              dont_filter_vars=clinvars_included_encoded,
                              dont_scale_vars=encoded_cols,
@@ -253,11 +250,11 @@ outer_models = run_nested_cv_coxnet(X, y,
                              param_grid=param_grid, 
                              outer_cv_folds=OUTER_CV_FOLDS, 
                              inner_cv_folds=INNER_CV_FOLDS, 
-                             top_n_variance = FILTER_KEEP_N, 
-                             filter_func=filter_func,
+                             filter_func_1=filter_func_1,
                              dont_filter_vars=clinvars_included_encoded,
                              dont_scale_vars=encoded_cols,
-                             dont_penalize_vars=clinvars_included_encoded)
+                             dont_penalize_vars=clinvars_included_encoded,
+                             output_fold_ids_file=os.path.join(current_output_dir, "cvfold_ids.pkl"))
 
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")

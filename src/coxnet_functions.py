@@ -20,14 +20,14 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import make_pipeline
 import warnings
 from sklearn.exceptions import FitFailedWarning
+import pickle
 
 # ==============================================================================
 # FUNCTIONS
 # ==============================================================================
 
 def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto',
-                        top_n_variance=5000, 
-                        filter_func=None,
+                        filter_func_1=None,
                         dont_filter_vars=None, dont_scale_vars=None,
                         dont_penalize_vars=None):
     """
@@ -54,8 +54,8 @@ def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto',
 
     # Filter CpGs by variance (keep clinvars)
     
-    if filter_func is not None:
-        selected_cpgs = filter_func(X,y, top_n=top_n_variance, keep_vars=dont_filter_vars)
+    if filter_func_1 is not None:
+        selected_cpgs = filter_func_1(X,y,keep_vars=dont_filter_vars)
         
         #selected_cpgs = variance_filter(X, top_n=top_n_variance, keep_vars=dont_filter_vars)
         X = X[selected_cpgs]
@@ -120,10 +120,11 @@ def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto',
 # ==============================================================================
 
 def run_nested_cv_coxnet(X, y, param_grid, 
-                      outer_cv_folds=5, inner_cv_folds=3, top_n_variance=5000, 
-                      filter_func=None,
+                      outer_cv_folds=5, inner_cv_folds=3, 
+                      filter_func_1=None,
                       dont_filter_vars=None, dont_scale_vars=None,
-                      dont_penalize_vars=None):
+                      dont_penalize_vars=None,
+                      output_fold_ids_file=None):
     """
     Run nested cross-validation for Coxnet.
 
@@ -156,25 +157,42 @@ def run_nested_cv_coxnet(X, y, param_grid,
     # ---------------------------
     # Outer CV loop
     # ---------------------------
+    fold_id_dict = {} # to save ids
+
     for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X, event_labels)):
         # Subset data for this outer fold
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train, y_test = y[train_idx], y[test_idx]
         print(f"\nOuter fold {fold_num}: {sum(y_train['RFi_event'])} events in training set.", flush=True)
-
         # Ensure preproc is defined for later refit check (avoid stale variable leakage)
         preproc = None 
+
+        # this is to save ids belaongi to each fold
+        train_ids = X_train.index.values
+        test_ids = X_test.index.values
+        fold_key = f"fold{fold_num}"
+        fold_id_dict[fold_key] = {
+            "train_ids": train_ids,
+            "test_ids": test_ids,
+            "features_after_filter1": None,
+            "features_after_filter2": None,
+        }
+
 
         try:
             # ---------------------------
             # Feature filtering (fold-specific)
             # ---------------------------
             
-            if filter_func is not None:
-                selected_cpgs = filter_func(X_train, y_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
+            # filter 1
+            if filter_func_1 is not None:
+                selected_features_1 = filter_func_1(X_train, y_train, keep_vars=dont_filter_vars)
+                X_train = X_train[selected_features_1]
+                X_test  = X_test[selected_features_1]
 
-                # Subset both train and test to the selected features for this fold
-                X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
+                fold_id_dict[fold_key]["features_after_filter1"] = list(selected_features_1)
+            else:
+                fold_id_dict[fold_key]["features_after_filter1"] = list(X_train.columns)
 
             # ---------------------------
             # Build pipeline for inner CV (must be constructed per-fold because columns changed)
@@ -313,6 +331,13 @@ def run_nested_cv_coxnet(X, y, param_grid,
     # ---------------------------
     # Done with outer CV
     # ---------------------------
+
+    # save ids dict
+    if output_fold_ids_file is not None:
+        with open(output_fold_ids_file, "wb") as f:
+            pickle.dump(fold_id_dict, f)
+        print(f"Saved outer fold IDs dictionary to {output_fold_ids_file}")
+
     return outer_models
 
 # ==============================================================================

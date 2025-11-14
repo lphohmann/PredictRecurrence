@@ -14,6 +14,7 @@ from sksurv.metrics import cumulative_dynamic_auc, concordance_index_censored, b
 from lifelines import CoxPHFitter
 from joblib import Parallel, delayed
 import warnings
+from tqdm import tqdm
 
 # ==============================================================================
 
@@ -400,7 +401,7 @@ def univariate_cox_filter(X, y, top_n=None, keep_vars=None, n_jobs=8):
         list: selected column names (keep_vars first, then selected features).
     """
 
-    # normalize keep_vars
+    # normalize keep_vars to consistent list type
     if keep_vars is None:
         keep_list = []
     elif isinstance(keep_vars, str):
@@ -424,10 +425,18 @@ def univariate_cox_filter(X, y, top_n=None, keep_vars=None, n_jobs=8):
     # Compute univariate Cox p-values in parallel.
     # - 'n_jobs' controls number of threads; -1 uses all cores. 
     # - 'prefer="threads"' avoids pickling large DataFrames.
+    #results = Parallel(n_jobs=n_jobs, prefer="threads")(
+    #    delayed(_fit_univar_cox)(
+    #        X[col], y_time, y_event
+    #    ) for col in pool_cols
+    #)
+
+    # Convert to list so tqdm can measure length
+    pool_cols_list = list(pool_cols)
+    # wrap the generator in tqdm for a progress bar
     results = Parallel(n_jobs=n_jobs, prefer="threads")(
-        delayed(_fit_univar_cox)(
-            X[col], y_time, y_event
-        ) for col in pool_cols
+        delayed(_fit_univar_cox)(X[col], y_time, y_event)
+        for col in tqdm(pool_cols_list, desc="Fitting univariate Cox models", mininterval=20.0)
     )
 
     pvals = pd.Series(results, index=pool_cols, name="pvalue")

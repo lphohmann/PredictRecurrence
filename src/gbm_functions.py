@@ -12,6 +12,7 @@ from sksurv.metrics import as_concordance_index_ipcw_scorer
 from sklearn.preprocessing import StandardScaler
 from sklearn.compose import ColumnTransformer
 from sksurv.ensemble import GradientBoostingSurvivalAnalysis
+import pickle
 
 # ==============================================================================
 # FUNCTIONS
@@ -19,8 +20,10 @@ from sksurv.ensemble import GradientBoostingSurvivalAnalysis
 
 def run_nested_cv_gbm(X, y, param_grid, 
                       outer_cv_folds=5, inner_cv_folds=3, top_n_variance=5000, 
-                      filter_func=None,
-                      dont_filter_vars=None, dont_scale_vars=None):
+                      filter_func_1=None,
+                      filter_func_2=None,
+                      dont_filter_vars=None, dont_scale_vars=None,
+                      output_fold_ids_file=None):
     """
     Run nested cross-validation for survival models (RSF, Coxnet, GBM, etc.).
 
@@ -55,6 +58,8 @@ def run_nested_cv_gbm(X, y, param_grid,
     # ---------------------------
     # Outer CV loop
     # ---------------------------
+    fold_id_dict = {} # to save ids
+
     for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X, event_labels)):
         # Subset data for this outer fold
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
@@ -64,14 +69,30 @@ def run_nested_cv_gbm(X, y, param_grid,
         # Ensure preproc is defined for later refit check (avoid stale variable leakage)
         preproc = None 
 
+
+        # this is to save ids belaongi to each fold
+        train_ids = X_train.index.values
+        test_ids = X_test.index.values
+        fold_id_dict[f"fold{fold_num}"] = {
+            "train_ids": train_ids,
+            "test_ids": test_ids
+        }
+
         try:
             # ---------------------------
             # Feature filtering (fold-specific)
             # ---------------------------
             
-            if filter_func is not None:
+            if filter_func_1 is not None:
                 # Keep top variance features in X_train but always include dont_filter_vars
-                selected_cpgs = filter_func(X_train, y_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
+                selected_cpgs = filter_func_1(X_train, y_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
+
+                # Subset both train and test to the selected features for this fold
+                X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
+
+            if filter_func_2 is not None:
+                # Keep top variance features in X_train but always include dont_filter_vars
+                selected_cpgs = filter_func_2(X_train, y_train, top_n=top_n_variance, keep_vars=dont_filter_vars)
 
                 # Subset both train and test to the selected features for this fold
                 X_train, X_test = X_train[selected_cpgs], X_test[selected_cpgs]
@@ -183,6 +204,13 @@ def run_nested_cv_gbm(X, y, param_grid,
     # ---------------------------
     # Done with outer CV
     # ---------------------------
+
+    # save ids dict
+    if output_fold_ids_file is not None:
+        with open(output_fold_ids_file, "wb") as f:
+            pickle.dump(fold_id_dict, f)
+        print(f"Saved outer fold IDs dictionary to {output_fold_ids_file}")
+
     return outer_models
 
 # ==============================================================================

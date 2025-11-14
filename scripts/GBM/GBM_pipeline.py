@@ -141,7 +141,7 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    VARIANCE_PREFILTER = 50000
+    VARIANCE_PREFILTER = 20000
     FILTER_KEEP_N = 5000
 else:
     VARIANCE_PREFILTER = 0
@@ -202,9 +202,10 @@ else:
     log("No clinical variables added (CLINVARS_INCLUDED=None).")
 
 # outcome-agnostic variance prefilter
-selected_cpgs = variance_filter(X, top_n=VARIANCE_PREFILTER,keep_vars=clinvars_included_encoded)
-X = X[selected_cpgs].copy()
-log(f"Applied variance prefilter. New X shape: {X.shape}")
+#selected_cpgs = variance_filter(X, top_n=VARIANCE_PREFILTER,
+#                                keep_vars=clinvars_included_encoded)
+#X = X[selected_cpgs].copy()
+#log(f"Applied variance prefilter. New X shape: {X.shape}")
 
 # Prepare survival labels (Surv object with event & time)
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
@@ -213,16 +214,30 @@ log(f"dont_filter_vars: {clinvars_included_encoded}")
 log(f"dont_scale_vars: {encoded_cols}")
 
 # set filter func
-filter_func = lambda X, y=None, **kwargs: univariate_cox_filter(X, y=y, **kwargs)
+filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, **kwargs)
+filter_func_2 = lambda X, y=None, **kwargs: univariate_cox_filter(X, y=y, **kwargs)
 
 param_grid = {
-    "estimator__gradientboostingsurvivalanalysis__learning_rate": [0.005, 0.01, 0.02, 0.05],
-    "estimator__gradientboostingsurvivalanalysis__n_estimators": [200, 500],
-    "estimator__gradientboostingsurvivalanalysis__max_depth": [1, 2, 3],
-    "estimator__gradientboostingsurvivalanalysis__subsample": [0.6, 0.8, 1.0],
-    "estimator__gradientboostingsurvivalanalysis__min_samples_leaf": [5, 10],
-    "estimator__gradientboostingsurvivalanalysis__max_features": [0.05, 0.1, 0.25]
-    }
+    # Learning rate: moderate values to allow fewer trees
+    'estimator__gradientboostingsurvivalanalysis__learning_rate': [0.01, 0.02, 0.05],
+
+    # Number of trees: fewer for fast grid search
+    'estimator__gradientboostingsurvivalanalysis__n_estimators': [200, 300],
+
+    # Tree depth: simple trees usually work well; keep 2-3 levels
+    'estimator__gradientboostingsurvivalanalysis__max_depth': [2, 3],
+
+    # Subsample fraction: adds stochasticity, improves generalization
+    'estimator__gradientboostingsurvivalanalysis__subsample': [0.6, 0.8],
+
+    # Minimum samples per leaf: avoid overfitting small splits
+    'estimator__gradientboostingsurvivalanalysis__min_samples_leaf': [5, 10],
+
+    # Maximum fraction of features per split: reduce training time
+    'estimator__gradientboostingsurvivalanalysis__max_features': [0.05, 0.1]
+}
+
+
 print(f"\nDefined parameter grid:\n{param_grid}\n", flush=True)
 
 # Run nested cross-validation
@@ -235,7 +250,7 @@ outer_models = run_nested_cv_gbm(X, y,
                              dont_filter_vars=clinvars_included_encoded,
                              dont_scale_vars=encoded_cols)
 
-
+#os.path.join(current_output_dir, "cvfold_ids.pkl")
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")
 
