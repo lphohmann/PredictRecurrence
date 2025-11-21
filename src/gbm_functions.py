@@ -181,8 +181,8 @@ def run_nested_cv_gbm(X, y, param_grid,
             outer_models.append({
                 "fold": fold_num,
                 "model": refit_pipe,
-                "train_idx": train_idx,
-                "test_idx": test_idx,
+                "train_idx": train_ids,#train_idx,
+                "test_idx": test_ids, #test_idx,
                 "cv_results": inner_model.cv_results_,
                 "error": None,
                 "selected_cpgs": feature_names
@@ -194,8 +194,8 @@ def run_nested_cv_gbm(X, y, param_grid,
             outer_models.append({
                 "fold": fold_num,
                 "model": None,
-                "train_idx": train_idx,
-                "test_idx": test_idx,
+                "train_idx": train_ids,#train_idx,
+                "test_idx": test_ids, #test_idx,
                 "cv_results": None,
                 "error": str(e),
                 "selected_cpgs": None

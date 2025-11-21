@@ -62,7 +62,7 @@ parser.add_argument("--data_mode", type=str,
 # methylation data type
 parser.add_argument("--methylation_type", type=str, 
                     choices=METHYLATION_DATA_PATHS.keys(), 
-                    required=True,
+                    default="unadjusted",
                     help="Type of methylation data")
 # prefilter cpg input
 parser.add_argument("--train_cpgs", type=str, default=None,

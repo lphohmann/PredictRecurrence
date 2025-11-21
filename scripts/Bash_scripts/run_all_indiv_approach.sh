@@ -8,15 +8,12 @@ set -e
 SCRIPT="${1:-./scripts/CoxNet/CoxNet_pipeline.py}"
 
 COHORTS=("TNBC" "ERpHER2n" "All")
-METH_TYPES=("unadjusted") #"adjusted")
 DATA_MODES=("clinical" "methylation" "combined")
 
 for cohort in "${COHORTS[@]}"; do
   for mode in "${DATA_MODES[@]}"; do
-    for meth in "${METH_TYPES[@]}"; do
-      echo ">>> Running: python -u $SCRIPT --cohort_name $cohort --data_mode $mode --methylation_type $meth"
-      python -u "$SCRIPT" --cohort_name "$cohort" --methylation_type "$meth" --data_mode "$mode"
-    done
+      echo ">>> Running: python -u $SCRIPT --cohort_name $cohort --data_mode $mode --train_cpgs ./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt"
+      python -u "$SCRIPT" --cohort_name "$cohort" --data_mode "$mode" --train_cpgs ./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt
   done
 done
 

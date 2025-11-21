@@ -53,7 +53,10 @@ MODELS = {
     #"M(adj)": f"./output/{model_type}/{cohort}/Methylation/Adjusted/outer_cv_performance.pkl"
     }
 
-EVAL_TIME_GRID = np.arange(1.5, 5.1, 0.5)  # time points for metrics
+if cohort == "TNBC":
+    EVAL_TIME_GRID = np.arange(1.5, 5.1, 0.5)  # time points for metrics
+else:
+    EVAL_TIME_GRID = np.arange(1.5, 10.1, 0.5)  # time points for metrics
 
 ################################################################################
 # OUTPUT FILES
@@ -132,6 +135,7 @@ def plot_auc_curves_multi(performances_dict, time_grid, outfile):
 
     plt.xlabel("Time")
     plt.ylabel("mean AUC(t)")
+    plt.title(f"{cohort}: {model_type}")
     plt.ylim(0, 1)
     plt.legend(loc='lower right')
     plt.tight_layout()
@@ -177,6 +181,7 @@ def plot_brier_scores_multi(performances_dict, time_grid, outfile):
     ax1.set_xlabel("Time")
     ax1.set_ylabel("Brier Score")
     ax1.set_ylim(0, 0.5)
+    
     ax1.legend(loc='upper right')
 
     # IBS bar chart

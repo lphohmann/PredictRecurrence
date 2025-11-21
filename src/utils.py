@@ -187,16 +187,16 @@ def summarize_performance(performance):
         return mean, se, ci95
 
     cindexes = [p["cindex"] for p in performance]
-    auc5y = [p["auc_at_5y"] for p in performance if p["auc_at_5y"] is not None]
+    #auc5y = [p["auc_at_5y"] for p in performance if p["auc_at_5y"] is not None]
     mean_aucs = [p["mean_auc"] for p in performance]
     ibs_vals = [p["ibs"] for p in performance]
 
     mean, se, ci95 = mean_se_ci(cindexes)
     print(f"C-index: mean={mean:.3f} ± {se:.3f} (SE), 95% CI ±{ci95:.3f}")
 
-    if auc5y:
-        mean, se, ci95 = mean_se_ci(auc5y)
-        print(f"AUC@5y: mean={mean:.3f} ± {se:.3f} (SE), 95% CI ±{ci95:.3f}")
+    #if auc5y:
+    #    mean, se, ci95 = mean_se_ci(auc5y)
+    #    print(f"AUC@5y: mean={mean:.3f} ± {se:.3f} (SE), 95% #CI ±{ci95:.3f}")
 
     mean, se, ci95 = mean_se_ci(mean_aucs)
     print(f"Mean AUC over times: mean={mean:.3f} ± {se:.3f} (SE), 95% CI ±{ci95:.3f}")
@@ -211,7 +211,7 @@ def select_best_model(performance, outer_models, metric):
     Select the best model by given metric ('ibs', 'mean_auc', or 'auc_at_5y').
     """
     print(f"\n=== Selecting best model by {metric} ===\n", flush=True)
-    assert metric in {"ibs", "mean_auc", "auc_at_5y"}
+    assert metric in {"ibs", "mean_auc"}
     if metric == "ibs":
         best = min(performance, key=lambda p: p["ibs"])
     else:  # maximize for AUC metrics
@@ -232,7 +232,7 @@ def summarize_outer_models(outer_models):
         print(f"  Model: {type(entry['model']).__name__ if entry['model'] else None}")
         print(f"  Training samples: {len(entry.get('train_idx', []))}, "
               f"  Test samples: {len(entry.get('test_idx', []))}")
-        print(f"  Selected_cpgs: {len(entry['selected_cpgs']) if entry['selected_cpgs'] is not None else 0}")
+        print(f"  Input_training_features: {len(entry['input_training_features']) if entry['input_training_features'] is not None else 0}")
 
 # ==============================================================================
 
@@ -245,7 +245,7 @@ def subset_methylation(mval_matrix,cpg_ids_file):
     missing_cpgs = [cpg for cpg in cpg_ids if cpg not in mval_matrix.columns]
     
     if missing_cpgs:
-        print(f"Warning: {len(missing_cpgs)} CpGs from the input file are not in the training data: {missing_cpgs}")
+        print(f"Warning: {len(missing_cpgs)} CpGs from the input file are not in the training data.")
 
     if len(valid_cpgs) == 0:
         print("Error: No valid pre-filtered CpGs found in the current methylation data columns.")
@@ -300,7 +300,7 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
         print(f"Evaluating fold {fold} ({model_name})...", flush=True)
 
         # Subset data
-        selected_features = entry.get("selected_cpgs", X.columns)
+        input_training_features = entry.get("input_training_features", X.columns)
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train, y_test = y[train_idx], y[test_idx]
 
@@ -308,7 +308,7 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
         print(f"  Fold {fold} - train set min time: {y_train['RFi_years'].min():.3f}, max time: {y_train['RFi_years'].max():.3f}", flush=True)
 
         # Subset X_test
-        X_test = X_test[selected_features]
+        X_test = X_test[input_training_features]
 
         # Compute linear predictor and check for overflow
         #coefs = model.named_steps["coxnetsurvivalanalysis"].coef_
@@ -336,7 +336,7 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
             "fold": fold,
             "auc": auc,
             "mean_auc": mean_auc,
-            "auc_at_5y": auc[np.where(time_grid == 5.0)[0][0]] if 5.0 in time_grid else None,
+            #"auc_at_5y": auc[np.where(time_grid == 5.0)[0][0]] if 5.0 in time_grid else None,
             "brier_t": brier_scores,
             "ibs": ibs,
             "cindex": cindex

@@ -157,7 +157,6 @@ def run_nested_cv_coxnet(X, y, param_grid,
     # ---------------------------
     # Outer CV loop
     # ---------------------------
-    fold_id_dict = {} # to save ids
 
     for fold_num, (train_idx, test_idx) in enumerate(outer_cv.split(X, event_labels)):
         # Subset data for this outer fold
@@ -170,14 +169,6 @@ def run_nested_cv_coxnet(X, y, param_grid,
         # this is to save ids belaongi to each fold
         train_ids = X_train.index.values
         test_ids = X_test.index.values
-        fold_key = f"fold{fold_num}"
-        fold_id_dict[fold_key] = {
-            "train_ids": train_ids,
-            "test_ids": test_ids,
-            "features_after_filter1": None,
-            "features_after_filter2": None,
-        }
-
 
         try:
             # ---------------------------
@@ -190,9 +181,10 @@ def run_nested_cv_coxnet(X, y, param_grid,
                 X_train = X_train[selected_features_1]
                 X_test  = X_test[selected_features_1]
 
-                fold_id_dict[fold_key]["features_after_filter1"] = list(selected_features_1)
             else:
-                fold_id_dict[fold_key]["features_after_filter1"] = list(X_train.columns)
+                selected_features_1 = list(X_train.columns)
+                X_train = X_train[selected_features_1]
+                X_test  = X_test[selected_features_1]
 
             # ---------------------------
             # Build pipeline for inner CV (must be constructed per-fold because columns changed)
@@ -310,9 +302,13 @@ def run_nested_cv_coxnet(X, y, param_grid,
                 "model": refit_pipe,
                 "train_idx": train_idx,
                 "test_idx": test_idx,
+                "train_ids": train_ids,
+                "test_ids": test_ids, 
                 "cv_results": inner_model.cv_results_,
-                "error": None,
-                "selected_cpgs": feature_names
+                "features_after_filter1": selected_features_1,
+                "features_after_filter2": None,
+                "input_training_features": feature_names,
+                "error": None
             })
 
         except Exception as e:
@@ -323,20 +319,18 @@ def run_nested_cv_coxnet(X, y, param_grid,
                 "model": None,
                 "train_idx": train_idx,
                 "test_idx": test_idx,
+                "train_ids": train_ids,
+                "test_ids": test_ids, 
                 "cv_results": None,
-                "error": str(e),
-                "selected_cpgs": None
+                "features_after_filter1": selected_features_1,
+                "features_after_filter2": None,
+                "input_training_features": feature_names,
+                "error": None
             })
 
     # ---------------------------
     # Done with outer CV
     # ---------------------------
-
-    # save ids dict
-    if output_fold_ids_file is not None:
-        with open(output_fold_ids_file, "wb") as f:
-            pickle.dump(fold_id_dict, f)
-        print(f"Saved outer fold IDs dictionary to {output_fold_ids_file}")
 
     return outer_models
 
@@ -355,7 +349,7 @@ def print_selected_cpgs_counts_coxnet(outer_models):
     for entry in outer_models:
         fold = entry["fold"]
         model = entry["model"]
-        selected_features = entry.get("selected_cpgs", None)
+        selected_features = entry.get("input_training_features", None)
 
         if model is None:
             print(f"Fold {fold}: no model", flush=True)

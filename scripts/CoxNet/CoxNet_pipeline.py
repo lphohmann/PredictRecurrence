@@ -59,14 +59,14 @@ parser.add_argument("--cohort_name", type=str, required=True,
 parser.add_argument("--data_mode", type=str, 
                     choices=["clinical", "methylation", "combined"], required=True,
                     help="Which data to use: clinical only, methylation only, or both")
-# methylation data type
-parser.add_argument("--methylation_type", type=str, 
-                    choices=METHYLATION_DATA_PATHS.keys(), 
-                    required=True,
-                    help="Type of methylation data")
 # prefilter cpg input
 parser.add_argument("--train_cpgs", type=str, default=None,
                     help="Set of CpGs for training")
+# methylation data type
+parser.add_argument("--methylation_type", type=str, 
+                    choices=METHYLATION_DATA_PATHS.keys(), 
+                    default="unadjusted",
+                    help="Type of methylation data")
 # output dir
 parser.add_argument("--output_base_dir", type=str, default="./output/CoxNet",
                     help="Base output directory")

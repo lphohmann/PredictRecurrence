@@ -25,9 +25,7 @@ from lifelines.plotting import add_at_risk_counts
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
 from src.utils import (
     log,
-    load_training_data,
-    preprocess_data
-)
+    load_training_data)
 from src.annotation_functions import (
     run_univariate_cox_for_cpgs
 )
@@ -42,26 +40,16 @@ os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
 infile_train_ids = "./data/train/train_subcohorts/TNBC_train_ids.csv" # sample ids of training cohort
 infile_betavalues = "./data/train/train_methylation_unadjusted.csv" # ⚠️ ADAPT
 infile_clinical = "./data/train/train_clinical.csv"
-infile_outerfold = "./output/CoxNet_unadjusted/best_outer_fold.pkl" # ⚠️ ADAPT
+infile_outerfold = "./output/CoxNet/ERpHER2n/Combined/Unadjusted/best_outer_fold.pkl" # ⚠️ ADAPT
 
 ################################################################################
 # PARAMS
 ################################################################################
 
 # Output directory and files
-output_dir = "output/CoxNet_unadjusted/Selected_model/" # ⚠️ ADAPT
+output_dir = "output/CoxNet/Selected_model/" # ⚠️ ADAPT
 os.makedirs(output_dir, exist_ok=True)
-outfile_cpg_set = os.path.join(output_dir, "selected_cpgs.txt")
 outfile_univariate_cox = os.path.join(output_dir, "testset_univariate_cox.csv")
-
-# log file
-path_logfile = os.path.join(output_dir, "selectedmodel_run.log")
-logfile = open(path_logfile, "w")
-sys.stdout = logfile
-sys.stderr = logfile
-
-# Parameters
-top_n_cpgs = 200000
 
 ################################################################################
 # MAIN CODE
