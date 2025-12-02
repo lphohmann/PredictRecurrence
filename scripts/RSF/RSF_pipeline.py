@@ -65,7 +65,8 @@ parser.add_argument("--methylation_type", type=str,
                     default="unadjusted",
                     help="Type of methylation data")
 # prefilter cpg input
-parser.add_argument("--train_cpgs", type=str, default=None,
+parser.add_argument("--train_cpgs", type=str, 
+                    default="./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt",
                     help="Set of CpGs for training")
 # output dir
 parser.add_argument("--output_base_dir", type=str, default="./output/RSF",
@@ -122,8 +123,8 @@ sys.stderr = logfile
 # ==============================================================================
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 3
-OUTER_CV_FOLDS = 5
+INNER_CV_FOLDS = 5
+OUTER_CV_FOLDS = 10
 
 if args.cohort_name == "TNBC":
     # ensure censoring cutoff > max evaluation time!
@@ -141,8 +142,8 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    VARIANCE_PREFILTER = 1000
-    FILTER_KEEP_N = 500
+    VARIANCE_PREFILTER = 20000
+    FILTER_KEEP_N = 5000
 else:
     VARIANCE_PREFILTER = 0
     FILTER_KEEP_N = 0 # no methlyation data included
@@ -245,7 +246,6 @@ outer_models = run_nested_cv_rsf(X, y,
                              dont_filter_vars=clinvars_included_encoded,
                              dont_scale_vars=encoded_cols,
                              output_fold_ids_file=os.path.join(current_output_dir, "cvfold_ids.pkl"))
-
 
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")

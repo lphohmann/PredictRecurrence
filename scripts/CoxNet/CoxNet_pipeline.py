@@ -60,7 +60,8 @@ parser.add_argument("--data_mode", type=str,
                     choices=["clinical", "methylation", "combined"], required=True,
                     help="Which data to use: clinical only, methylation only, or both")
 # prefilter cpg input
-parser.add_argument("--train_cpgs", type=str, default=None,
+parser.add_argument("--train_cpgs", type=str, 
+                    default="./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt",
                     help="Set of CpGs for training")
 # methylation data type
 parser.add_argument("--methylation_type", type=str, 
@@ -122,8 +123,8 @@ sys.stderr = logfile
 # ==============================================================================
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 3
-OUTER_CV_FOLDS = 5
+INNER_CV_FOLDS = 5
+OUTER_CV_FOLDS = 10
 
 # type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
 ALPHAS_ESTIMATION_L1RATIO = 0.7#[0.9]
