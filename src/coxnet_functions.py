@@ -214,19 +214,27 @@ def run_nested_cv_coxnet(X, y, param_grid,
             else:
                 # All features scaled
                 preproc = StandardScaler()
-                feature_names = X_train.columns.values  # order is preserved
+                preproc.fit(X_train)  # Need to fit first
+                feature_names = X_train.columns.values  # Order preserved for StandardScaler
 
             # ---------------------------
             # Build penalty factor vector
             # ---------------------------
 
+            # Build penalty factor with verification
             penalty_factor = np.ones(len(feature_names), dtype=float)
             if dont_penalize_vars is not None:
+                matched_features = []
                 for i, fname in enumerate(feature_names):
-                    # if feature name matches one to not penalize
                     if fname in dont_penalize_vars:
                         penalty_factor[i] = 0.0
-
+                        matched_features.append(fname)
+                
+                # Verify all dont_penalize_vars were found
+                unmatched = set(dont_penalize_vars) - set(matched_features)
+                if unmatched:
+                    print(f"WARNING: These dont_penalize_vars were not found in transformed features: {unmatched}")
+                    print(f"Available feature names after transformation: {list(feature_names)[:10]}...")  # Show first 10
             #print(penalty_factor)
 
             # ---------------------------
@@ -239,13 +247,18 @@ def run_nested_cv_coxnet(X, y, param_grid,
                 print("All features unpenalized -> using near-unpenalized Coxnet for this fold.", flush=True)
                 estimator_cls = CoxnetSurvivalAnalysis
                 estimator_kwargs = {"penalty_factor": penalty_factor,
-                                    "l1_ratio": 0.0,         # force pure ridge
+                                    "l1_ratio": 0.01,         # force pure ridge
                                     "fit_baseline_model": True
                                     }
+                
+                # Modify param_grid to force l1_ratio=0.0 for this fold
+                param_grid_fold = param_grid.copy()  # Make a copy to avoid modifying original
+                param_grid_fold["estimator__coxnetsurvivalanalysis__l1_ratio"] = [0.01]
 
             else:
                 estimator_cls = CoxnetSurvivalAnalysis
                 estimator_kwargs = {"penalty_factor": penalty_factor}
+                param_grid_fold = param_grid  # Use original grid
 
             # ---------------------------
             # Construct inner CV pipeline
@@ -262,7 +275,7 @@ def run_nested_cv_coxnet(X, y, param_grid,
             scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
             inner_model = GridSearchCV(
                 scorer_pipe,
-                param_grid=param_grid,
+                param_grid=param_grid_fold,
                 cv=inner_cv,
                 error_score=0.5,
                 n_jobs=-1,
@@ -306,6 +319,13 @@ def run_nested_cv_coxnet(X, y, param_grid,
             
             # Map to feature names actually used in this fold (after preprocessing)
             model_features = np.array(feature_names)[nonzero_mask].tolist()  # feature_names already set above
+
+            # Check which unpenalized vars ended up with zero coefs
+            if dont_penalize_vars is not None:
+                for var in dont_penalize_vars:
+                    if var in feature_names:
+                        idx = list(feature_names).index(var)
+                        print(f"\t{var}: coef={coefs[idx]:.4f}, penalty={penalty_factor[idx]}")
 
             # ---------------------------
             # Store outer fold results

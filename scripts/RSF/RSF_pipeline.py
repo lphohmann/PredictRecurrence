@@ -16,6 +16,7 @@ import joblib
 from sksurv.util import Surv
 import argparse
 from sklearn.preprocessing import OneHotEncoder
+from scipy.stats import randint
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
@@ -129,10 +130,10 @@ OUTER_CV_FOLDS = 10
 if args.cohort_name == "TNBC":
     # ensure censoring cutoff > max evaluation time!
     ADMIN_CENSORING_CUTOFF = 5.5
-    EVAL_TIME_GRID = np.arange(1.5, 5.1, 0.5)  # time points for metrics
+    EVAL_TIME_GRID = np.arange(2, 5.1, 1)  # time points for metrics
 else:
     ADMIN_CENSORING_CUTOFF = None
-    EVAL_TIME_GRID = np.arange(1.5, 10.1, 0.5)  # time points for metrics
+    EVAL_TIME_GRID = np.arange(2, 9.1, 1)  # time points for metrics
 
 if args.data_mode in ["clinical", "combined"]:
     CLINVARS_INCLUDED = ["Age", "Size.mm", "NHG", "LN"]
@@ -217,22 +218,28 @@ log(f"dont_scale_vars: {encoded_cols}")
 filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, top_n=VARIANCE_PREFILTER, **kwargs)
 filter_func_2 = lambda X, y=None, **kwargs: univariate_cox_filter(X, y=y, top_n=FILTER_KEEP_N, **kwargs)
 
-param_grid = param_grid_rsf_medium = {
-    # number of trees: balance speed vs stability
-    "estimator__randomsurvivalforest__n_estimators": [200, 500, 800],
+param_grid = {
+    
+    # Critical Expansion: Best value (800) was max, so sample up to 1499
+    "estimator__randomsurvivalforest__n_estimators": randint(200, 1500), 
+    
+    # Expanded List: Includes proven 'sqrt' and tests wider fraction bounds
+    "estimator__randomsurvivalforest__max_features": [
+        0.01, 0.02, 0.05, 0.1, 0.15, 
+        "sqrt"
+    ],
 
-    # feature subsampling per split: very important for high-dim data
-    # Accepts float = fraction of features, int = number of features, or 'sqrt'
-    "estimator__randomsurvivalforest__max_features": [0.02, 0.05, 0.1, "sqrt"],
+    # Expanded List: Includes deeper constraint (20), as 12/None were frequently selected
+    "estimator__randomsurvivalforest__max_depth": [None, 8, 12, 16, 20], 
 
-    # tree depth / complexity control
-    "estimator__randomsurvivalforest__max_depth": [None, 8, 12],   # None = grow until pure (be careful)
-    "estimator__randomsurvivalforest__min_samples_split": [6, 12, 20],
-    "estimator__randomsurvivalforest__min_samples_leaf": [3, 6, 12],
+    # Broad Continuous Sampling
+    "estimator__randomsurvivalforest__min_samples_split": randint(5, 30), 
+    
+    # Broad Continuous Sampling
+    "estimator__randomsurvivalforest__min_samples_leaf": randint(3, 20), 
 
-    # sampling / bootstrap: default is usually bootstrap=True for RSF
     "estimator__randomsurvivalforest__bootstrap": [True],
-    }
+}
 print(f"\nDefined parameter grid:\n{param_grid}\n", flush=True)
 
 # Run nested cross-validation

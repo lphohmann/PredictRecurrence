@@ -300,15 +300,41 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
         print(f"Evaluating fold {fold} ({model_name})...", flush=True)
 
         # Subset data
-        input_training_features = entry.get("input_training_features", X.columns)
-        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        # Use filter2 if available, otherwise filter1, otherwise all columns
+        # Use the most refined feature set available
+        if entry.get("features_after_filter2") is not None:
+            features_to_use = entry["features_after_filter2"]
+        elif entry.get("features_after_filter1") is not None:
+            features_to_use = entry["features_after_filter1"]
+        else:
+            # This should never happen if training function works correctly
+            raise ValueError(f"Fold {fold}: No feature list found in entry. "
+                     "Check that training function stores 'features_after_filter1'.")
+
+        X_test = X.iloc[test_idx][features_to_use]
         y_train, y_test = y[train_idx], y[test_idx]
 
         print(f"  Fold {fold} - test set min time: {y_test['RFi_years'].min():.3f}, max time: {y_test['RFi_years'].max():.3f}", flush=True)
         print(f"  Fold {fold} - train set min time: {y_train['RFi_years'].min():.3f}, max time: {y_train['RFi_years'].max():.3f}", flush=True)
 
-        # Subset X_test
-        X_test = X_test[input_training_features]
+
+        # --- DIAGNOSTIC PRINTS ---
+        max_train_time = y_train['RFi_years'].max()
+        max_time_grid = time_grid.max()
+        
+        # 1. Min/Max Times
+        print(f"  Fold {fold} - test set min time: {y_test['RFi_years'].min():.3f}, max time: {y_test['RFi_years'].max():.3f}", flush=True)
+        print(f"  Fold {fold} - train set min time: {y_train['RFi_years'].min():.3f}, max time: {y_train['RFi_years'].max():.3f}", flush=True)
+        
+        # 2. Critical Comparison
+        print(f"  DIAGNOSTIC - Max Eval Time (time_grid.max()): {max_time_grid:.3f}", flush=True)
+        print(f"  DIAGNOSTIC - Max Train Time (y_train.max()): {max_train_time:.3f}", flush=True)
+
+        if max_time_grid > max_train_time:
+            print("  >>> CRITICAL WARNING: Time Grid Extends PAST Training Data (IPCW Risk)", flush=True)
+            
+        print(f"  DIAGNOSTIC - Evaluation Time Grid (1st 5, last 5): {time_grid[:5]}...{time_grid[-5:]}", flush=True)
+        # -------------------------
 
         # Compute linear predictor and check for overflow
         #coefs = model.named_steps["coxnetsurvivalanalysis"].coef_
@@ -321,12 +347,16 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
         pred_scores = model.predict(X_test)
         surv_funcs = model.predict_survival_function(X_test)
         preds = np.row_stack([[fn(t) for t in time_grid] for fn in surv_funcs])
-
+        
         # Compute time-dependent AUC
         auc, mean_auc = cumulative_dynamic_auc(y_train, y_test, pred_scores, times=time_grid)
-
+        
         # Compute C-index
-        cindex = concordance_index_censored(y_test["RFi_event"], y_test["RFi_years"], pred_scores)[0]
+        cindex = concordance_index_censored(
+            y_test["RFi_event"], 
+            y_test["RFi_years"], 
+            pred_scores
+        )[0]
 
         # Compute Brier scores and IBS
         brier_scores = brier_score(y_train, y_test, preds, time_grid)[1]

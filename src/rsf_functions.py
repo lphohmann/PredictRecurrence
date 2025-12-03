@@ -13,17 +13,19 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.compose import ColumnTransformer
 from sksurv.ensemble import RandomSurvivalForest
 import pickle
+from sklearn.model_selection import RandomizedSearchCV
 
 # ==============================================================================
 # FUNCTIONS
 # ==============================================================================
 
 def run_nested_cv_rsf(X, y, param_grid, 
-                      outer_cv_folds=5, inner_cv_folds=3, #top_n_variance=5000, 
+                      outer_cv_folds=5, 
+                      inner_cv_folds=3, #top_n_variance=5000, 
                       filter_func_1=None,
                       filter_func_2=None,
-                      dont_filter_vars=None, dont_scale_vars=None,
-                      output_fold_ids_file=None):
+                      dont_filter_vars=None, 
+                      dont_scale_vars=None):
     """
     Run nested cross-validation for survival models (RSF, Coxnet, GBM, etc.).
 
@@ -145,14 +147,25 @@ def run_nested_cv_rsf(X, y, param_grid,
 
             #print("Estimator params:", sorted(scorer_pipe.get_params().keys()))
 
-            inner_model = GridSearchCV(
+            inner_model = RandomizedSearchCV(
                 scorer_pipe,
-                param_grid=param_grid,
+                param_distributions=param_grid, 
                 cv=inner_cv,
                 error_score=0.5,
                 n_jobs=-1,
-                refit=True
+                refit=True,
+                n_iter=100,  # The number of parameter settings that are sampled.
+                random_state=42 
             )
+
+            #inner_model = GridSearchCV(
+            #    scorer_pipe,
+            #    param_grid=param_grid,
+            #    cv=inner_cv,
+            #    error_score=0.5,
+            #    n_jobs=-1,
+            #    refit=True
+            #)
 
             # ---------------------------
             # Fit inner CV
@@ -164,13 +177,17 @@ def run_nested_cv_rsf(X, y, param_grid,
             # ---------------------------
             # Refit final pipeline for this fold
             # ---------------------------
-            # Extract only the estimator's parameters
+
+            # 1. Extract only the estimator's parameters
             estimator_prefix = [k for k in best_params.keys() if k.startswith("estimator__")]
-
-            # Strip the "estimator__" prefix for refit
-            estimator_params = {k.replace("estimator__randomsurvivalforest__", ""): best_params[k] for k in estimator_prefix}
-
-            # Refit using the right estimator
+            
+            # 2. Strip the full pipeline prefix to get clean RSF params (e.g., 'n_estimators')
+            estimator_params = {
+                k.replace("estimator__randomsurvivalforest__", ""): best_params[k] 
+                for k in estimator_prefix
+            }
+            
+            # 3. Manually reconstruct and fit the final pipe
             refit_pipe = make_pipeline(
                 preproc,
                 RandomSurvivalForest(**estimator_params)
@@ -182,12 +199,12 @@ def run_nested_cv_rsf(X, y, param_grid,
             # ---------------------------
             outer_models.append({
                 "fold": fold_num,
-                "model": None,
+                "model": refit_pipe,
                 "train_idx": train_idx,
                 "test_idx": test_idx,
                 "train_ids": train_ids,
                 "test_ids": test_ids, 
-                "cv_results": None,
+                "cv_results": inner_model.cv_results_,
                 "features_after_filter1": selected_features_1,
                 "features_after_filter2": selected_features_2,
                 "input_training_features": feature_names,

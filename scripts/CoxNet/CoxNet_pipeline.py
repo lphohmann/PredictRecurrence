@@ -133,10 +133,10 @@ PARAM_GRID_L1RATIOS  = [0.7]#[0.9]
 if args.cohort_name == "TNBC":
     # ensure censoring cutoff > max evaluation time!
     ADMIN_CENSORING_CUTOFF = 5.5
-    EVAL_TIME_GRID = np.arange(1.5, 5.1, 0.5)  # time points for metrics
+    EVAL_TIME_GRID = np.arange(2, 5.1, 1)  # time points for metrics
 else:
     ADMIN_CENSORING_CUTOFF = None
-    EVAL_TIME_GRID = np.arange(1.5, 9.6, 0.5)   # time points for metrics
+    EVAL_TIME_GRID = np.arange(2, 9.1, 1)   # time points for metrics
 
 if args.data_mode in ["clinical", "combined"]:
     CLINVARS_INCLUDED = ["Age", "Size.mm", "NHG", "LN"]
