@@ -191,6 +191,7 @@ def run_nested_cv_rsf(X, y, param_grid,
                 "features_after_filter1": selected_features_1,
                 "features_after_filter2": selected_features_2,
                 "input_training_features": feature_names,
+                "features_in_model": feature_names,
                 "error": None
             })
 
@@ -208,6 +209,7 @@ def run_nested_cv_rsf(X, y, param_grid,
                 "features_after_filter1": selected_features_1,
                 "features_after_filter2": selected_features_2,
                 "input_training_features": feature_names,
+                "features_in_model": None,
                 "error": None
             })
 

@@ -295,6 +295,19 @@ def run_nested_cv_coxnet(X, y, param_grid,
             refit_pipe.fit(X_train, y_train)
 
             # ---------------------------
+            # Check selected features
+            # ---------------------------
+            # Extract Coxnet step from the fitted pipeline
+            coxnet = refit_pipe.named_steps["coxnetsurvivalanalysis"]
+
+            # Get non-zero coefficients
+            coefs = coxnet.coef_.flatten()
+            nonzero_mask = coefs != 0
+            
+            # Map to feature names actually used in this fold (after preprocessing)
+            model_features = np.array(feature_names)[nonzero_mask].tolist()  # feature_names already set above
+
+            # ---------------------------
             # Store outer fold results
             # ---------------------------
             outer_models.append({
@@ -308,6 +321,7 @@ def run_nested_cv_coxnet(X, y, param_grid,
                 "features_after_filter1": selected_features_1,
                 "features_after_filter2": None,
                 "input_training_features": feature_names,
+                "features_in_model": model_features,
                 "error": None
             })
 
@@ -325,6 +339,7 @@ def run_nested_cv_coxnet(X, y, param_grid,
                 "features_after_filter1": selected_features_1,
                 "features_after_filter2": None,
                 "input_training_features": feature_names,
+                "features_in_model": None,
                 "error": None
             })
 
@@ -349,6 +364,7 @@ def print_selected_cpgs_counts_coxnet(outer_models):
     for entry in outer_models:
         fold = entry["fold"]
         model = entry["model"]
+        features_in_model = entry["features_in_model"]
         selected_features = entry.get("input_training_features", None)
 
         if model is None:
@@ -373,6 +389,7 @@ def print_selected_cpgs_counts_coxnet(outer_models):
 
         print(f"Fold {fold}: {len(selected_cpgs)} CpGs selected", flush=True)
         print(f"  CpGs: {selected_cpgs.tolist()}", flush=True)
+        #print(f"Vanity check features_in_model: {len(features_in_model)}; features: {features_in_model}")
 
 
 
