@@ -283,6 +283,7 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
     """
 
     print("\n=== Evaluating outer models ===\n", flush=True)
+    print(f"Eval time grid: {time_grid}")
     performance = []
 
     for entry in outer_models:
@@ -316,25 +317,6 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
 
         print(f"  Fold {fold} - test set min time: {y_test['RFi_years'].min():.3f}, max time: {y_test['RFi_years'].max():.3f}", flush=True)
         print(f"  Fold {fold} - train set min time: {y_train['RFi_years'].min():.3f}, max time: {y_train['RFi_years'].max():.3f}", flush=True)
-
-
-        # --- DIAGNOSTIC PRINTS ---
-        max_train_time = y_train['RFi_years'].max()
-        max_time_grid = time_grid.max()
-        
-        # 1. Min/Max Times
-        print(f"  Fold {fold} - test set min time: {y_test['RFi_years'].min():.3f}, max time: {y_test['RFi_years'].max():.3f}", flush=True)
-        print(f"  Fold {fold} - train set min time: {y_train['RFi_years'].min():.3f}, max time: {y_train['RFi_years'].max():.3f}", flush=True)
-        
-        # 2. Critical Comparison
-        print(f"  DIAGNOSTIC - Max Eval Time (time_grid.max()): {max_time_grid:.3f}", flush=True)
-        print(f"  DIAGNOSTIC - Max Train Time (y_train.max()): {max_train_time:.3f}", flush=True)
-
-        if max_time_grid > max_train_time:
-            print("  >>> CRITICAL WARNING: Time Grid Extends PAST Training Data (IPCW Risk)", flush=True)
-            
-        print(f"  DIAGNOSTIC - Evaluation Time Grid (1st 5, last 5): {time_grid[:5]}...{time_grid[-5:]}", flush=True)
-        # -------------------------
 
         # Compute linear predictor and check for overflow
         #coefs = model.named_steps["coxnetsurvivalanalysis"].coef_

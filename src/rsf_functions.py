@@ -74,6 +74,11 @@ def run_nested_cv_rsf(X, y, param_grid,
         train_ids = X_train.index.values
         test_ids = X_test.index.values
 
+        # Initialize variables for error handling
+        selected_features_1 = None
+        selected_features_2 = None
+        feature_names = None
+
         try:
             # ---------------------------
             # Feature filtering (fold-specific)
@@ -118,7 +123,8 @@ def run_nested_cv_rsf(X, y, param_grid,
                 if len(dont_scale_vars) > 0:
                     transformers.append(("passthrough_encoded", "passthrough", dont_scale_vars))
 
-                preproc = ColumnTransformer(transformers=transformers, verbose_feature_names_out=False,
+                preproc = ColumnTransformer(transformers=transformers, 
+                                            verbose_feature_names_out=False,
                                             remainder="drop")
 
                 # Get feature order after transformation
@@ -130,6 +136,7 @@ def run_nested_cv_rsf(X, y, param_grid,
             else:
                 # All features scaled
                 preproc = StandardScaler()
+                preproc.fit(X_train)
                 feature_names = X_train.columns.values  # order is preserved
 
             # ---------------------------
@@ -138,7 +145,7 @@ def run_nested_cv_rsf(X, y, param_grid,
 
             pipe = make_pipeline(
                 preproc,
-                RandomSurvivalForest()
+                RandomSurvivalForest(n_jobs=1,n_estimators=400) # set here for training, later override nestimators
             )
             #print(pipe.get_params().keys())
 
@@ -152,10 +159,11 @@ def run_nested_cv_rsf(X, y, param_grid,
                 param_distributions=param_grid, 
                 cv=inner_cv,
                 error_score=0.5,
-                n_jobs=-1,
+                n_jobs=-1, # parallize here
                 refit=True,
-                n_iter=100,  # The number of parameter settings that are sampled.
-                random_state=42 
+                n_iter=50,  # The number of parameter settings that are sampled.
+                random_state=42,
+                verbose=1
             )
 
             #inner_model = GridSearchCV(
@@ -164,7 +172,8 @@ def run_nested_cv_rsf(X, y, param_grid,
             #    cv=inner_cv,
             #    error_score=0.5,
             #    n_jobs=-1,
-            #    refit=True
+            #    refit=True,
+            #    verbose=1
             #)
 
             # ---------------------------
@@ -186,6 +195,10 @@ def run_nested_cv_rsf(X, y, param_grid,
                 k.replace("estimator__randomsurvivalforest__", ""): best_params[k] 
                 for k in estimator_prefix
             }
+
+            # After finding best params
+            estimator_params['n_estimators'] = 1500  # Use more for final model
+            estimator_params['n_jobs'] = -1 # Use all cores for final training
             
             # 3. Manually reconstruct and fit the final pipe
             refit_pipe = make_pipeline(

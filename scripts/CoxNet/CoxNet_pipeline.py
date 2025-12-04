@@ -123,12 +123,12 @@ sys.stderr = logfile
 # ==============================================================================
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 5
-OUTER_CV_FOLDS = 10
+INNER_CV_FOLDS = 3#5
+OUTER_CV_FOLDS = 5#10
 
 # type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
-ALPHAS_ESTIMATION_L1RATIO = 0.7#[0.9]
-PARAM_GRID_L1RATIOS  = [0.7]#[0.9]
+#ALPHAS_ESTIMATION_L1RATIO = 0.7#[0.9]
+PARAM_GRID_L1RATIOS  = [0.5, 0.7, 0.9] #[0.7]#[0.9]
 
 if args.cohort_name == "TNBC":
     # ensure censoring cutoff > max evaluation time!
@@ -221,29 +221,52 @@ log(f"dont_penalize_vars: {clinvars_included_encoded}")
 # set filter func
 filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, top_n=VARIANCE_PREFILTER, **kwargs)
 
-alphas = estimate_alpha_grid(X, y, 
-                             l1_ratio=ALPHAS_ESTIMATION_L1RATIO, 
-                             n_alphas=30,
-                             filter_func_1=filter_func_1,
-                             alpha_min_ratio=0.1,
-                             dont_filter_vars=clinvars_included_encoded,
-                             dont_scale_vars=encoded_cols,
-                             dont_penalize_vars=clinvars_included_encoded)
 
-log(f"Estimated alphas: {alphas}")
-n_trim = 10
-if len(alphas) > n_trim:
-    alphas_trimmed = alphas[:-n_trim]
-else:
-    alphas_trimmed = alphas
-log(f"Alphas used for tuning (trimmed smallest; n_trim = {n_trim}): {alphas_trimmed}")
+# make alpha grid for each l1 ratio
+l1ratio_alphas = {}
+for l1ratio in PARAM_GRID_L1RATIOS:
 
-#alphas = np.logspace(np.log10(0.01), np.log10(10), 20)
-param_grid = {
-    # diff string if i dont use a pipe (remove estimator__)
-    "estimator__coxnetsurvivalanalysis__alphas": [[alpha] for alpha in alphas_trimmed],  
-    "estimator__coxnetsurvivalanalysis__l1_ratio": PARAM_GRID_L1RATIOS
+    alphas = estimate_alpha_grid(X, y, 
+                                l1_ratio=l1ratio,#ALPHAS_ESTIMATION_L1RATIO, 
+                                n_alphas=15,
+                                filter_func_1=filter_func_1,
+                                alpha_min_ratio=0.1,
+                                dont_filter_vars=clinvars_included_encoded,
+                                dont_scale_vars=encoded_cols,
+                                dont_penalize_vars=clinvars_included_encoded)
+
+    n_trim = 5
+    if len(alphas) > n_trim:
+        alphas_trimmed = alphas[:-n_trim]
+    else:
+        alphas_trimmed = alphas
+    log(f"For l1ratio: {l1ratio} -- Alphas used for tuning (trimmed smallest; n_trim = {n_trim}): {alphas_trimmed}")
+    
+    l1ratio_alphas[l1ratio] = [[alpha] for alpha in alphas_trimmed]
+
+
+param_grid = []
+
+for l1ratio, alphas_list in l1ratio_alphas.items():
+    # alphas_list is already in the format [[alpha]] because of the previous step.
+    
+    # Create a single dictionary for this specific l1ratio and its alphas
+    param_dict = {
+        # Fixes the l1_ratio to this specific value
+        "estimator__coxnetsurvivalanalysis__l1_ratio": [l1ratio],
+        
+        # Provides the specific list of alphas generated for this l1_ratio
+        "estimator__coxnetsurvivalanalysis__alphas": alphas_list
     }
+    
+    param_grid.append(param_dict)
+
+
+#param_grid = {
+#    # diff string if i dont use a pipe (remove estimator__)
+#    "estimator__coxnetsurvivalanalysis__alphas": [[alpha] for alpha in alphas_trimmed],  
+#    "estimator__coxnetsurvivalanalysis__l1_ratio": PARAM_GRID_L1RATIOS
+#    }
 print(f"\nDefined parameter grid:\n{param_grid}\n", flush=True)
 
 # Run nested cross-validation

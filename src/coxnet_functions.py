@@ -279,7 +279,8 @@ def run_nested_cv_coxnet(X, y, param_grid,
                 cv=inner_cv,
                 error_score=0.5,
                 n_jobs=-1,
-                refit=True
+                refit=True,
+                verbose=2
             )
 
             # ---------------------------

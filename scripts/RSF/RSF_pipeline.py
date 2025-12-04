@@ -124,8 +124,8 @@ sys.stderr = logfile
 # ==============================================================================
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 5
-OUTER_CV_FOLDS = 10
+INNER_CV_FOLDS = 3#5
+OUTER_CV_FOLDS = 5#10
 
 if args.cohort_name == "TNBC":
     # ensure censoring cutoff > max evaluation time!
@@ -143,8 +143,8 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    VARIANCE_PREFILTER = 20000
-    FILTER_KEEP_N = 5000
+    VARIANCE_PREFILTER = 100#20000
+    FILTER_KEEP_N = 50#5000
 else:
     VARIANCE_PREFILTER = 0
     FILTER_KEEP_N = 0 # no methlyation data included
@@ -219,26 +219,20 @@ filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, top_n=VARIAN
 filter_func_2 = lambda X, y=None, **kwargs: univariate_cox_filter(X, y=y, top_n=FILTER_KEEP_N, **kwargs)
 
 param_grid = {
+    # 1. Feature Subsampling (Aggressive)
+    'estimator__randomsurvivalforest__max_features': ['sqrt', 0.005, 0.01, 0.05, 0.1], 
     
-    # Critical Expansion: Best value (800) was max, so sample up to 1499
-    "estimator__randomsurvivalforest__n_estimators": randint(200, 1500), 
+    # 2. Tree Depth (Deep but constrained)
+    'estimator__randomsurvivalforest__max_depth': [10, 25, 50],
     
-    # Expanded List: Includes proven 'sqrt' and tests wider fraction bounds
-    "estimator__randomsurvivalforest__max_features": [
-        0.01, 0.02, 0.05, 0.1, 0.15, 
-        "sqrt"
-    ],
-
-    # Expanded List: Includes deeper constraint (20), as 12/None were frequently selected
-    "estimator__randomsurvivalforest__max_depth": [None, 8, 12, 16, 20], 
-
-    # Broad Continuous Sampling
-    "estimator__randomsurvivalforest__min_samples_split": randint(5, 30), 
+    # 3. Split Size (High minimum for robustness)
+    'estimator__randomsurvivalforest__min_samples_split': [10, 30, 60, 100],
     
-    # Broad Continuous Sampling
-    "estimator__randomsurvivalforest__min_samples_leaf": randint(3, 20), 
-
-    "estimator__randomsurvivalforest__bootstrap": [True],
+    # 4. Leaf Size (Very high minimum to prevent overfitting to sparse events)
+    'estimator__randomsurvivalforest__min_samples_leaf': [5, 15, 30, 50],
+    
+    # 5. Bootstrap
+    'estimator__randomsurvivalforest__bootstrap': [True]
 }
 print(f"\nDefined parameter grid:\n{param_grid}\n", flush=True)
 
@@ -251,8 +245,7 @@ outer_models = run_nested_cv_rsf(X, y,
                              filter_func_1=filter_func_1,
                              filter_func_2=filter_func_2,
                              dont_filter_vars=clinvars_included_encoded,
-                             dont_scale_vars=encoded_cols,
-                             output_fold_ids_file=os.path.join(current_output_dir, "cvfold_ids.pkl"))
+                             dont_scale_vars=encoded_cols)
 
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")
