@@ -124,8 +124,8 @@ sys.stderr = logfile
 # ==============================================================================
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 3#5
-OUTER_CV_FOLDS = 5#10
+INNER_CV_FOLDS = 2#3#5
+OUTER_CV_FOLDS = 2#5#10
 
 if args.cohort_name == "TNBC":
     # ensure censoring cutoff > max evaluation time!
@@ -143,11 +143,11 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    VARIANCE_PREFILTER = 100#20000
-    FILTER_KEEP_N = 50#5000
+    FILTER_1_N = 20000
+    FILTER_2_N = 5000
 else:
-    VARIANCE_PREFILTER = 0
-    FILTER_KEEP_N = 0 # no methlyation data included
+    FILTER_1_N = 0
+    FILTER_2_N = 0 # no methlyation data included
 
 # ==============================================================================
 # MAIN PIPELINE
@@ -204,7 +204,7 @@ else:
     log("No clinical variables added (CLINVARS_INCLUDED=None).")
 
 # outcome-agnostic variance prefilter
-#selected_cpgs = variance_filter(X, top_n=VARIANCE_PREFILTER,keep_vars=clinvars_included_encoded)
+#selected_cpgs = variance_filter(X, top_n=FILTER_1_N,keep_vars=clinvars_included_encoded)
 #X = X[selected_cpgs].copy()
 #log(f"Applied variance prefilter. New X shape: {X.shape}")
 
@@ -215,8 +215,8 @@ log(f"dont_filter_vars: {clinvars_included_encoded}")
 log(f"dont_scale_vars: {encoded_cols}")
 
 # set filter func
-filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, top_n=VARIANCE_PREFILTER, **kwargs)
-filter_func_2 = lambda X, y=None, **kwargs: univariate_cox_filter(X, y=y, top_n=FILTER_KEEP_N, **kwargs)
+filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, top_n=FILTER_1_N, **kwargs)
+filter_func_2 = lambda X, y=None, **kwargs: univariate_cox_filter(X, y=y, top_n=FILTER_2_N, **kwargs)
 
 param_grid = {
     # 1. Feature Subsampling (Aggressive)

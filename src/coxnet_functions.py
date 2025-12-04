@@ -78,26 +78,14 @@ def estimate_alpha_grid(X, y, l1_ratio, n_alphas, alpha_min_ratio='auto',
                                     remainder="drop")
 
         # Get feature order after transformation
-        preproc.fit(X)  
-        feature_names = preproc.get_feature_names_out()
+        #preproc.fit(X)  
+        #feature_names = preproc.get_feature_names_out()
 
-    
     else:
         # All features scaled
         preproc = StandardScaler()
         #preproc.fit(X)  
-        feature_names = X.columns.values  # order is preserved
-
-    # ---------------------------
-    # Build penalty factor vector
-    # ---------------------------
-
-    penalty_factor = np.ones(len(feature_names), dtype=float)
-    if dont_penalize_vars is not None:
-        for i, fname in enumerate(feature_names):
-            # if feature name matches one to not penalize
-            if fname in dont_penalize_vars:
-                penalty_factor[i] = 0.0
+        #feature_names = X.columns.values  # order is preserved
 
     # ---------------------------
     # Construct inner CV pipeline
@@ -123,8 +111,7 @@ def run_nested_cv_coxnet(X, y, param_grid,
                       outer_cv_folds=5, inner_cv_folds=3, 
                       filter_func_1=None,
                       dont_filter_vars=None, dont_scale_vars=None,
-                      dont_penalize_vars=None,
-                      output_fold_ids_file=None):
+                      dont_penalize_vars=None):
     """
     Run nested cross-validation for Coxnet.
 
@@ -322,11 +309,11 @@ def run_nested_cv_coxnet(X, y, param_grid,
             model_features = np.array(feature_names)[nonzero_mask].tolist()  # feature_names already set above
 
             # Check which unpenalized vars ended up with zero coefs
-            if dont_penalize_vars is not None:
-                for var in dont_penalize_vars:
-                    if var in feature_names:
-                        idx = list(feature_names).index(var)
-                        print(f"\t{var}: coef={coefs[idx]:.4f}, penalty={penalty_factor[idx]}")
+            #if dont_penalize_vars is not None:
+            #    for var in dont_penalize_vars:
+            #        if var in feature_names:
+            #            idx = list(feature_names).index(var)
+            #            print(f"\t{var}: coef={coefs[idx]:.4f}, penalty={penalty_factor[idx]}")
 
             # ---------------------------
             # Store outer fold results

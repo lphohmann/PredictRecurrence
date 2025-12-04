@@ -123,8 +123,8 @@ sys.stderr = logfile
 # ==============================================================================
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 3#5
-OUTER_CV_FOLDS = 5#10
+INNER_CV_FOLDS = 5
+OUTER_CV_FOLDS = 10
 
 # type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
 #ALPHAS_ESTIMATION_L1RATIO = 0.7#[0.9]
@@ -146,11 +146,9 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    VARIANCE_PREFILTER = 20000
-    #FILTER_KEEP_N = 5000 # outer loop filter, deactivated for coxnet
+    FILTER_1_N = 20000
 else:
-    VARIANCE_PREFILTER = 0
-    #FILTER_KEEP_N = 0 # no methlyation data included
+    FILTER_1_N = 0
 
 # ==============================================================================
 # MAIN PIPELINE
@@ -207,7 +205,7 @@ else:
     log("No clinical variables added (CLINVARS_INCLUDED=None).")
 
 # outcome-agnostic variance prefilter
-#selected_cpgs = variance_filter(X, top_n=VARIANCE_PREFILTER,keep_vars=clinvars_included_encoded)
+#selected_cpgs = variance_filter(X, top_n=FILTER_1_N,keep_vars=clinvars_included_encoded)
 #X = X[selected_cpgs].copy()
 #log(f"Applied variance prefilter. New X shape: {X.shape}")
 
@@ -219,7 +217,7 @@ log(f"dont_scale_vars: {encoded_cols}")
 log(f"dont_penalize_vars: {clinvars_included_encoded}")
 
 # set filter func
-filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, top_n=VARIANCE_PREFILTER, **kwargs)
+filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, top_n=FILTER_1_N, **kwargs)
 
 
 # make alpha grid for each l1 ratio
@@ -277,8 +275,7 @@ outer_models = run_nested_cv_coxnet(X, y,
                              filter_func_1=filter_func_1,
                              dont_filter_vars=clinvars_included_encoded,
                              dont_scale_vars=encoded_cols,
-                             dont_penalize_vars=clinvars_included_encoded,
-                             output_fold_ids_file=os.path.join(current_output_dir, "cvfold_ids.pkl"))
+                             dont_penalize_vars=clinvars_included_encoded)
 
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")
