@@ -124,8 +124,8 @@ sys.stderr = logfile
 # ==============================================================================
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 2#3#5
-OUTER_CV_FOLDS = 2#5#10
+INNER_CV_FOLDS = 3#5#3#5
+OUTER_CV_FOLDS = 5#10#2#5#10
 
 if args.cohort_name == "TNBC":
     # ensure censoring cutoff > max evaluation time!
@@ -143,8 +143,8 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    FILTER_1_N = 20000
-    FILTER_2_N = 5000
+    FILTER_1_N = 200#20000
+    FILTER_2_N = 100#5000
 else:
     FILTER_1_N = 0
     FILTER_2_N = 0 # no methlyation data included

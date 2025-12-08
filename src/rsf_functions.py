@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Script: Functions for RSF Survival pipeline
+# Script: Functions for RSF pipeline
 # Author: lennart hohmann 
 
 # ==============================================================================
@@ -27,7 +27,7 @@ def run_nested_cv_rsf(X, y, param_grid,
                       dont_filter_vars=None, 
                       dont_scale_vars=None):
     """
-    Run nested cross-validation for survival models (RSF, Coxnet, GBM, etc.).
+    Run nested cross-validation for RSF
 
     Args:
         X (pd.DataFrame): Feature matrix.
@@ -197,7 +197,7 @@ def run_nested_cv_rsf(X, y, param_grid,
             }
 
             # After finding best params
-            estimator_params['n_estimators'] = 1500  # Use more for final model
+            estimator_params['n_estimators'] = 1000  # Use more for final model
             estimator_params['n_jobs'] = -1 # Use all cores for final training
             
             # 3. Manually reconstruct and fit the final pipe
