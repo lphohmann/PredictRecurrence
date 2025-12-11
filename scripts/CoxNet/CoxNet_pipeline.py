@@ -128,7 +128,7 @@ OUTER_CV_FOLDS = 5#10
 
 # type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
 #ALPHAS_ESTIMATION_L1RATIO = 0.7#[0.9]
-PARAM_GRID_L1RATIOS  = [0.5, 0.7, 0.9] #[0.7]#[0.9]
+PARAM_GRID_L1RATIOS  = [0.3,0.5] #[0.7]#[0.9]
 
 if args.cohort_name == "TNBC":
     # ensure censoring cutoff > max evaluation time!
@@ -226,7 +226,7 @@ for l1ratio in PARAM_GRID_L1RATIOS:
 
     alphas = estimate_alpha_grid(X, y, 
                                 l1_ratio=l1ratio,#ALPHAS_ESTIMATION_L1RATIO, 
-                                n_alphas=15,
+                                n_alphas=30,
                                 filter_func_1=filter_func_1,
                                 alpha_min_ratio=0.1,
                                 dont_filter_vars=clinvars_included_encoded,
@@ -234,10 +234,15 @@ for l1ratio in PARAM_GRID_L1RATIOS:
                                 dont_penalize_vars=clinvars_included_encoded)
 
     n_trim = 5
-    if len(alphas) > n_trim:
-        alphas_trimmed = alphas[:-n_trim]
+    if len(alphas) > 2 * n_trim:
+        # Trim both top and bottom n_trim values
+        alphas_trimmed = alphas[n_trim:-n_trim]
+        #alphas_trimmed = alphas[:-n_trim]
+
     else:
+        # Too few alphas to trim both ends, keep as is
         alphas_trimmed = alphas
+
     log(f"For l1ratio: {l1ratio} -- Alphas used for tuning (trimmed smallest; n_trim = {n_trim}): {alphas_trimmed}")
     
     l1ratio_alphas[l1ratio] = [[alpha] for alpha in alphas_trimmed]
