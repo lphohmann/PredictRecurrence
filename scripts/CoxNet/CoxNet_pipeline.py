@@ -123,8 +123,8 @@ sys.stderr = logfile
 # ==============================================================================
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 5
-OUTER_CV_FOLDS = 10
+INNER_CV_FOLDS = 3#5
+OUTER_CV_FOLDS = 5#10
 
 # type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
 #ALPHAS_ESTIMATION_L1RATIO = 0.7#[0.9]
@@ -146,7 +146,7 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    FILTER_1_N = 20000
+    FILTER_1_N = 10000
 else:
     FILTER_1_N = 0
 
@@ -217,7 +217,7 @@ log(f"dont_scale_vars: {encoded_cols}")
 log(f"dont_penalize_vars: {clinvars_included_encoded}")
 
 # set filter func
-filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, top_n=FILTER_1_N, **kwargs)
+filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, top_n=FILTER_1_N, exclude_top_perc=0.5, **kwargs)
 
 
 # make alpha grid for each l1 ratio

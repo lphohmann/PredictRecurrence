@@ -119,7 +119,12 @@ def m2beta(m):
 
 # ==============================================================================
 
-def variance_filter(X, y=None, min_variance=None, top_n=None, keep_vars=None):
+def variance_filter(X, 
+                    y=None, 
+                    min_variance=None, 
+                    top_n=None, 
+                    keep_vars=None,
+                    exclude_top_perc=None):
     """
     Filter features based on variance. Always keeps keep_vars.
     
@@ -151,6 +156,12 @@ def variance_filter(X, y=None, min_variance=None, top_n=None, keep_vars=None):
     # Compute variance
     variances = X[pool_cols].var(axis=0)
 
+    # Exclude top percentile of variance if requested
+    if exclude_top_perc is not None:
+        threshold = np.percentile(variances, 100 - exclude_top_perc)
+        variances = variances[variances <= threshold]
+
+
     # Select features
     if min_variance is not None:
         selected = variances[variances >= min_variance].index.tolist()
@@ -162,6 +173,7 @@ def variance_filter(X, y=None, min_variance=None, top_n=None, keep_vars=None):
     final_selected = keep_list + selected
 
     print(f"{len(final_selected)} features selected (including {len(keep_list)} keep_vars).")
+    if exclude_top_perc: print(f"Top {exclude_top_perc} were discarded.")
     return final_selected
 
 # ==============================================================================

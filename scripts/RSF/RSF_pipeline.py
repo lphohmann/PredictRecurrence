@@ -143,8 +143,8 @@ else:
     CLIN_CATEGORICAL = None
 
 if args.data_mode in ["methylation", "combined"]:
-    FILTER_1_N = 200#20000
-    FILTER_2_N = 100#5000
+    FILTER_1_N = 10000
+    FILTER_2_N = 1000
 else:
     FILTER_1_N = 0
     FILTER_2_N = 0 # no methlyation data included
@@ -215,7 +215,7 @@ log(f"dont_filter_vars: {clinvars_included_encoded}")
 log(f"dont_scale_vars: {encoded_cols}")
 
 # set filter func
-filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, top_n=FILTER_1_N, **kwargs)
+filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, top_n=FILTER_1_N, exclude_top_perc=0.5, **kwargs)
 filter_func_2 = lambda X, y=None, **kwargs: univariate_cox_filter(X, y=y, top_n=FILTER_2_N, **kwargs)
 
 param_grid = {

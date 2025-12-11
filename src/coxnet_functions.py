@@ -21,6 +21,7 @@ from sklearn.pipeline import make_pipeline
 import warnings
 from sklearn.exceptions import FitFailedWarning
 import pickle
+import copy
 
 # ==============================================================================
 # FUNCTIONS
@@ -239,8 +240,17 @@ def run_nested_cv_coxnet(X, y, param_grid,
                                     }
                 
                 # Modify param_grid to force l1_ratio=0.0 for this fold
-                param_grid_fold = param_grid.copy()  # Make a copy to avoid modifying original
-                param_grid_fold["estimator__coxnetsurvivalanalysis__l1_ratio"] = [0.01]
+                #param_grid_fold = param_grid.copy()  # Make a copy to avoid modifying original
+                #param_grid_fold["estimator__coxnetsurvivalanalysis__l1_ratio"] = [0.01]
+
+                # 1. Create a deep copy of the original param_grid to avoid modification in later folds.
+                # 2. Modify *each* dictionary in the list to enforce the fixed L1 ratio and a broad alpha range.
+                param_grid_fold = copy.deepcopy(param_grid) 
+                
+                # Modify ALL dictionaries in the list
+                for pdict in param_grid_fold:
+                    # Enforce the L1 ratio to 0.01 (pure ridge with near-zero penalty)
+                    pdict["estimator__coxnetsurvivalanalysis__l1_ratio"] = [0.01]
 
             else:
                 estimator_cls = CoxnetSurvivalAnalysis
@@ -267,7 +277,7 @@ def run_nested_cv_coxnet(X, y, param_grid,
                 error_score=0.5,
                 n_jobs=-1,
                 refit=True,
-                verbose=2
+                verbose=1
             )
 
             # ---------------------------
