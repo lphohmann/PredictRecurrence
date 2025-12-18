@@ -1,3 +1,92 @@
+impute_clinical_data <- function(data, 
+                                  vars_to_impute,
+                                  complete_vars,
+                                  binary_vars = NULL,
+                                  ordered_vars = NULL,
+                                  maxit = 10,
+                                  seed = 13) {
+  
+  all_vars <- c(vars_to_impute, complete_vars)
+
+  # Print missingness before
+  cat("\n=== Missingness BEFORE imputation ===\n")
+  missing_counts <- colSums(is.na(data[vars_to_impute]))
+  print(missing_counts)
+  cat("Total missing:", sum(missing_counts), "\n")
+  
+  # Prepare data for MICE
+  data_for_mice <- data[, all_vars, drop = FALSE]
+  
+  # Set up imputation methods
+  # Default is PMM for continuous variables
+  methods <- make.method(data_for_mice)
+  
+  # Override methods for categorical variables
+  if (!is.null(binary_vars)) {
+    for (var in binary_vars) {
+      if (var %in% names(methods)) {
+        methods[var] <- "logreg"
+      }
+    }
+  }
+  
+  if (!is.null(ordered_vars)) {
+    for (var in ordered_vars) {
+      if (var %in% names(methods)) {
+        methods[var] <- "polr"
+      }
+    }
+  }
+  
+  # Print methods being used
+  cat("\nImputation methods:\n")
+  impute_methods <- methods[vars_to_impute]
+  impute_methods <- impute_methods[impute_methods != ""]  # Remove empty ones
+  print(impute_methods)
+  
+  # Run MICE
+  cat("\nRunning MICE imputation (maxit =", maxit, ")...\n")
+  
+  mice_result <- mice(data_for_mice, 
+                      m = 1,
+                      maxit = maxit,
+                      method = methods,
+                      seed = seed,
+                      printFlag = FALSE)
+  
+  # Check for logged events (problems during imputation)
+  if (!is.null(mice_result$loggedEvents)) {
+    cat("\nWARNING: MICE logged", nrow(mice_result$loggedEvents), "events:\n")
+    print(mice_result$loggedEvents)
+  }
+  
+  # Get imputed data
+  imputed_data <- complete(mice_result, action = 1)
+  
+  # Replace missing values in original data
+  result <- data
+  for (var in vars_to_impute) {
+    result[[var]][is.na(data[[var]])] <- imputed_data[[var]][is.na(data[[var]])]
+  }
+  
+  # Print missingness after
+  cat("\n=== Missingness AFTER imputation ===\n")
+  missing_counts_after <- colSums(is.na(result[vars_to_impute]))
+  print(missing_counts_after)
+  cat("Total missing:", sum(missing_counts_after), "\n")
+  
+  # Warn if any variables still have missing values
+  still_missing <- vars_to_impute[missing_counts_after > 0]
+  if (length(still_missing) > 0) {
+    cat("\nWARNING: These variables still have missing values:\n")
+    print(missing_counts_after[still_missing])
+    cat("Consider adding more predictors or using fallback imputation.\n")
+  }
+  
+  cat("\n")
+  return(result)
+}
+
 # loads RData data file and allows to assign it directly to variable
 loadRData <- function(file.path){
   load(file.path)
