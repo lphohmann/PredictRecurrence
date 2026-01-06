@@ -172,8 +172,8 @@ def variance_filter(X,
     # Combine keep_vars first
     final_selected = keep_list + selected
 
-    print(f"{len(final_selected)} features selected (including {len(keep_list)} keep_vars).")
-    if exclude_top_perc: print(f"Top {exclude_top_perc} were discarded.")
+    print(f"\t{len(final_selected)} features selected (including {len(keep_list)} keep_vars).")
+    if exclude_top_perc: print(f"\tTop {exclude_top_perc} were discarded.")
     return final_selected
 
 # ==============================================================================
@@ -443,7 +443,7 @@ def univariate_cox_filter(X, y, top_n=None, keep_vars=None, n_jobs=8):
     # features to test
     pool_cols = [c for c in X.columns if c not in keep_list]
     if len(pool_cols) == 0:
-        print("No features to test (all columns are in keep_vars).")
+        print("\tNo features to test (all columns are in keep_vars).")
         return keep_list
 
     # Compute univariate Cox p-values in parallel.
@@ -460,7 +460,7 @@ def univariate_cox_filter(X, y, top_n=None, keep_vars=None, n_jobs=8):
     # wrap the generator in tqdm for a progress bar
     results = Parallel(n_jobs=n_jobs, prefer="threads")(
         delayed(_fit_univar_cox)(X[col], y_time, y_event)
-        for col in tqdm(pool_cols_list, desc="Fitting univariate Cox models", mininterval=20.0)
+        for col in tqdm(pool_cols_list, desc="\tFitting univariate Cox models", mininterval=20.0)
     )
 
     pvals = pd.Series(results, index=pool_cols, name="pvalue")
@@ -469,7 +469,7 @@ def univariate_cox_filter(X, y, top_n=None, keep_vars=None, n_jobs=8):
     pvals = pvals.dropna()
 
     if pvals.empty:
-        print("All univariate Cox fits failed or had insufficient data; returning keep_vars only.")
+        print("\tAll univariate Cox fits failed or had insufficient data; returning keep_vars only.")
         return keep_list
 
     # Selection logic:  top_n
@@ -480,11 +480,11 @@ def univariate_cox_filter(X, y, top_n=None, keep_vars=None, n_jobs=8):
     final_selected = keep_list + [c for c in selected if c not in keep_list]
 
     # Print info about selected features
-    print(f"{len(final_selected)} features selected by univariate Cox "
-        f"({len(keep_list)} kept, {len(selected)} from tests).")
+    print(f"\t{len(final_selected)} features selected by univariate Cox "
+        f"\t({len(keep_list)} kept, {len(selected)} from tests).")
     
     selected_pvals = pvals.loc[selected]
-    print(f"Selected p-values: min={selected_pvals.min():.4g}, "
-        f"max={selected_pvals.max():.4g}, median={selected_pvals.median():.4g}")
+    print(f"\tSelected p-values: min={selected_pvals.min():.4g}, "
+        f"\tmax={selected_pvals.max():.4g}, median={selected_pvals.median():.4g}")
 
     return final_selected

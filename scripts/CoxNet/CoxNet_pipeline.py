@@ -123,8 +123,8 @@ sys.stderr = logfile
 # ==============================================================================
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 3#5
-OUTER_CV_FOLDS = 5#10
+INNER_CV_FOLDS = 2#3#5
+OUTER_CV_FOLDS = 2#5#10
 
 # type of cox regression; for Lasso set both to 1; for Ridge to 0; for ElasticNet to mixed
 #ALPHAS_ESTIMATION_L1RATIO = 0.7#[0.9]

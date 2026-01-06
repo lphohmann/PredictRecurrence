@@ -138,7 +138,7 @@ def run_nested_cv_coxnet(X, y, param_grid,
 
     event_labels = y["RFi_event"]
     outer_cv = StratifiedKFold(n_splits=outer_cv_folds, shuffle=True, random_state=96)
-    inner_cv = KFold(n_splits=inner_cv_folds, shuffle=True, random_state=96)
+    #inner_cv = KFold(n_splits=inner_cv_folds, shuffle=True, random_state=96)
 
     outer_models = []
 
@@ -150,13 +150,21 @@ def run_nested_cv_coxnet(X, y, param_grid,
         # Subset data for this outer fold
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train, y_test = y[train_idx], y[test_idx]
-        print(f"\nOuter fold {fold_num}: {sum(y_train['RFi_event'])} events in training set.", flush=True)
+        print(f"\nOuter fold {fold_num}: "
+              f"Train={sum(y_train['RFi_event'])} events, "
+              f"Val={sum(y_test['RFi_event'])} events",
+              flush=True)
         # Ensure preproc is defined for later refit check (avoid stale variable leakage)
         preproc = None 
 
         # this is to save ids belaongi to each fold
         train_ids = X_train.index.values
         test_ids = X_test.index.values
+
+        # Initialize variables for error handling
+        selected_features_1 = None
+        #selected_features_2 = None
+        feature_names = None
 
         try:
             # ---------------------------
@@ -235,7 +243,7 @@ def run_nested_cv_coxnet(X, y, param_grid,
                 print("All features unpenalized -> using near-unpenalized Coxnet for this fold.", flush=True)
                 estimator_cls = CoxnetSurvivalAnalysis
                 estimator_kwargs = {"penalty_factor": penalty_factor,
-                                    "l1_ratio": 0.01,         # force pure ridge
+                                    #"l1_ratio": 0.01,         # force pure ridge
                                     "fit_baseline_model": True
                                     }
                 
@@ -251,6 +259,8 @@ def run_nested_cv_coxnet(X, y, param_grid,
                 for pdict in param_grid_fold:
                     # Enforce the L1 ratio to 0.01 (pure ridge with near-zero penalty)
                     pdict["estimator__coxnetsurvivalanalysis__l1_ratio"] = [0.01]
+                    # Force small alphas to keep effective penalty truly negligible
+                    pdict["estimator__coxnetsurvivalanalysis__alphas"] = [[1e-4]]
 
             else:
                 estimator_cls = CoxnetSurvivalAnalysis
@@ -258,9 +268,30 @@ def run_nested_cv_coxnet(X, y, param_grid,
                 param_grid_fold = param_grid  # Use original grid
 
             # ---------------------------
-            # Construct inner CV pipeline
+            # Construct inner CV pipeline with stratification
             # ---------------------------
 
+            # Extract event labels for stratification in inner CV
+            train_events = y_train["RFi_event"]
+
+            # Pre-compute stratified inner CV splits
+            inner_cv_splits = list(StratifiedKFold(
+                n_splits=inner_cv_folds, 
+                shuffle=True, 
+                random_state=96
+            ).split(X_train, train_events))
+
+            # Print event distribution for each inner fold
+            print(f"\tFold {fold_num}: Created {len(inner_cv_splits)} stratified inner CV folds", flush=True)
+            for inner_fold_idx, (inner_train_idx, inner_val_idx) in enumerate(inner_cv_splits):
+                inner_train_events = train_events[inner_train_idx].sum()
+                inner_val_events = train_events[inner_val_idx].sum()
+                
+                print(f"\t  Inner fold {inner_fold_idx}: "
+                    f"Train={inner_train_events} events, "
+                    f"Val={inner_val_events} events", 
+                    flush=True)
+                
             pipe = make_pipeline(
                 preproc,
                 estimator_cls(**estimator_kwargs)
@@ -270,10 +301,11 @@ def run_nested_cv_coxnet(X, y, param_grid,
 
             # Wrap with scorer for inner CV
             scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
+
             inner_model = GridSearchCV(
                 scorer_pipe,
                 param_grid=param_grid_fold,
-                cv=inner_cv,
+                cv=inner_cv_splits,
                 error_score=0.5,
                 n_jobs=-1,
                 refit=True,
@@ -358,7 +390,7 @@ def run_nested_cv_coxnet(X, y, param_grid,
                 "features_after_filter2": None,
                 "input_training_features": feature_names,
                 "features_in_model": None,
-                "error": None
+                "error": str(e)
             })
 
     # ---------------------------
