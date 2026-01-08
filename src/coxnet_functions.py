@@ -210,7 +210,7 @@ def run_nested_cv_coxnet(X, y, param_grid,
             else:
                 # All features scaled
                 preproc = StandardScaler()
-                preproc.fit(X_train)  # Need to fit first
+                preproc.fit(X_train)
                 feature_names = X_train.columns.values  # Order preserved for StandardScaler
 
             # ---------------------------
@@ -237,7 +237,7 @@ def run_nested_cv_coxnet(X, y, param_grid,
             # For case that only clinical vars use coxph
             # ---------------------------
 
-            if np.all(penalty_factor == 0.0):
+            if np.all(penalty_factor == 0.0): # not possible to run completely unpenalized, force negligible penliaztion
                 penalty_factor[:] = 1e-8
                 # Use Coxnet with very small ridge penalty, basically non-penalized for only clin vars
                 print("All features unpenalized -> using near-unpenalized Coxnet for this fold.", flush=True)
@@ -258,9 +258,9 @@ def run_nested_cv_coxnet(X, y, param_grid,
                 # Modify ALL dictionaries in the list
                 for pdict in param_grid_fold:
                     # Enforce the L1 ratio to 0.01 (pure ridge with near-zero penalty)
-                    pdict["estimator__coxnetsurvivalanalysis__l1_ratio"] = [0.01]
+                    pdict["estimator__coxnetsurvivalanalysis__l1_ratio"] = [0.001]
                     # Force small alphas to keep effective penalty truly negligible
-                    pdict["estimator__coxnetsurvivalanalysis__alphas"] = [[1e-4]]
+                    pdict["estimator__coxnetsurvivalanalysis__alphas"] = [[1e-6]]
 
             else:
                 estimator_cls = CoxnetSurvivalAnalysis
@@ -400,6 +400,153 @@ def run_nested_cv_coxnet(X, y, param_grid,
     return outer_models
 
 # ==============================================================================
+
+
+def train_final_aggregated_coxnet(X, y, outer_models, 
+                                  filter_func_1=None,
+                                  dont_filter_vars=None, 
+                                  dont_scale_vars=None,
+                                  dont_penalize_vars=None):
+    """
+    Train final model on full dataset using aggregated hyperparameters from CV folds.
+    Returns a dict matching the outer_models structure.
+    
+    Args:
+        X (pd.DataFrame): Full feature matrix.
+        y (structured array): Full survival outcome (event, time).
+        outer_models (list): Results from run_nested_cv_coxnet.
+        filter_func_1 (callable): Feature filtering function (same as used in CV).
+        dont_filter_vars (list): Feature names to always keep during filtering.
+        dont_scale_vars (list): Feature names to NOT scale.
+        dont_penalize_vars (list): Feature names to NOT penalize.
+    
+    Returns:
+        dict: Final model in same structure as outer_models entries.
+    """
+    
+    from sklearn.base import clone
+    
+    print(f"\n=== Training final aggregated model on full dataset ===\n", flush=True)
+    
+    # ---------------------------
+    # Extract and aggregate hyperparameters
+    # ---------------------------
+    alphas_per_fold = []
+    l1_ratios_per_fold = []
+    
+    for fold_result in outer_models:
+        if fold_result['model'] is None or fold_result.get('error') is not None:
+            continue
+        
+        coxnet = fold_result['model'].named_steps['coxnetsurvivalanalysis']
+        
+        if hasattr(coxnet, 'alphas_') and len(coxnet.alphas_) > 0:
+            alpha = coxnet.alphas_[0] if len(coxnet.alphas_) == 1 else coxnet.alphas_[-1]
+            alphas_per_fold.append(alpha)
+            l1_ratios_per_fold.append(coxnet.l1_ratio)
+    
+    if len(alphas_per_fold) == 0:
+        raise ValueError("No successful folds to aggregate from!")
+    
+    # Aggregate
+    agg_alpha = np.median(alphas_per_fold)
+    agg_l1 = np.median(l1_ratios_per_fold)
+
+    print(f"Aggregated alpha: {agg_alpha:.6f} (median of {len(alphas_per_fold)} folds)")
+    print(f"Aggregated l1_ratio: {agg_l1:.3f}")
+    
+    # ---------------------------
+    # Apply same preprocessing as CV folds
+    # ---------------------------
+    X_train = X.copy()
+    y_train = y.copy()
+    
+    # Apply filtering
+    if filter_func_1 is not None:
+        selected_features_1 = filter_func_1(X_train, y_train, keep_vars=dont_filter_vars)
+        X_train = X_train[selected_features_1]
+    else:
+        selected_features_1 = list(X_train.columns)
+    
+    # Build preprocessing
+    if dont_scale_vars is not None:
+        scale_cols = [c for c in X_train.columns if c not in dont_scale_vars]
+        
+        transformers = []
+        if len(scale_cols) > 0:
+            transformers.append(("scale", StandardScaler(), scale_cols))
+        if len(dont_scale_vars) > 0:
+            transformers.append(("passthrough_encoded", "passthrough", dont_scale_vars))
+        
+        preproc = ColumnTransformer(transformers=transformers,
+                                        verbose_feature_names_out=False,
+                                        remainder="drop")
+        
+        preproc.fit(X_train)
+        feature_names = preproc.get_feature_names_out()
+    else:
+        preproc = StandardScaler()
+        preproc.fit(X_train)
+        feature_names = X_train.columns.values
+    
+    # Build penalty factor
+    penalty_factor = np.ones(len(feature_names), dtype=float)
+    if dont_penalize_vars is not None:
+        for i, fname in enumerate(feature_names):
+            if fname in dont_penalize_vars:
+                penalty_factor[i] = 0.0
+    
+    if np.all(penalty_factor == 0.0):
+        penalty_factor[:] = 1e-8
+    
+    # Build and fit final model
+    final_model = make_pipeline(
+        clone(preproc),
+        CoxnetSurvivalAnalysis(
+            alphas=[agg_alpha],
+            l1_ratio=agg_l1,
+            fit_baseline_model=True,
+            penalty_factor=penalty_factor
+        )
+    )
+    
+    final_model.fit(X_train, y_train)
+    print("Final model training complete!")
+    
+    # Extract features
+    coxnet = final_model.named_steps['coxnetsurvivalanalysis']
+    coefs = coxnet.coef_.flatten()
+    nonzero_mask = coefs != 0
+    model_features = np.array(feature_names)[nonzero_mask].tolist()
+    
+    print(f"Selected {len(model_features)}/{len(feature_names)} features\n")
+    
+    # ---------------------------
+    # Return in same structure as outer_models
+    # ---------------------------
+    return {
+        "fold": "final_aggregated",
+        "model": final_model,
+        "train_idx": np.arange(len(X)),
+        "test_idx": None,
+        "train_ids": X.index.values,
+        "test_ids": None,
+        "cv_results": {
+            'aggregated_alpha': agg_alpha,
+            'aggregated_l1_ratio': agg_l1,
+            'individual_alphas': alphas_per_fold,
+            'individual_l1_ratios': l1_ratios_per_fold
+        },
+        "features_after_filter1": selected_features_1,
+        "features_after_filter2": None,
+        "input_training_features": feature_names,
+        "features_in_model": model_features,
+        "error": None
+    }
+
+
+# ==============================================================================
+
 def print_selected_cpgs_counts_coxnet(outer_models):
     """
     Print the number and names of non-zero coefficient CpGs 
@@ -440,6 +587,4 @@ def print_selected_cpgs_counts_coxnet(outer_models):
         print(f"Fold {fold}: {len(selected_cpgs)} CpGs selected", flush=True)
         print(f"  CpGs: {selected_cpgs.tolist()}", flush=True)
         #print(f"Vanity check features_in_model: {len(features_in_model)}; features: {features_in_model}")
-
-
 
