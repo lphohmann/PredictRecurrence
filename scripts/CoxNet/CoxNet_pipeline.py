@@ -21,7 +21,7 @@ from sklearn.preprocessing import OneHotEncoder
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
 from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, variance_filter, subset_methylation, evaluate_outer_models, univariate_cox_filter
 from src.plotting_functions import plot_brier_scores, plot_auc_curves
-from src.coxnet_functions import run_nested_cv_coxnet, print_selected_cpgs_counts_coxnet, estimate_alpha_grid
+from src.coxnet_functions import run_nested_cv_coxnet, print_selected_cpgs_counts_coxnet, estimate_alpha_grid, train_final_aggregated_coxnet
 
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
@@ -111,6 +111,7 @@ outfile_brierplot = os.path.join(current_output_dir, "brier_scores.png")
 outfile_aucplot = os.path.join(current_output_dir, "auc_curves.png")
 outfile_bestfold = os.path.join(current_output_dir, "best_outer_fold.pkl")
 outfile_performance = os.path.join(current_output_dir, "outer_cv_performance.pkl")
+outfile_finalmodel = os.path.join(current_output_dir, "final_aggregated_model.pkl")
 
 # Logfile directly in the output directory
 logfile_path = os.path.join(current_output_dir, "pipeline_run.log")
@@ -279,7 +280,7 @@ outer_models = run_nested_cv_coxnet(X, y,
                              inner_cv_folds=INNER_CV_FOLDS, 
                              filter_func_1=filter_func_1,
                              dont_filter_vars=clinvars_included_encoded,
-                             dont_scale_vars=encoded_cols,
+                             dont_scale_vars=encoded_cols, # age , size get scaled
                              dont_penalize_vars=clinvars_included_encoded)
 
 joblib.dump(outer_models, outfile_outermodels)
@@ -310,6 +311,35 @@ best_outer_fold = select_best_model(model_performances, outer_models, metric)
 if best_outer_fold:
     joblib.dump(best_outer_fold, outfile_bestfold)
     log(f"Best model (fold {best_outer_fold['fold']}) saved to: {outfile_bestfold}")
+
+# ---------------------------
+# Train final aggregated model on full dataset
+
+final_model_result = train_final_aggregated_coxnet(
+    X, y, 
+    outer_models,
+    filter_func_1=filter_func_1,
+    dont_filter_vars=clinvars_included_encoded,
+    dont_scale_vars=encoded_cols,
+    dont_penalize_vars=clinvars_included_encoded
+)
+
+# Save the final model
+joblib.dump(final_model_result, outfile_finalmodel)
+log(f"Saved final aggregated model to: {outfile_finalmodel}")
+
+# Print summary
+log(f"\n=== Final Aggregated Model Summary ===")
+log(f"Aggregated alpha: {final_model_result['cv_results']['aggregated_alpha']:.6f}")
+log(f"Aggregated l1_ratio: {final_model_result['cv_results']['aggregated_l1_ratio']:.3f}")
+log(f"Features selected: {len(final_model_result['features_in_model'])}")
+log(f"Selected features: {final_model_result['features_in_model']}")
+
+# The final model can be used for predictions
+# final_model = final_model_result['model']
+# predictions = final_model.predict(new_patient_data)
+
+# ---------------------------
 
 end_time = time.time()
 log(f"Pipeline ended at: {time.ctime(end_time)}")

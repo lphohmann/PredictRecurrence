@@ -22,6 +22,7 @@ import warnings
 from sklearn.exceptions import FitFailedWarning
 import pickle
 import copy
+from sklearn.base import clone
 
 # ==============================================================================
 # FUNCTIONS
@@ -293,7 +294,7 @@ def run_nested_cv_coxnet(X, y, param_grid,
                     flush=True)
                 
             pipe = make_pipeline(
-                preproc,
+                clone(preproc),
                 estimator_cls(**estimator_kwargs)
                 #CoxnetSurvivalAnalysis(penalty_factor=penalty_factor)
             )
@@ -327,7 +328,7 @@ def run_nested_cv_coxnet(X, y, param_grid,
             alpha_to_use = best_alphas[0] if hasattr(best_alphas, "__len__") else best_alphas
 
             refit_pipe = make_pipeline(
-                preproc,  # reuse the exact preprocessing
+                clone(preproc),  # reuse the exact preprocessing
                 CoxnetSurvivalAnalysis(
                     alphas=[alpha_to_use],
                     l1_ratio=best_l1,
@@ -424,8 +425,6 @@ def train_final_aggregated_coxnet(X, y, outer_models,
         dict: Final model in same structure as outer_models entries.
     """
     
-    from sklearn.base import clone
-    
     print(f"\n=== Training final aggregated model on full dataset ===\n", flush=True)
     
     # ---------------------------
@@ -439,11 +438,8 @@ def train_final_aggregated_coxnet(X, y, outer_models,
             continue
         
         coxnet = fold_result['model'].named_steps['coxnetsurvivalanalysis']
-        
-        if hasattr(coxnet, 'alphas_') and len(coxnet.alphas_) > 0:
-            alpha = coxnet.alphas_[0] if len(coxnet.alphas_) == 1 else coxnet.alphas_[-1]
-            alphas_per_fold.append(alpha)
-            l1_ratios_per_fold.append(coxnet.l1_ratio)
+        alphas_per_fold.append(coxnet.alphas_[0])
+        l1_ratios_per_fold.append(coxnet.l1_ratio)
     
     if len(alphas_per_fold) == 0:
         raise ValueError("No successful folds to aggregate from!")
