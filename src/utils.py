@@ -269,7 +269,7 @@ def subset_methylation(mval_matrix,cpg_ids_file):
     return mval_matrix_filtered
 
 # ==============================================================================
-
+'''
 def evaluate_outer_models(outer_models, X, y, time_grid):
     """
     Evaluate performance of models from outer CV folds.
@@ -369,7 +369,225 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
         print(f"  Fold {fold} - C-index: {cindex:.3f}, Mean AUC: {mean_auc:.3f}, IBS: {ibs:.3f}", flush=True)
 
     return performance
+'''
+#NEW check differences to above
+def evaluate_outer_models(outer_models, X, y, time_grid):
+    """
+    Evaluate performance of models from outer CV folds.
+    For each fold, computes metrics at all time points where test set has coverage.
+    
+    Args:
+        outer_models (list): List of dicts with trained models and fold metadata.
+        X (pd.DataFrame): Feature matrix.
+        y (structured array): Survival outcome.
+        time_grid (np.ndarray): Desired time points to evaluate metrics (in years).
+    
+    Returns:
+        list of dicts: One dictionary per fold with performance metrics.
+    """
+    print("\n=== Evaluating outer models ===\n", flush=True)
+    print(f"Desired eval time grid: {time_grid}")
+    
+    performance = []
+    
+    for entry in outer_models:
+        fold = entry["fold"]
+        
+        if entry["model"] is None:
+            print(f"  Skipping fold {fold} (no model)", flush=True)
+            continue
+        
+        model = entry["model"]
+        test_idx = entry["test_idx"]
+        train_idx = entry["train_idx"]
+        
+        model_name = model.named_steps[list(model.named_steps.keys())[-1]].__class__.__name__
+        print(f"Evaluating fold {fold} ({model_name})...", flush=True)
+        
+        # Subset data
+        if entry.get("features_after_filter2") is not None:
+            features_to_use = entry["features_after_filter2"]
+        elif entry.get("features_after_filter1") is not None:
+            features_to_use = entry["features_after_filter1"]
+        else:
+            raise ValueError(f"Fold {fold}: No feature list found in entry.")
+        
+        X_test = X.iloc[test_idx][features_to_use]
+        y_train, y_test = y[train_idx], y[test_idx]
+        
+        # Get max follow-up time in test set
+        max_test_time = y_test['RFi_years'].max()
+        max_train_time = y_train['RFi_years'].max()
+        min_test_time = y_test['RFi_years'].min()
+        min_train_time = y_train['RFi_years'].min()
 
+        print(f"  Fold {fold} - test set time range: [{min_test_time:.3f}, {max_test_time:.3f}]", flush=True)
+        print(f"  Fold {fold} - train set time range: [{min_train_time:.3f}, {max_train_time:.3f}]", flush=True)
+        
+        # Determine which time points are feasible for this fold
+        # avoid boundary numerical errors
+        safe_min_time = min_test_time + 0.001
+        safe_max_time = max_test_time - 0.001
+
+        fold_time_grid = time_grid[(time_grid >= safe_min_time) & (time_grid < safe_max_time)]        
+        print(f"  Fold {fold} adapted time grid: {fold_time_grid}", flush=True)
+
+        # Log what we're evaluating
+        if len(fold_time_grid) < len(time_grid):
+            excluded_times = time_grid[time_grid > safe_max_time]
+            print(f"  Fold {fold}: Evaluating at {len(fold_time_grid)}/{len(time_grid)} time points (excluding {excluded_times})", flush=True)
+        else:
+            print(f"  Fold {fold}: Evaluating at all {len(time_grid)} time points", flush=True)
+        
+        # Predict risk scores and survival functions
+        pred_scores = model.predict(X_test)
+        surv_funcs = model.predict_survival_function(X_test)
+        preds = np.row_stack([[fn(t) for t in fold_time_grid] for fn in surv_funcs])
+        
+        # Compute time-dependent AUC
+        auc, mean_auc = cumulative_dynamic_auc(
+            y_train, y_test, pred_scores, times=fold_time_grid
+        )
+
+        # Handle NaN in AUC values - just use nanmean if some are NaN
+        if np.any(np.isnan(auc)):
+            mean_auc = np.nanmean(auc)  # Recalculate using only valid values
+            n_valid = (~np.isnan(auc)).sum()
+            # Find which time points had NaN
+            invalid_times = fold_time_grid[np.isnan(auc)]
+                
+            print(f"  Fold {fold}: {n_valid}/{len(auc)} time points had valid AUC. "
+                  f"Invalid at: {invalid_times} years", flush=True)
+            
+        # Compute C-index
+        cindex = concordance_index_censored(
+            y_test["RFi_event"],
+            y_test["RFi_years"],
+            pred_scores
+        )[0]
+        
+        # Compute Brier scores and IBS
+        brier_scores = brier_score(y_train, y_test, preds, fold_time_grid)[1]
+        ibs = integrated_brier_score(y_train, y_test, preds, fold_time_grid)
+        
+        # Create dictionaries mapping time -> metric
+        # Use NaN for time points not evaluated in this fold
+        auc_by_time = {t: np.nan for t in time_grid}
+        brier_by_time = {t: np.nan for t in time_grid}
+        
+        for i, t in enumerate(fold_time_grid):
+            auc_by_time[t] = auc[i]
+            brier_by_time[t] = brier_scores[i]
+        
+        performance.append({
+            "fold": fold,
+            "auc_by_time": auc_by_time,
+            "brier_by_time": brier_by_time,
+            "mean_auc": mean_auc,
+            "ibs": ibs,
+            "cindex": cindex,
+            "eval_times": fold_time_grid})
+        
+        print(f"  Fold {fold} - C-index: {cindex:.3f}, Mean AUC: {mean_auc:.3f}, IBS: {ibs:.3f}", flush=True)
+    
+    return performance
+
+
+def aggregate_performance(performance, time_grid):
+    """
+    Aggregate performance across folds.
+    For each time point, computes mean ± SEM across folds that had coverage.
+    
+    Args:
+        performance: List of performance dicts from evaluate_outer_models
+        time_grid: The time grid used for evaluation
+    
+    Returns:
+        dict with aggregated metrics including n_folds per time point
+    """
+    print("\n=== Aggregating Performance Across Folds ===\n")
+    
+    # C-index (always available)
+    cindices = [p['cindex'] for p in performance if not np.isnan(p['cindex'])]
+    
+    # Mean AUC (computed per fold)
+    mean_aucs = [p['mean_auc'] for p in performance if not np.isnan(p['mean_auc'])]
+    
+    # IBS
+    ibs_scores = [p['ibs'] for p in performance if not np.isnan(p['ibs'])]
+    
+    # Time-specific metrics
+    auc_by_time = {}
+    brier_by_time = {}
+    
+    for t in time_grid:
+        # Collect AUC values at this time point (excluding NaN)
+        auc_values = [p['auc_by_time'][t] for p in performance 
+                      if not np.isnan(p['auc_by_time'][t])]
+        
+        brier_values = [p['brier_by_time'][t] for p in performance 
+                        if not np.isnan(p['brier_by_time'][t])]
+        
+        auc_by_time[t] = {
+            'mean': np.mean(auc_values) if auc_values else np.nan,
+            'sem': np.std(auc_values) / np.sqrt(len(auc_values)) if len(auc_values) > 1 else np.nan,
+            'std': np.std(auc_values) if auc_values else np.nan,  # Keep SD too for reference
+            'n_folds': len(auc_values)
+        }
+        
+        brier_by_time[t] = {
+            'mean': np.mean(brier_values) if brier_values else np.nan,
+            'sem': np.std(brier_values) / np.sqrt(len(brier_values)) if len(brier_values) > 1 else np.nan,
+            'std': np.std(brier_values) if brier_values else np.nan,
+            'n_folds': len(brier_values)
+        }
+    
+    # store results
+    results = {
+        'cindex': {
+            'mean': np.mean(cindices),
+            'sem': np.std(cindices) / np.sqrt(len(cindices)) if len(cindices) > 1 else np.nan,
+            'std': np.std(cindices),
+            'n_folds': len(cindices)
+        },
+        'mean_auc': {
+            'mean': np.mean(mean_aucs),
+            'sem': np.std(mean_aucs) / np.sqrt(len(mean_aucs)) if len(mean_aucs) > 1 else np.nan,
+            'std': np.std(mean_aucs),
+            'n_folds': len(mean_aucs)
+        },
+        'ibs': {
+            'mean': np.mean(ibs_scores),
+            'sem': np.std(ibs_scores) / np.sqrt(len(ibs_scores)) if len(ibs_scores) > 1 else np.nan,
+            'std': np.std(ibs_scores),
+            'n_folds': len(ibs_scores)
+        },
+        'auc_by_time': auc_by_time,
+        'brier_by_time': brier_by_time
+    }
+    
+    # Print summary with SEM
+    print(f"C-index: {results['cindex']['mean']:.3f} ± {results['cindex']['sem']:.3f} (n={results['cindex']['n_folds']} folds)")
+    print(f"Mean AUC: {results['mean_auc']['mean']:.3f} ± {results['mean_auc']['sem']:.3f} (n={results['mean_auc']['n_folds']} folds)")
+    print(f"IBS: {results['ibs']['mean']:.3f} ± {results['ibs']['sem']:.3f} (n={results['ibs']['n_folds']} folds)")
+    
+    print("\nAUC by time point:")
+    for t in time_grid:
+        n = auc_by_time[t]['n_folds']
+        if n > 0:
+            print(f"  {t:.1f} years: {auc_by_time[t]['mean']:.3f} ± {auc_by_time[t]['sem']:.3f} (n={n} folds)")
+        else:
+            print(f"  {t:.1f} years: Not available (n=0 folds)")
+    
+    print("\nBrier Score by time point:")
+    for t in time_grid:
+        n = brier_by_time[t]['n_folds']
+        if n > 0:
+            print(f"  {t:.1f} years: {brier_by_time[t]['mean']:.3f} ± {brier_by_time[t]['sem']:.3f} (n={n} folds)")
+        else:
+            print(f"  {t:.1f} years: Not available (n=0 folds)")
+    
+    return results
 # ==============================================================================   
 
 def _fit_univar_cox(col_series, y_time, y_event):

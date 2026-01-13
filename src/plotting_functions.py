@@ -16,69 +16,208 @@ from src.utils import log
 # ==============================================================================
 # FUNCTIONS
 # ==============================================================================
-
-def plot_brier_scores(brier_array, ibs_array, folds, time_grid, outfile):
+def plot_brier_scores(performance, time_grid, outfile):
     """
     Plot time-dependent Brier scores for each fold and IBS per fold.
+    Handles folds with different time coverage gracefully.
+    
+    Args:
+        performance: List of dicts from evaluate_outer_models
+        time_grid: Array of time points
+        outfile: Path to save the plot
     """
     print("Plotting Brier scores...", flush=True)
-    plt.style.use('seaborn-whitegrid')
+    plt.style.use('seaborn-v0_8-whitegrid')  # Updated style name
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), 
-                                   gridspec_kw={'height_ratios': [3, 1]})
-    # Brier curves
-    for i, brier in enumerate(brier_array):
-        ax1.plot(time_grid, brier, label=f'Fold {folds[i]}', alpha=0.6)
-    ax1.plot(time_grid, np.mean(brier_array, axis=0), color='black', lw=3, 
-             label='Mean Brier Score')
-    ax1.set_title("Time-dependent Brier Score")
-    ax1.set_xlabel("Time")
-    ax1.set_ylabel("Brier Score")
-    ax1.legend(loc='upper right')
+                                    gridspec_kw={'height_ratios': [3, 1]})
+    
+    # Extract Brier scores and IBS for valid folds
+    valid_folds = []
+    brier_curves = []
+    ibs_values = []
+    fold_numbers = []
+    
+    for p in performance:
+        if p.get('brier_by_time') is not None and not np.isnan(p.get('ibs', np.nan)):
+            # Extract Brier scores at each time point
+            brier_at_times = [p['brier_by_time'][t] for t in time_grid]
+            
+            # Only include if this fold has at least some valid time points
+            if not all(np.isnan(brier_at_times)):
+                brier_curves.append(brier_at_times)
+                ibs_values.append(p['ibs'])
+                fold_numbers.append(p['fold'])
+                valid_folds.append(p)
+    
+    if len(valid_folds) == 0:
+        print("Warning: No valid folds to plot!", flush=True)
+        return
+    
+    brier_array = np.array(brier_curves)
+    
+    # Plot Brier curves for each fold
+    for i, fold_num in enumerate(fold_numbers):
+        # Only plot non-NaN values
+        valid_mask = ~np.isnan(brier_array[i])
+        if valid_mask.any():
+            ax1.plot(time_grid[valid_mask], brier_array[i][valid_mask], 
+                    label=f'Fold {fold_num}', alpha=0.6, marker='o', markersize=4)
+    
+    # Calculate and plot mean Brier score (using nanmean to handle missing values)
+    mean_brier = np.nanmean(brier_array, axis=0)
+    valid_mean_mask = ~np.isnan(mean_brier)
+    ax1.plot(time_grid[valid_mean_mask], mean_brier[valid_mean_mask], 
+            color='black', lw=3, label='Mean Brier Score', marker='s', markersize=6)
+    
+    ax1.set_title("Time-dependent Brier Score", fontsize=14)
+    ax1.set_xlabel("Time (years)", fontsize=12)
+    ax1.set_ylabel("Brier Score", fontsize=12)
+    ax1.legend(loc='best')
     ax1.set_ylim(0, 0.5)
-
+    ax1.grid(True, alpha=0.3)
+    
     # IBS bar chart
-    colors = plt.cm.Paired(np.linspace(0, 1, len(folds)))
-    bars = ax2.bar(folds, ibs_array, color=colors, edgecolor='black', alpha=0.85)
-    ax2.set_title("Integrated Brier Score (IBS) per Fold")
-    ax2.set_xlabel("Fold")
-    ax2.set_ylabel("IBS")
-    ax2.set_ylim(0, max(ibs_array) * 1.1 if len(ibs_array) else 1)
+    colors = plt.cm.Paired(np.linspace(0, 1, len(fold_numbers)))
+    bars = ax2.bar(fold_numbers, ibs_values, color=colors, edgecolor='black', alpha=0.85)
+    ax2.set_title("Integrated Brier Score (IBS) per Fold", fontsize=14)
+    ax2.set_xlabel("Fold", fontsize=12)
+    ax2.set_ylabel("IBS", fontsize=12)
+    ax2.set_ylim(0, max(ibs_values) * 1.1 if ibs_values else 1)
+    ax2.set_xticks(fold_numbers)
+    
+    # Add value labels on bars
     for bar in bars:
         yval = bar.get_height()
-        ax2.text(bar.get_x() + bar.get_width() / 2.0, yval + 0.005, f'{yval:.3f}', ha='center')
-
+        ax2.text(bar.get_x() + bar.get_width() / 2.0, yval + 0.005, 
+                f'{yval:.3f}', ha='center', va='bottom', fontsize=10)
+    
     plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
+    plt.savefig(outfile, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"Saved Brier plot to {outfile}", flush=True)
 
-# ==============================================================================
 
 def plot_auc_curves(performance, time_grid, outfile):
     """
     Plot time-dependent AUC(t) curves for all folds and their mean.
+    Handles folds with different time coverage gracefully.
+    
+    Args:
+        performance: List of dicts from evaluate_outer_models
+        time_grid: Array of time points
+        outfile: Path to save the plot
     """
     print("Plotting time-dependent AUC curves...", flush=True)
-    plt.style.use('seaborn-whitegrid')
+    plt.style.use('seaborn-v0_8-whitegrid')  # Updated style name
     plt.figure(figsize=(10, 6))
-
-    # Plot each fold's AUC curve
+    
+    # Extract AUC curves for valid folds
+    valid_folds = []
+    auc_curves = []
+    fold_numbers = []
+    
     for p in performance:
-        plt.plot(time_grid, p["auc"], label=f'Fold {p["fold"]}', alpha=0.5)
-    # Mean AUC curve
-    mean_auc_curve = np.mean([p["auc"] for p in performance], axis=0)
-    plt.plot(time_grid, mean_auc_curve, color='black', lw=2.5, label='Mean AUC')
-    plt.title("Time-dependent AUC(t) per Fold")
-    plt.xlabel("Time")
-    plt.ylabel("AUC(t)")
-    plt.ylim(0, 1)
-    plt.legend(loc='lower right')
+        if p.get('auc_by_time') is not None:
+            # Extract AUC scores at each time point
+            auc_at_times = [p['auc_by_time'][t] for t in time_grid]
+            
+            # Only include if this fold has at least some valid time points
+            if not all(np.isnan(auc_at_times)):
+                auc_curves.append(auc_at_times)
+                fold_numbers.append(p['fold'])
+                valid_folds.append(p)
+    
+    if len(valid_folds) == 0:
+        print("Warning: No valid folds to plot!", flush=True)
+        return
+    
+    auc_array = np.array(auc_curves)
+    
+    # Plot each fold's AUC curve
+    for i, fold_num in enumerate(fold_numbers):
+        # Only plot non-NaN values
+        valid_mask = ~np.isnan(auc_array[i])
+        if valid_mask.any():
+            plt.plot(time_grid[valid_mask], auc_array[i][valid_mask], 
+                    label=f'Fold {fold_num}', alpha=0.5, marker='o', markersize=4)
+    
+    # Calculate and plot mean AUC curve (using nanmean to handle missing values)
+    mean_auc_curve = np.nanmean(auc_array, axis=0)
+    valid_mean_mask = ~np.isnan(mean_auc_curve)
+    plt.plot(time_grid[valid_mean_mask], mean_auc_curve[valid_mean_mask], 
+            color='black', lw=2.5, label='Mean AUC', marker='s', markersize=6)
+    
+    plt.title("Time-dependent AUC(t) per Fold", fontsize=14)
+    plt.xlabel("Time (years)", fontsize=12)
+    plt.ylabel("AUC(t)", fontsize=12)
+    plt.ylim(0.5, 1.0)  # AUC range
+    plt.legend(loc='best')
+    plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig(outfile, dpi=300)
+    plt.savefig(outfile, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"Saved AUC plot to {outfile}", flush=True)
 
-
+def plot_auc_with_sem(performance, time_grid, outfile):
+    """
+    Plot mean AUC curve with SEM error bands.
+    
+    Args:
+        performance: List of dicts from evaluate_outer_models
+        time_grid: Array of time points
+        outfile: Path to save the plot
+    """
+    print("Plotting AUC with SEM bands...", flush=True)
+    plt.style.use('seaborn-v0_8-whitegrid')
+    plt.figure(figsize=(10, 6))
+    
+    # Collect AUC values at each time point
+    auc_at_each_time = {t: [] for t in time_grid}
+    
+    for p in performance:
+        if p.get('auc_by_time') is not None:
+            for t in time_grid:
+                if not np.isnan(p['auc_by_time'][t]):
+                    auc_at_each_time[t].append(p['auc_by_time'][t])
+    
+    # Calculate mean and SEM at each time point
+    means = []
+    sems = []
+    valid_times = []
+    n_folds = []
+    
+    for t in time_grid:
+        values = auc_at_each_time[t]
+        if len(values) > 0:
+            means.append(np.mean(values))
+            sems.append(np.std(values) / np.sqrt(len(values)) if len(values) > 1 else 0)
+            valid_times.append(t)
+            n_folds.append(len(values))
+    
+    means = np.array(means)
+    sems = np.array(sems)
+    valid_times = np.array(valid_times)
+    
+    # Plot mean with error band
+    plt.plot(valid_times, means, color='blue', lw=2.5, label='Mean AUC')
+    plt.fill_between(valid_times, means - sems, means + sems, 
+                     alpha=0.3, color='blue', label='±1 SEM')
+    
+    # Add markers showing number of folds at each time point
+    for i, (t, n) in enumerate(zip(valid_times, n_folds)):
+        plt.text(t, means[i] + sems[i] + 0.02, f'n={n}', 
+                ha='center', va='bottom', fontsize=8, color='gray')
+    
+    plt.title("Time-dependent AUC with Standard Error", fontsize=14)
+    plt.xlabel("Time (years)", fontsize=12)
+    plt.ylabel("AUC(t)", fontsize=12)
+    plt.ylim(0.5, 1.0)
+    plt.legend(loc='best')
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(outfile, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Saved AUC plot with SEM to {outfile}", flush=True)
 
 # ==============================================================================
 

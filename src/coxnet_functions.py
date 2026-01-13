@@ -540,6 +540,237 @@ def train_final_aggregated_coxnet(X, y, outer_models,
         "error": None
     }
 
+def train_final_coxnet_model(X_train, y_train, param_grid, 
+                             filter_func_1=None, filter_func_2=None,
+                             dont_filter_vars=None, dont_scale_vars=None,
+                             dont_penalize_vars=None):
+    """
+    Train final CoxNet model on full training data using inner CV for hyperparameter selection.
+    Uses the same preprocessing pipeline as nested CV.
+    
+    Args:
+        X_train: Feature matrix
+        y_train: Structured array with survival outcome
+        param_grid: Hyperparameter grid for CoxNet (list of dicts)
+        filter_func_1: First feature filtering function
+        filter_func_2: Second feature filtering function
+        dont_filter_vars: Variables to keep regardless of filtering
+        dont_scale_vars: Variables to not scale (e.g., dummy encoded)
+        dont_penalize_vars: Variables to not penalize in CoxNet
+    
+    Returns:
+        dict: Final model in same structure as outer_models entries
+    """
+    from sksurv.linear_model import CoxnetSurvivalAnalysis
+    from sklearn.model_selection import StratifiedKFold, GridSearchCV
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import make_pipeline
+    from sklearn.base import clone
+    import copy
+    
+    print("\n=== Training Final COXNET Model on Full Training Data ===\n", flush=True)
+    
+    # Initialize variables
+    preproc = None
+    selected_features_1 = None
+    selected_features_2 = None
+    feature_names = None
+    
+    # ---------------------------
+    # Apply same filtering as during nested CV
+    # ---------------------------
+    X_filtered = X_train.copy()
+    
+    if filter_func_1 is not None:
+        selected_features_1 = filter_func_1(X_filtered, y_train, keep_vars=dont_filter_vars)
+        X_filtered = X_filtered[selected_features_1]
+        print(f"After filter 1: {X_filtered.shape[1]} features", flush=True)
+    else:
+        selected_features_1 = list(X_filtered.columns)
+        X_filtered = X_filtered[selected_features_1]
+    
+    if filter_func_2 is not None:
+        selected_features_2 = filter_func_2(X_filtered, y_train, keep_vars=dont_filter_vars)
+        X_filtered = X_filtered[selected_features_2]
+        print(f"After filter 2: {X_filtered.shape[1]} features", flush=True)
+    
+    # ---------------------------
+    # Build preprocessing (same as nested CV)
+    # ---------------------------
+    if dont_scale_vars is not None:
+        print("Not scaling specified variables.", flush=True)
+        
+        scale_cols = [c for c in X_filtered.columns if c not in dont_scale_vars]
+        
+        transformers = []
+        if len(scale_cols) > 0:
+            transformers.append(("scale", StandardScaler(), scale_cols))
+        if len(dont_scale_vars) > 0:
+            transformers.append(("passthrough_encoded", "passthrough", dont_scale_vars))
+        
+        preproc = ColumnTransformer(
+            transformers=transformers,
+            verbose_feature_names_out=False,
+            remainder="drop"
+        )
+        
+        # Get feature order after transformation
+        preproc.fit(X_filtered)
+        feature_names = preproc.get_feature_names_out()
+    else:
+        # All features scaled
+        preproc = StandardScaler()
+        preproc.fit(X_filtered)
+        feature_names = X_filtered.columns.values
+    
+    # ---------------------------
+    # Build penalty factor vector
+    # ---------------------------
+    penalty_factor = np.ones(len(feature_names), dtype=float)
+    if dont_penalize_vars is not None:
+        matched_features = []
+        for i, fname in enumerate(feature_names):
+            if fname in dont_penalize_vars:
+                penalty_factor[i] = 0.0
+                matched_features.append(fname)
+        
+        # Verify all dont_penalize_vars were found
+        unmatched = set(dont_penalize_vars) - set(matched_features)
+        if unmatched:
+            print(f"WARNING: These dont_penalize_vars were not found in transformed features: {unmatched}")
+            print(f"Available feature names after transformation: {list(feature_names)[:10]}...")
+    
+    # ---------------------------
+    # Handle all-unpenalized case
+    # ---------------------------
+    if np.all(penalty_factor == 0.0):
+        penalty_factor[:] = 1e-8
+        print("All features unpenalized -> using near-unpenalized Coxnet.", flush=True)
+        
+        estimator_cls = CoxnetSurvivalAnalysis
+        estimator_kwargs = {
+            "penalty_factor": penalty_factor,
+            "fit_baseline_model": True
+        }
+        
+        # Modify param_grid for this special case
+        param_grid_fold = copy.deepcopy(param_grid)
+        for pdict in param_grid_fold:
+            pdict["estimator__coxnetsurvivalanalysis__l1_ratio"] = [0.001]
+            pdict["estimator__coxnetsurvivalanalysis__alphas"] = [[1e-6]]
+    else:
+        estimator_cls = CoxnetSurvivalAnalysis
+        estimator_kwargs = {
+            "penalty_factor": penalty_factor,
+            "fit_baseline_model": True
+        }
+        param_grid_fold = param_grid
+    
+    # ---------------------------
+    # Create inner CV splits (stratified on events)
+    # ---------------------------
+    train_events = y_train["RFi_event"]
+    
+    inner_cv_splits = list(StratifiedKFold(
+        n_splits=5,
+        shuffle=True,
+        random_state=96
+    ).split(X_filtered, train_events))
+    
+    print(f"Created {len(inner_cv_splits)} stratified inner CV folds for hyperparameter tuning", flush=True)
+    
+    # Print event distribution for each inner fold
+    for inner_fold_idx, (inner_train_idx, inner_val_idx) in enumerate(inner_cv_splits):
+        inner_train_events = train_events[inner_train_idx].sum()
+        inner_val_events = train_events[inner_val_idx].sum()
+        
+        print(f"  Inner fold {inner_fold_idx}: "
+              f"Train={inner_train_events} events, "
+              f"Val={inner_val_events} events", 
+              flush=True)
+    
+    # ---------------------------
+    # Build pipeline for hyperparameter search
+    # ---------------------------
+    pipe = make_pipeline(
+        clone(preproc),
+        estimator_cls(**estimator_kwargs)
+    )
+    
+    # Wrap with scorer for inner CV
+    scorer_pipe = as_concordance_index_ipcw_scorer(pipe)
+    
+    # ---------------------------
+    # Hyperparameter search (using GridSearchCV like your nested CV)
+    # ---------------------------
+    inner_model = GridSearchCV(
+        scorer_pipe,
+        param_grid=param_grid_fold,
+        cv=inner_cv_splits,
+        error_score=0.5,
+        n_jobs=-1,
+        refit=True,
+        verbose=1
+    )
+    
+    print("\nStarting hyperparameter search...", flush=True)
+    inner_model.fit(X_filtered, y_train)
+    
+    best_params = inner_model.best_params_
+    print(f"\n{'='*60}")
+    print(f"Best params: {best_params}")
+    print(f"Best CV C-index: {inner_model.best_score_:.3f}")
+    print(f"{'='*60}\n", flush=True)
+    
+    # ---------------------------
+    # Refit final pipeline (same logic as your nested CV)
+    # ---------------------------
+    best_alphas = best_params["estimator__coxnetsurvivalanalysis__alphas"]
+    best_l1 = best_params["estimator__coxnetsurvivalanalysis__l1_ratio"]
+    alpha_to_use = best_alphas[0] if hasattr(best_alphas, "__len__") else best_alphas
+    
+    refit_pipe = make_pipeline(
+        clone(preproc),
+        CoxnetSurvivalAnalysis(
+            alphas=[alpha_to_use],
+            l1_ratio=best_l1,
+            fit_baseline_model=True,
+            penalty_factor=penalty_factor
+        )
+    )
+    
+    print("Training final model with best hyperparameters...", flush=True)
+    refit_pipe.fit(X_filtered, y_train)
+    
+    # ---------------------------
+    # Extract selected features (non-zero coefficients)
+    # ---------------------------
+    coxnet = refit_pipe.named_steps["coxnetsurvivalanalysis"]
+    coefs = coxnet.coef_.flatten()
+    nonzero_mask = coefs != 0
+    model_features = np.array(feature_names)[nonzero_mask].tolist()
+    
+    print(f" Final CoxNet model trained on {len(X_filtered)} samples")
+    print(f" Selected {len(model_features)}/{len(feature_names)} features (non-zero coefficients)\n", flush=True)
+    
+    # ---------------------------
+    # Return in same structure as outer_models
+    # ---------------------------
+    return {
+        "fold": "final",
+        "model": refit_pipe,
+        "train_idx": np.arange(len(X_train)),
+        "test_idx": None,
+        "train_ids": X_train.index.values,
+        "test_ids": None,
+        "cv_results": inner_model.cv_results_,
+        "features_after_filter1": selected_features_1,
+        "features_after_filter2": selected_features_2,
+        "input_training_features": feature_names.tolist(),
+        "features_in_model": model_features,
+        "error": None
+    }
 
 # ==============================================================================
 
