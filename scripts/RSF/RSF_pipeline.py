@@ -20,9 +20,9 @@ from scipy.stats import randint
 
 # Add project src directory to path for imports (adjust as needed)
 sys.path.append("/Users/le7524ho/PhD_Workspace/PredictRecurrence/src/")
-from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, evaluate_outer_models, variance_filter, subset_methylation,univariate_cox_filter
-from src.plotting_functions import plot_brier_scores, plot_auc_curves
-from src.rsf_functions import run_nested_cv_rsf
+from src.utils import log, load_training_data, beta2m, apply_admin_censoring, summarize_outer_models, summarize_performance,select_best_model, evaluate_outer_models, variance_filter, subset_methylation,univariate_cox_filter, aggregate_performance
+from src.plotting_functions import plot_brier_scores, plot_auc_curves, plot_auc_with_sem
+from src.rsf_functions import run_nested_cv_rsf, train_final_rsf_model
 
 # Set working directory
 os.chdir(os.path.expanduser("~/PhD_Workspace/PredictRecurrence/"))
@@ -36,14 +36,12 @@ METHYLATION_DATA_PATHS = {
     "adjusted": "./data/train/train_methylation_adjusted.csv",
     "unadjusted": "./data/train/train_methylation_unadjusted.csv"
 }
-
 # Mapping of cohort names to their training IDs file paths
 COHORT_TRAIN_IDS_PATHS = {
     "TNBC": "./data/train/train_subcohorts/TNBC_train_ids.csv",
     "ERpHER2n": "./data/train/train_subcohorts/ERpHER2n_train_ids.csv",
     "All": "./data/train/train_subcohorts/All_train_ids.csv"
 }
-
 # Common clinical data file path
 INFILE_CLINICAL = "./data/train/train_clinical.csv"
 
@@ -110,8 +108,10 @@ infile_cpg_ids = args.train_cpgs
 outfile_outermodels = os.path.join(current_output_dir, "outer_cv_models.pkl")
 outfile_brierplot = os.path.join(current_output_dir, "brier_scores.png")
 outfile_aucplot = os.path.join(current_output_dir, "auc_curves.png")
+outfile_auc_semplot = os.path.join(current_output_dir, "auc_sem_curves.png")
 outfile_bestfold = os.path.join(current_output_dir, "best_outer_fold.pkl")
 outfile_performance = os.path.join(current_output_dir, "outer_cv_performance.pkl")
+outfile_finalmodel = os.path.join(current_output_dir, "final_model.pkl")
 
 # Logfile directly in the output directory
 logfile_path = os.path.join(current_output_dir, "pipeline_run.log")
@@ -124,17 +124,19 @@ sys.stderr = logfile
 # ==============================================================================
 
 # Data preprocessing parameters
-INNER_CV_FOLDS = 2#5#3#5
-OUTER_CV_FOLDS = 2#10#2#5#10
+INNER_CV_FOLDS = 3
+OUTER_CV_FOLDS = 5
 
+# time grid
 if args.cohort_name == "TNBC":
     # ensure censoring cutoff > max evaluation time!
-    ADMIN_CENSORING_CUTOFF = 5.5
-    EVAL_TIME_GRID = np.arange(2, 5.1, 1)  # time points for metrics
+    ADMIN_CENSORING_CUTOFF = 5.01
+    EVAL_TIME_GRID = np.array([1.0, 3.0, 5.0])
 else:
     ADMIN_CENSORING_CUTOFF = None
-    EVAL_TIME_GRID = np.arange(2, 9.1, 1)  # time points for metrics
+    EVAL_TIME_GRID = np.array([1.0, 3.0, 5.0, 10.0])
 
+# clinvars
 if args.data_mode in ["clinical", "combined"]:
     CLINVARS_INCLUDED = ["Age", "Size.mm", "NHG", "LN"]
     CLIN_CATEGORICAL = ["NHG", "LN"]
@@ -142,6 +144,7 @@ else:
     CLINVARS_INCLUDED = None
     CLIN_CATEGORICAL = None
 
+# filter top n
 if args.data_mode in ["methylation", "combined"]:
     FILTER_1_N = 500#10000
     FILTER_2_N = 250#1000
@@ -163,6 +166,8 @@ log(f"Filtered CpG set data file: {infile_cpg_ids}")
 log(f"Output directory: {current_output_dir}")
 log(f"Training features mode: {args.data_mode}")
 
+# ==============================================================================
+
 # Load and preprocess data
 train_ids = pd.read_csv(infile_train_ids, header=None).iloc[:, 0].tolist()
 beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, infile_clinical)
@@ -170,13 +175,19 @@ beta_matrix, clinical_data = load_training_data(train_ids, infile_betavalues, in
 # convert to M-values
 mvals = beta2m(beta_matrix, beta_threshold=0.001)
 
+# ==============================================================================
+
 # apply censoring at 5 years for tnbc only
 if ADMIN_CENSORING_CUTOFF is not None: 
     clinical_data = apply_admin_censoring(clinical_data, "RFi_years", "RFi_event", time_cutoff=ADMIN_CENSORING_CUTOFF, inplace=False)
 
+# ==============================================================================
+
 # Subset to only include prefiltered CpGs if infile is provided
 if infile_cpg_ids is not None:
     mvals = subset_methylation(mvals,infile_cpg_ids)
+
+# ==============================================================================
 
 X = mvals.copy()
 
@@ -203,20 +214,22 @@ else:
     encoded_cols = None
     log("No clinical variables added (CLINVARS_INCLUDED=None).")
 
-# outcome-agnostic variance prefilter
-#selected_cpgs = variance_filter(X, top_n=FILTER_1_N,keep_vars=clinvars_included_encoded)
-#X = X[selected_cpgs].copy()
-#log(f"Applied variance prefilter. New X shape: {X.shape}")
+# ==============================================================================
 
 # Prepare survival labels (Surv object with event & time)
 y = Surv.from_dataframe("RFi_event", "RFi_years", clinical_data)
-    
+
+# ==============================================================================
+
 log(f"dont_filter_vars: {clinvars_included_encoded}")
 log(f"dont_scale_vars: {encoded_cols}")
+log(f"dont_penalize_vars: {clinvars_included_encoded}")
 
 # set filter func
 filter_func_1 = lambda X, y=None, **kwargs: variance_filter(X, y=y, top_n=FILTER_1_N, exclude_top_perc=0.5, **kwargs)
 filter_func_2 = lambda X, y=None, **kwargs: univariate_cox_filter(X, y=y, top_n=FILTER_2_N, **kwargs)
+
+# ==============================================================================
 
 param_grid = {
     # 1. Feature Subsampling (Aggressive)
@@ -236,6 +249,8 @@ param_grid = {
 }
 print(f"\nDefined parameter grid:\n{param_grid}\n", flush=True)
 
+# ==============================================================================
+
 # Run nested cross-validation
 outer_models = run_nested_cv_rsf(X, y,
                              param_grid=param_grid, 
@@ -250,26 +265,56 @@ outer_models = run_nested_cv_rsf(X, y,
 joblib.dump(outer_models, outfile_outermodels)
 log(f"Saved outer CV models to: {outfile_outermodels}")
 
+# ==============================================================================
+
 # evaluate performance
 model_performances = evaluate_outer_models(outer_models, X, y, EVAL_TIME_GRID)
-joblib.dump(model_performances, outfile_performance)
+
+# aggregate results
+aggregated_results = aggregate_performance(model_performances, EVAL_TIME_GRID)
+
+# save results for later analysis
+results_to_save = {
+    'performance': model_performances,     # Per-fold performance
+    'aggregated': aggregated_results,  # Mean ± SEM across folds
+    'time_grid': EVAL_TIME_GRID
+}
+
+joblib.dump(results_to_save, outfile_performance)
 print(f"Saved model performances to: {outfile_performance}")
 
 # Plot performance metrics
-folds = [p["fold"] for p in model_performances]
-brier_array = np.array([p["brier_t"] for p in model_performances])
-ibs_array = np.array([p["ibs"] for p in model_performances])
-plot_brier_scores(brier_array, ibs_array, folds, EVAL_TIME_GRID, outfile_brierplot)
 plot_auc_curves(model_performances, EVAL_TIME_GRID, outfile_aucplot)
-summarize_outer_models(outer_models)
-summarize_performance(model_performances)
+plot_brier_scores(model_performances, EVAL_TIME_GRID, outfile_brierplot)
+plot_auc_with_sem(model_performances, EVAL_TIME_GRID, outfile_auc_semplot)
+
+# ==============================================================================
 
 # Select and save the best model (by chosen metric)
-metric = "mean_auc"  # could be "ibs" or "auc_at_5y"
-best_outer_fold = select_best_model(model_performances, outer_models, metric)
-if best_outer_fold:
-    joblib.dump(best_outer_fold, outfile_bestfold)
-    log(f"Best model (fold {best_outer_fold['fold']}) saved to: {outfile_bestfold}")
+#metric = "mean_auc"  # could be "ibs" or "auc_at_5y"
+#best_outer_fold = select_best_model(model_performances, outer_models, metric)
+#if best_outer_fold:
+#    joblib.dump(best_outer_fold, outfile_bestfold)
+#    log(f"Best model (fold {best_outer_fold['fold']}) saved to: {outfile_bestfold}")
+
+# ==============================================================================
+
+# Train final aggregated model on full dataset
+final_model_result = train_final_rsf_model(
+    X, y,
+    param_grid=param_grid,
+    filter_func_1=filter_func_1,
+    filter_func_2=filter_func_2,
+    dont_filter_vars=clinvars_included_encoded,
+    dont_scale_vars=encoded_cols
+)
+
+print(f"Best CV C-index of Final model: {final_model_result['cv_results']['mean_test_score'].max():.3f}")
+# Save the final model
+joblib.dump(final_model_result, outfile_finalmodel)
+log(f"Saved final model to: {outfile_finalmodel}")
+
+# ==============================================================================
 
 end_time = time.time()
 log(f"Pipeline ended at: {time.ctime(end_time)}")

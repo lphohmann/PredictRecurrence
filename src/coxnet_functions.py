@@ -7,20 +7,15 @@
 # ==============================================================================
 
 import numpy as np
-import math
-from sklearn.model_selection import GridSearchCV, KFold, StratifiedKFold
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.pipeline import make_pipeline
-from sksurv.linear_model import CoxnetSurvivalAnalysis, CoxPHSurvivalAnalysis
-from sksurv.metrics import cumulative_dynamic_auc, concordance_index_censored, brier_score, integrated_brier_score
-import matplotlib.pyplot as plt
+from sksurv.linear_model import CoxnetSurvivalAnalysis
 from sksurv.metrics import as_concordance_index_ipcw_scorer
-from sklearn.preprocessing import RobustScaler, StandardScaler, OneHotEncoder
-from src.utils import variance_filter #, estimate_alpha_grid
+from sklearn.preprocessing import StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import make_pipeline
 import warnings
 from sklearn.exceptions import FitFailedWarning
-import pickle
 import copy
 from sklearn.base import clone
 
@@ -402,7 +397,6 @@ def run_nested_cv_coxnet(X, y, param_grid,
 
 # ==============================================================================
 
-
 def train_final_aggregated_coxnet(X, y, outer_models, 
                                   filter_func_1=None,
                                   dont_filter_vars=None, 
@@ -539,6 +533,8 @@ def train_final_aggregated_coxnet(X, y, outer_models,
         "features_in_model": model_features,
         "error": None
     }
+
+# ==============================================================================
 
 def train_final_coxnet_model(X_train, y_train, param_grid, 
                              filter_func_1=None, filter_func_2=None,
@@ -814,4 +810,3 @@ def print_selected_cpgs_counts_coxnet(outer_models):
         print(f"Fold {fold}: {len(selected_cpgs)} CpGs selected", flush=True)
         print(f"  CpGs: {selected_cpgs.tolist()}", flush=True)
         #print(f"Vanity check features_in_model: {len(features_in_model)}; features: {features_in_model}")
-

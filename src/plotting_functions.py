@@ -150,7 +150,7 @@ def plot_auc_curves(performance, time_grid, outfile):
     plt.title("Time-dependent AUC(t) per Fold", fontsize=14)
     plt.xlabel("Time (years)", fontsize=12)
     plt.ylabel("AUC(t)", fontsize=12)
-    plt.ylim(0.5, 1.0)  # AUC range
+    plt.ylim(0, 1.0)  # AUC range
     plt.legend(loc='best')
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
@@ -211,7 +211,7 @@ def plot_auc_with_sem(performance, time_grid, outfile):
     plt.title("Time-dependent AUC with Standard Error", fontsize=14)
     plt.xlabel("Time (years)", fontsize=12)
     plt.ylabel("AUC(t)", fontsize=12)
-    plt.ylim(0.5, 1.0)
+    plt.ylim(0, 1.0)
     plt.legend(loc='best')
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
