@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 import os
 import math
-from sksurv.metrics import cumulative_dynamic_auc, concordance_index_censored, brier_score, integrated_brier_score
+from sksurv.metrics import cumulative_dynamic_auc, concordance_index_censored, brier_score, integrated_brier_score, concordance_index_ipcw
 from lifelines import CoxPHFitter
 from joblib import Parallel, delayed
 import warnings
@@ -269,108 +269,7 @@ def subset_methylation(mval_matrix,cpg_ids_file):
     return mval_matrix_filtered
 
 # ==============================================================================
-'''
-def evaluate_outer_models(outer_models, X, y, time_grid):
-    """
-    Evaluate performance of models from outer CV folds.
 
-    For each fold, computes:
-    - AUC(t) over the specified time grid
-    - Mean AUC
-    - AUC at 5 years
-    - Brier score at each time point
-    - Integrated Brier Score (IBS)
-    - Concordance index (C-index)
-
-    Skips folds where the model is missing or linear predictor values indicate overflow risk.
-
-    Args:
-        outer_models (list): List of dicts with trained models and fold metadata.
-        X (pd.DataFrame): Feature matrix.
-        y (structured array): Survival outcome.
-        time_grid (np.ndarray): Time points to evaluate metrics.
-
-    Returns:
-        list of dicts: One dictionary per fold with performance metrics.
-    """
-
-    print("\n=== Evaluating outer models ===\n", flush=True)
-    print(f"Eval time grid: {time_grid}")
-    performance = []
-
-    for entry in outer_models:
-        fold = entry["fold"]
-        
-        if entry["model"] is None:
-            print(f"  Skipping fold {fold} (no model)", flush=True)
-            continue
-
-        model = entry["model"]
-        test_idx = entry["test_idx"]
-        train_idx = entry["train_idx"]
-
-        model_name = model.named_steps[list(model.named_steps.keys())[-1]].__class__.__name__
-        print(f"Evaluating fold {fold} ({model_name})...", flush=True)
-
-        # Subset data
-        # Use filter2 if available, otherwise filter1, otherwise all columns
-        # Use the most refined feature set available
-        if entry.get("features_after_filter2") is not None:
-            features_to_use = entry["features_after_filter2"]
-        elif entry.get("features_after_filter1") is not None:
-            features_to_use = entry["features_after_filter1"]
-        else:
-            # This should never happen if training function works correctly
-            raise ValueError(f"Fold {fold}: No feature list found in entry. "
-                     "Check that training function stores 'features_after_filter1'.")
-
-        X_test = X.iloc[test_idx][features_to_use]
-        y_train, y_test = y[train_idx], y[test_idx]
-
-        print(f"  Fold {fold} - test set min time: {y_test['RFi_years'].min():.3f}, max time: {y_test['RFi_years'].max():.3f}", flush=True)
-        print(f"  Fold {fold} - train set min time: {y_train['RFi_years'].min():.3f}, max time: {y_train['RFi_years'].max():.3f}", flush=True)
-
-        # Compute linear predictor and check for overflow
-        #coefs = model.named_steps["coxnetsurvivalanalysis"].coef_
-        #linear_pred = X_test @ coefs
-        #if linear_pred.max().item() > 700 or linear_pred.min().item() < -700:
-        #    print(f"  ⚠️ Fold {fold} skipped due to overflow risk.", flush=True)
-        #    continue
-
-        # Predict risk scores and survival functions
-        pred_scores = model.predict(X_test)
-        surv_funcs = model.predict_survival_function(X_test)
-        preds = np.row_stack([[fn(t) for t in time_grid] for fn in surv_funcs])
-        
-        # Compute time-dependent AUC
-        auc, mean_auc = cumulative_dynamic_auc(y_train, y_test, pred_scores, times=time_grid)
-        
-        # Compute C-index
-        cindex = concordance_index_censored(
-            y_test["RFi_event"], 
-            y_test["RFi_years"], 
-            pred_scores
-        )[0]
-
-        # Compute Brier scores and IBS
-        brier_scores = brier_score(y_train, y_test, preds, time_grid)[1]
-        ibs = integrated_brier_score(y_train, y_test, preds, time_grid)
-
-        performance.append({
-            "fold": fold,
-            "auc": auc,
-            "mean_auc": mean_auc,
-            #"auc_at_5y": auc[np.where(time_grid == 5.0)[0][0]] if 5.0 in time_grid else None,
-            "brier_t": brier_scores,
-            "ibs": ibs,
-            "cindex": cindex
-        })
-
-        print(f"  Fold {fold} - C-index: {cindex:.3f}, Mean AUC: {mean_auc:.3f}, IBS: {ibs:.3f}", flush=True)
-
-    return performance
-'''
-#NEW check differences to above
 def evaluate_outer_models(outer_models, X, y, time_grid):
     """
     Evaluate performance of models from outer CV folds.
@@ -460,7 +359,7 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
                   f"Invalid at: {invalid_times} years", flush=True)
             
         # Compute C-index
-        cindex = concordance_index_censored(
+        cindex = concordance_index_ipcw(#concordance_index_censored(
             y_test["RFi_event"],
             y_test["RFi_years"],
             pred_scores
@@ -492,6 +391,7 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
     
     return performance
 
+# ==============================================================================
 
 def aggregate_performance(performance, time_grid):
     """
