@@ -146,8 +146,8 @@ else:
 
 # filter top n
 if args.data_mode in ["methylation", "combined"]:
-    FILTER_1_N = 500#10000
-    FILTER_2_N = 250#1000
+    FILTER_1_N = 10000
+    FILTER_2_N = 1000
 else:
     FILTER_1_N = 0
     FILTER_2_N = 0 # no methlyation data included

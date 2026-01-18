@@ -359,9 +359,15 @@ def evaluate_outer_models(outer_models, X, y, time_grid):
                   f"Invalid at: {invalid_times} years", flush=True)
             
         # Compute C-index
-        cindex = concordance_index_ipcw(#concordance_index_censored(
-            y_test["RFi_event"],
-            y_test["RFi_years"],
+        #cindex = concordance_index_censored(
+        #    y_test["RFi_event"],
+        #    y_test["RFi_years"],
+        #    pred_scores
+        #)[0]
+
+        cindex = concordance_index_ipcw(
+            y_train,  # Training set needed for censoring weights
+            y_test,   # Test set to evaluate
             pred_scores
         )[0]
         
