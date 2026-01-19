@@ -56,7 +56,7 @@ library(readr)        # Fast CSV reading
 library(dplyr)        # Data manipulation
 library(survival)     # Survival analysis (Surv objects, concordance)
 library(glmnet)       # Elastic net Cox regression
-library(cmprsk)       
+library(cmprsk)
 library(caret)        # Cross-validation fold creation
 library(data.table)   # Fast data reading with fread
 library(riskRegression) # Score() function for competing risks metrics
@@ -94,9 +94,8 @@ dir.create(current_output_dir, recursive = TRUE, showWarnings = FALSE)
 # PARAMETERS
 ################################################################################
 
-# Clinical variables, alway preserved infitlering
+# Clinical variables - always preserved in filtering
 ADMIN_CENSORING_CUTOFF <- if (COHORT_NAME == "TNBC") 5.01 else NULL
-#CLINVARS_INCLUDED <- c("Age", "Size.mm", "NHG", "LN")
 CLIN_CATEGORICAL <- c("NHG", "LN")
 CLIN_CONT <- c("Age", "Size.mm")
 
@@ -113,7 +112,7 @@ N_INNER_FOLDS <- 3
 ALPHA_GRID <- c(0.9)  # Elastic net mixing: 0=ridge, 1=lasso, 0.9=mostly lasso
 
 # Performance evaluation timepoints (in years)
-EVAL_TIMES <- seq(1,10)
+EVAL_TIMES <- seq(1, 10)
 
 ################################################################################
 # HELPER FUNCTIONS
@@ -279,19 +278,19 @@ if (!is.null(TRAIN_CPGS)) {
 # Combine methylation with clinical variables
 X <- mvals
 
-if (!is.null(c(CLIN_CONT,CLIN_CATEGORICAL))) {
-  clin <- clinical_data[c(CLIN_CONT,CLIN_CATEGORICAL)]
+if (!is.null(c(CLIN_CONT, CLIN_CATEGORICAL))) {
+  clin <- clinical_data[c(CLIN_CONT, CLIN_CATEGORICAL)]
   clin <- clin[rownames(X), , drop = FALSE]
   encoded_result <- onehot_encode_clinical(clin, CLIN_CATEGORICAL)
   X <- cbind(X, encoded_result$encoded_df)
   
-  clinvars <- c(CLIN_CONT,encoded_result$encoded_cols)
+  clinvars <- c(CLIN_CONT, encoded_result$encoded_cols)
   cat(sprintf("Added clinical variables: %s\n", 
               paste(clinvars, collapse = ", ")))
 }
 
-# Variables to preserve during filtering (after one-hot encoding)
-VARS_PRESERVE <- clinvars 
+# Variables to preserve during filtering (all clinical variables)
+VARS_PRESERVE <- clinvars
 
 # Validate preserved and non-penalized variables
 if (!is.null(VARS_PRESERVE)) {
@@ -844,20 +843,28 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # Integrated metrics
   cat("\nIntegrated Metrics:\n")
   
-  # Mean AUC (average over eval times)
+  # Mean AUC (average over eval times, ignoring any NA values)
   mean_auc <- NA
-  if (nrow(auc_fg) > 1) {
-    mean_auc <- mean(auc_fg$AUC)
-    cat(sprintf("  Mean AUC: %.3f\n", mean_auc))
+  if (nrow(auc_fg) > 0) {
+    mean_auc <- mean(auc_fg$AUC, na.rm = TRUE)
+    if (!is.na(mean_auc)) {
+      cat(sprintf("  Mean AUC: %.3f (across %d timepoints)\n", 
+                  mean_auc, sum(!is.na(auc_fg$AUC))))
+    }
   }
   
   # IBS (Integrated Brier Score) - trapezoidal integration
   ibs <- NA
   if (nrow(brier_fg) > 1) {
-    time_diffs <- diff(brier_fg$times)
-    avg_brier <- (brier_fg$Brier[-1] + brier_fg$Brier[-nrow(brier_fg)]) / 2
-    ibs <- sum(time_diffs * avg_brier) / diff(range(brier_fg$times))
-    cat(sprintf("  IBS: %.4f\n", ibs))
+    # Only use non-NA Brier scores
+    valid_brier <- !is.na(brier_fg$Brier)
+    if (sum(valid_brier) > 1) {
+      brier_valid <- brier_fg[valid_brier, ]
+      time_diffs <- diff(brier_valid$times)
+      avg_brier <- (brier_valid$Brier[-1] + brier_valid$Brier[-nrow(brier_valid)]) / 2
+      ibs <- sum(time_diffs * avg_brier) / diff(range(brier_valid$times))
+      cat(sprintf("  IBS: %.4f (across %d timepoints)\n", ibs, nrow(brier_valid)))
+    }
   }
   
   # C-index using concordance on risk scores
@@ -883,6 +890,8 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     fold_idx = fold_idx,
     train_idx = train_idx,
     test_idx = test_idx,
+    train_samples = rownames(X_train),
+    test_samples = rownames(X_test),
     n_train = nrow(X_train),
     n_test = nrow(X_test),
     
@@ -891,14 +900,29 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     features_death = features_death,
     features_pooled = features_pooled,
     n_features_final = length(features_pooled),
+    variance_threshold = var_threshold,
     
-    # Hyperparameters
-    alpha_rfi = best_alpha_rfi,
-    lambda_rfi = best_lambda_rfi,
-    alpha_death = best_alpha_death,
-    lambda_death = best_lambda_death,
+    # CoxNet models and hyperparameters
+    coxnet_rfi_model = final_fit_outer_rfi,
+    coxnet_rfi_alpha = best_alpha_rfi,
+    coxnet_rfi_lambda = best_lambda_rfi,
+    coxnet_rfi_cv_result = best_rfi_result,
+    coxnet_rfi_coefficients = data.frame(
+      feature = features_rfi,
+      coefficient = as.vector(coef_rfi[features_rfi, ])
+    ),
     
-    # Fine-Gray coefficients
+    coxnet_death_model = final_fit_outer_death,
+    coxnet_death_alpha = best_alpha_death,
+    coxnet_death_lambda = best_lambda_death,
+    coxnet_death_cv_result = best_death_result,
+    coxnet_death_coefficients = data.frame(
+      feature = features_death,
+      coefficient = as.vector(coef_death[features_death, ])
+    ),
+    
+    # Fine-Gray model
+    finegray_model = fit_fg,
     fg_coefficients = coef_table,
     
     # Performance metrics
@@ -957,6 +981,32 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
 cat(sprintf("\n========== AGGREGATING RESULTS ==========\n"))
 
 total_time <- difftime(Sys.time(), start_time, units = "mins")
+
+# Create fold assignment dataframe
+cat("\nCreating fold assignment table...\n")
+fold_assignments <- data.frame()
+for (fold_idx in 1:N_OUTER_FOLDS) {
+  fold_res <- outer_fold_results[[fold_idx]]
+  
+  # Train samples
+  train_df <- data.frame(
+    sample_id = fold_res$train_samples,
+    fold = fold_idx,
+    set = "train"
+  )
+  
+  # Test samples
+  test_df <- data.frame(
+    sample_id = fold_res$test_samples,
+    fold = fold_idx,
+    set = "test"
+  )
+  
+  fold_assignments <- rbind(fold_assignments, train_df, test_df)
+}
+
+cat(sprintf("Created fold assignments for %d samples across %d folds\n", 
+            nrow(fold_assignments), N_OUTER_FOLDS))
 
 # Extract performance metrics from each fold
 all_aucs <- data.frame()
@@ -1069,6 +1119,31 @@ if (length(stable_features) > 0) {
   cat("  No features selected in ≥50% of folds\n")
 }
 
+# Detailed feature selection by model type
+cat("\n========================================\n")
+cat("FEATURE SELECTION BY MODEL TYPE\n")
+cat("========================================\n")
+
+# Track RFI-specific features
+all_rfi_features <- unlist(lapply(outer_fold_results, function(x) x$features_rfi))
+rfi_feature_counts <- table(all_rfi_features)
+rfi_feature_freq <- rfi_feature_counts / N_OUTER_FOLDS
+
+cat(sprintf("\nRFI Model Features:\n"))
+cat(sprintf("  Total unique: %d\n", length(rfi_feature_freq)))
+cat(sprintf("  Selected in all folds: %d\n", sum(rfi_feature_freq == 1)))
+cat(sprintf("  Selected in ≥50%% folds: %d\n", sum(rfi_feature_freq >= 0.5)))
+
+# Track Death-specific features
+all_death_features <- unlist(lapply(outer_fold_results, function(x) x$features_death))
+death_feature_counts <- table(all_death_features)
+death_feature_freq <- death_feature_counts / N_OUTER_FOLDS
+
+cat(sprintf("\nDeath Model Features:\n"))
+cat(sprintf("  Total unique: %d\n", length(death_feature_freq)))
+cat(sprintf("  Selected in all folds: %d\n", sum(death_feature_freq == 1)))
+cat(sprintf("  Selected in ≥50%% folds: %d\n", sum(death_feature_freq >= 0.5)))
+
 ################################################################################
 # SAVE ALL RESULTS
 ################################################################################
@@ -1085,17 +1160,24 @@ results_summary <- list(
   alpha_grid = ALPHA_GRID,
   eval_times = EVAL_TIMES,
   variance_quantile = VARIANCE_QUANTILE,
+  clinical_vars_continuous = CLIN_CONT,
+  clinical_vars_categorical = CLIN_CATEGORICAL,
+  
+  # Fold assignments
+  fold_assignments = fold_assignments,
   
   # Overall performance
   auc_summary = auc_summary,
   brier_summary = brier_summary,
   cindex_summary = all_cindices,
-  mean_cindex = mean(all_cindices$cindex),
-  sd_cindex = sd(all_cindices$cindex),
+  mean_cindex = mean(all_cindices$cindex, na.rm = TRUE),
+  sd_cindex = sd(all_cindices$cindex, na.rm = TRUE),
   
   # Feature selection
   feature_frequency = feature_freq,
   stable_features = stable_features,
+  rfi_feature_frequency = rfi_feature_freq,
+  death_feature_frequency = death_feature_freq,
   
   # Detailed fold results
   fold_results = outer_fold_results,
@@ -1116,6 +1198,11 @@ cat(sprintf("Saved summary results to: %s\n", main_results_file))
 pred_file <- file.path(current_output_dir, "all_predictions.csv")
 write.csv(all_predictions, pred_file, row.names = FALSE)
 cat(sprintf("Saved predictions to: %s\n", pred_file))
+
+# Save fold assignments
+fold_assign_file <- file.path(current_output_dir, "fold_assignments.csv")
+write.csv(fold_assignments, fold_assign_file, row.names = FALSE)
+cat(sprintf("Saved fold assignments to: %s\n", fold_assign_file))
 
 # Save performance summaries as CSV
 if (exists("auc_summary")) {
@@ -1143,6 +1230,50 @@ feat_file <- file.path(current_output_dir, "feature_stability.csv")
 write.csv(feature_stability, feat_file, row.names = FALSE)
 cat(sprintf("Saved feature stability to: %s\n", feat_file))
 
+# Save RFI-specific feature selection
+rfi_feature_stability <- data.frame(
+  feature = names(rfi_feature_freq),
+  selection_frequency = as.numeric(rfi_feature_freq),
+  n_folds_selected = as.numeric(rfi_feature_counts)
+)
+rfi_feature_stability <- rfi_feature_stability[order(-rfi_feature_stability$selection_frequency), ]
+
+rfi_feat_file <- file.path(current_output_dir, "feature_stability_rfi_model.csv")
+write.csv(rfi_feature_stability, rfi_feat_file, row.names = FALSE)
+cat(sprintf("Saved RFI feature stability to: %s\n", rfi_feat_file))
+
+# Save death-specific feature selection
+death_feature_stability <- data.frame(
+  feature = names(death_feature_freq),
+  selection_frequency = as.numeric(death_feature_freq),
+  n_folds_selected = as.numeric(death_feature_counts)
+)
+death_feature_stability <- death_feature_stability[order(-death_feature_stability$selection_frequency), ]
+
+death_feat_file <- file.path(current_output_dir, "feature_stability_death_model.csv")
+write.csv(death_feature_stability, death_feat_file, row.names = FALSE)
+cat(sprintf("Saved death feature stability to: %s\n", death_feat_file))
+
+# Save hyperparameter summary across folds
+hyperparam_summary <- data.frame()
+for (fold_idx in 1:N_OUTER_FOLDS) {
+  fold_res <- outer_fold_results[[fold_idx]]
+  hyperparam_summary <- rbind(hyperparam_summary, data.frame(
+    fold = fold_idx,
+    rfi_alpha = fold_res$coxnet_rfi_alpha,
+    rfi_lambda = fold_res$coxnet_rfi_lambda,
+    rfi_n_features = length(fold_res$features_rfi),
+    death_alpha = fold_res$coxnet_death_alpha,
+    death_lambda = fold_res$coxnet_death_lambda,
+    death_n_features = length(fold_res$features_death),
+    pooled_n_features = length(fold_res$features_pooled)
+  ))
+}
+
+hyperparam_file <- file.path(current_output_dir, "coxnet_hyperparameters.csv")
+write.csv(hyperparam_summary, hyperparam_file, row.names = FALSE)
+cat(sprintf("Saved CoxNet hyperparameters to: %s\n", hyperparam_file))
+
 ################################################################################
 # FINAL SUMMARY
 ################################################################################
@@ -1153,11 +1284,20 @@ cat(sprintf("========================================\n"))
 cat(sprintf("Total runtime: %.1f minutes\n", total_time))
 cat(sprintf("Output directory: %s\n", current_output_dir))
 cat(sprintf("\nGenerated files:\n"))
-cat(sprintf("  - nCV_results_summary.rds (main results object)\n"))
-cat(sprintf("  - fold_X_results.rds (individual fold results)\n"))
-cat(sprintf("  - all_predictions.csv (test set predictions)\n"))
-cat(sprintf("  - auc_summary.csv (AUC by timepoint)\n"))
-cat(sprintf("  - brier_summary.csv (Brier by timepoint)\n"))
-cat(sprintf("  - cindex_by_fold.csv (C-index per fold)\n"))
-cat(sprintf("  - feature_stability.csv (feature selection frequency)\n"))
+cat(sprintf("  Core Results:\n"))
+cat(sprintf("    - nCV_results_summary.rds (complete results object)\n"))
+cat(sprintf("    - fold_X_results.rds (individual fold results with models)\n"))
+cat(sprintf("\n  Predictions & Assignments:\n"))
+cat(sprintf("    - all_predictions.csv (test set predictions)\n"))
+cat(sprintf("    - fold_assignments.csv (sample-to-fold mapping)\n"))
+cat(sprintf("\n  Performance Metrics:\n"))
+cat(sprintf("    - auc_summary.csv (AUC by timepoint)\n"))
+cat(sprintf("    - brier_summary.csv (Brier by timepoint)\n"))
+cat(sprintf("    - cindex_by_fold.csv (C-index per fold)\n"))
+cat(sprintf("\n  Feature Selection:\n"))
+cat(sprintf("    - feature_stability.csv (pooled feature frequency)\n"))
+cat(sprintf("    - feature_stability_rfi_model.csv (RFI model features)\n"))
+cat(sprintf("    - feature_stability_death_model.csv (death model features)\n"))
+cat(sprintf("\n  Model Information:\n"))
+cat(sprintf("    - coxnet_hyperparameters.csv (alpha/lambda per fold)\n"))
 cat(sprintf("\n"))
