@@ -428,191 +428,122 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # Fit Fine-Gray Model on Pooled Features
   # --------------------------------------------------------------------------
   # Fine-Gray model: Models subdistribution hazard for event of interest
+  library(riskRegression)
+  library(cmprsk)
+  library(prodlim) #prodlim::Hist()
   
+  # prepare input data
   cat(sprintf("\n--- Fitting Fine-Gray Model ---\n"))
   
-  fit_fg <- crr(
-    ftime   = clinical_train$time_to_CompRisk_event,
-    fstatus = clinical_train$CompRisk_event_coded,
-    cov1    = as.matrix(X_train_scaled),
-    failcode = 1,  # Event of interest (RFI)
-    cencode  = 0   # Censored
+  # prepare input data
+  #identical(clinical_train$Sample,rownames(X_train_scaled))
+  fgr_train_data <- cbind(clinical_train[c("time_to_CompRisk_event","CompRisk_event_coded")], X_train_scaled)
+  #identical(clinical_test$Sample,rownames(X_test_scaled))
+  fgr_test_data <- cbind(clinical_test[c("time_to_CompRisk_event","CompRisk_event_coded")], X_test_scaled)
+  
+  feature_cols <- setdiff(colnames(fgr_train_data), 
+                          c("time_to_CompRisk_event", "CompRisk_event_coded"))
+
+  # Build formula explicitly
+  formula_str <- paste("Hist(time_to_CompRisk_event, CompRisk_event_coded) ~", 
+                       paste(feature_cols, collapse = " + "))
+  formula_fg <- as.formula(formula_str)
+  
+  fgr1 <- FGR(
+    formula = formula_fg,
+    data    = fgr_train_data,
+    cause   = 1
   )
   
-  cat(sprintf("Fine-Gray model fitted with %d features\n", ncol(X_train_scaled)))
+  cat(sprintf("Fine-Gray model fitted with %d features\n", length(feature_cols)))
   
+  # --------------------------------------------------------------------------
+  # Fine-Gray Model Performance metrics on Fold Test
+  # --------------------------------------------------------------------------
+  
+  score_fgr1 <- Score(
+    list("FGR" = fgr1),
+    formula = Hist(time_to_CompRisk_event, CompRisk_event_coded) ~ 1,
+    data = fgr_test_data,
+    cause = 1,                              # Explicit: RFI is event of interest
+    times = c(1, 3, 5, 10),                # Time points in years
+    metrics = c("auc", "brier"),           # AUC and Brier score
+    summary = c("ibs"),             # R² and integrated Brier
+    plots = c("ROC", "Calibration"),       # Data for plotting (optional)
+    se.fit = TRUE,                         # Standard errors
+    conf.int = 0.95,                       # 95% CI (default)
+    null.model = TRUE,                     # Compare to null model
+    cens.model = "cox"                     # Cox for censoring weights (default)
+  )
+  
+  
+  # create summary object of performance
+  # Extract FGR model results only (exclude null model)
+  auc_fgr <- score_fgr1$AUC$score[model == "FGR"]
+  brier_fgr <- score_fgr1$Brier$score[model == "FGR"]
+  
+  # Extract actual evaluation times
+  eval_times <- auc_fgr$times
+  
+  # Create named vectors dynamically based on actual times
+  auc_cols <- setNames(auc_fgr$AUC, paste0("auc_", eval_times, "yr"))
+  brier_cols <- setNames(brier_fgr$Brier, paste0("brier_", eval_times, "yr"))
+  
+  # Combine into one-row dataframe
+  fgr_performance <- data.frame(
+    model = "FGR",
+    mean_auc = mean(auc_fgr$AUC, na.rm = TRUE),
+    final_ibs = brier_fgr[times == max(times), IBS],
+    as.list(auc_cols),
+    as.list(brier_cols)
+  )
+  
+  # Round all numeric columns to 3 decimal places
+  fgr_performance[, -1] <- round(fgr_performance[, -1], 2)
+  
+  print(fgr_performance)
+  
+  # --------------------------------------------------------------------------
+  # example predict on new data
+  # --------------------------------------------------------------------------
+  
+  # # predict risks at times
+  # predicted_risks <- predictRisk(
+  #   object = fgr1,
+  #   newdata = new_patients,
+  #   times = c(1, 3, 5, 10),
+  #   cause = 1
+  # )
+  # # simple risk score
+  # coefs <- fgr1$crrFit$coef
+  # linear_predictor <- as.matrix(new_patients[, names(coefs)]) %*% coefs
+  
+
   # --------------------------------------------------------------------------
   # Extract and Display Coefficients
   # --------------------------------------------------------------------------
   
-  coef_fg <- fit_fg$coef
-  hr_fg   <- exp(coef_fg)  # Subdistribution hazard ratios
-  
-  coef_table <- data.frame(
-    Variable = names(coef_fg),
-    Coef     = coef_fg,
-    SHR      = hr_fg  # Subdistribution Hazard Ratio
+  # Extract FGR coefficients
+  fg_coef <- fgr1$crrFit$coef
+  coef_fg_df <- data.frame(
+    feature = names(fg_coef),
+    fg_coef = as.vector(fg_coef)
   )
-  rownames(coef_table) <- NULL
+  names(coef_rfi_df) <- c("feature","cox_rfi_coef")
+  names(coef_death_df) <- c("feature","cox_death_coef")
   
-  # Sort by absolute coefficient size (largest effect first)
-  coef_table <- coef_table[order(-abs(coef_table$Coef)), ]
+  # Merge all three
+  coef_comparison <- merge(coef_fg_df, coef_rfi_df, by = "feature", all = TRUE)
+  coef_comparison <- merge(coef_comparison, coef_death_df, by = "feature", all = TRUE)
+  coef_comparison[is.na(coef_comparison)] <- 0
   
-  cat("\nTop 15 Features by Effect Size:\n")
-  print(head(coef_table, 15))
+  # Sort by absolute FG coefficient
+  coef_comparison <- coef_comparison[order(abs(coef_comparison$fg_coef), decreasing = TRUE), ]
+  rownames(coef_comparison) <- NULL
   
-  # --------------------------------------------------------------------------
-  # Predict on Test Set
-  # --------------------------------------------------------------------------
+  print(coef_comparison)
   
-  cat(sprintf("\n--- Test Set Predictions ---\n"))
   
-  # Calculate linear predictor (risk score)
-  # This is log-relative subdistribution hazard for each patient
-  risk_scores_test <- as.matrix(X_test_scaled) %*% fit_fg$coef
-  
-  cat(sprintf("Generated risk scores for %d test samples\n", nrow(X_test_scaled)))
-  cat(sprintf("Risk score range: [%.3f, %.3f]\n", 
-              min(risk_scores_test), max(risk_scores_test)))
-  
-  # Predict cumulative incidence functions (CIF)
-  # pred_fg[,1] = unique event times from training data
-  # pred_fg[,2:n] = CIF curves for each test patient
-  pred_fg <- predict(fit_fg, cov1 = as.matrix(X_test_scaled))
-  
-  timepoints <- pred_fg[, 1]      # Column 1 = unique failure times
-  cif_curves <- pred_fg[, -1]     # Columns 2:n = CIF for each patient
-  
-  cat(sprintf("CIF timepoints: %d (from training events)\n", length(timepoints)))
-  cat(sprintf("Test patients: %d\n", ncol(cif_curves)))
-  
-  # --------------------------------------------------------------------------
-  # Evaluate Performance at Specific Timepoints
-  # --------------------------------------------------------------------------
-  
-  # Only evaluate at timepoints < max observed time in test set
-  max_time <- max(clinical_test$time_to_CompRisk_event)
-  eval_times_use <- EVAL_TIMES[EVAL_TIMES < max_time]
-  
-  n_pat <- ncol(cif_curves)
-  
-  cat(sprintf("\nInterpolating CIF for %d patients at %d timepoints\n", 
-              n_pat, length(eval_times_use)))
-  
-  # Interpolate CIF at requested evaluation times
-  # This gives us P(RFI by time t) for each patient
-  pred_cif_subset <- matrix(NA, nrow = n_pat, ncol = length(eval_times_use))
-  colnames(pred_cif_subset) <- paste0("t", eval_times_use, "y")
-  
-  for (p in 1:n_pat) {
-    interp <- approx(
-      x = timepoints,                            # Training event times
-      y = cif_curves[, p],                       # Patient's CIF curve
-      xout = eval_times_use,                     # Evaluation timepoints
-      yleft = 0,                                 # CIF = 0 before first event
-      yright = cif_curves[nrow(cif_curves), p],  # Carry forward after last event
-      method = "linear"
-    )
-    pred_cif_subset[p, ] <- interp$y
-  }
-  
-  if (length(eval_times_use) >= 1) {
-    cat(sprintf("CIF range at %gy: [%.4f, %.4f]\n", 
-                eval_times_use[1], 
-                min(pred_cif_subset[,1]), 
-                max(pred_cif_subset[,1])))
-  }
-  if (length(eval_times_use) >= 2) {
-    cat(sprintf("CIF range at %gy: [%.4f, %.4f]\n", 
-                eval_times_use[2], 
-                min(pred_cif_subset[,2]), 
-                max(pred_cif_subset[,2])))
-  }
-  
-  # --------------------------------------------------------------------------
-  # Calculate Performance Metrics
-  # --------------------------------------------------------------------------
-  # Uses riskRegression::Score() which properly handles competing risks
-  # - AUC: Time-dependent discrimination (higher = better)
-  # - Brier: Time-dependent calibration (lower = better)
-  # - Both use inverse probability of censoring weighting (IPCW)
-  
-  score_fg <- Score(
-    list("FG_model" = pred_cif_subset),
-    formula = Hist(time_to_CompRisk_event, CompRisk_event_coded) ~ 1,
-    data    = clinical_test,
-    times   = eval_times_use,
-    cause   = 1,  # RFI is event of interest
-    metrics = c("auc", "brier"),
-    se.fit  = TRUE,
-    cens.model = "cox"  # Cox model for censoring weights
-  )
-  
-  # --------------------------------------------------------------------------
-  # Display Performance Metrics
-  # --------------------------------------------------------------------------
-  
-  cat("\n========================================\n")
-  cat("Fine-Gray Model Performance (Test Set)\n")
-  cat("========================================\n")
-  
-  # Extract results
-  auc_fg <- score_fg$AUC$score[score_fg$AUC$score$model == "FG_model", ]
-  brier_fg <- score_fg$Brier$score[score_fg$Brier$score$model == "FG_model", ]
-  
-  # Time-specific AUC
-  cat("\nTime-dependent AUC:\n")
-  for (i in 1:nrow(auc_fg)) {
-    cat(sprintf("  %g years: %.3f (SE: %.4f)\n", 
-                auc_fg$times[i], auc_fg$AUC[i], auc_fg$se[i]))
-  }
-  
-  # Time-specific Brier
-  cat("\nBrier Score:\n")
-  for (i in 1:nrow(brier_fg)) {
-    cat(sprintf("  %g years: %.4f (SE: %.5f)\n",
-                brier_fg$times[i], brier_fg$Brier[i], brier_fg$se[i]))
-  }
-  
-  # Integrated metrics
-  cat("\nIntegrated Metrics:\n")
-  
-  # Mean AUC (average over eval times, ignoring any NA values)
-  mean_auc <- NA
-  if (nrow(auc_fg) > 0) {
-    mean_auc <- mean(auc_fg$AUC, na.rm = TRUE)
-    if (!is.na(mean_auc)) {
-      cat(sprintf("  Mean AUC: %.3f (across %d timepoints)\n", 
-                  mean_auc, sum(!is.na(auc_fg$AUC))))
-    }
-  }
-  
-  # IBS (Integrated Brier Score) - trapezoidal integration
-  ibs <- NA
-  if (nrow(brier_fg) > 1) {
-    # Only use non-NA Brier scores
-    valid_brier <- !is.na(brier_fg$Brier)
-    if (sum(valid_brier) > 1) {
-      brier_valid <- brier_fg[valid_brier, ]
-      time_diffs <- diff(brier_valid$times)
-      avg_brier <- (brier_valid$Brier[-1] + brier_valid$Brier[-nrow(brier_valid)]) / 2
-      ibs <- sum(time_diffs * avg_brier) / diff(range(brier_valid$times))
-      cat(sprintf("  IBS: %.4f (across %d timepoints)\n", ibs, nrow(brier_valid)))
-    }
-  }
-  
-  # C-index using concordance on risk scores
-  cindex <- concordance(
-    Surv(time_to_CompRisk_event, CompRisk_event_coded == 1) ~ risk_scores_test,
-    data = clinical_test
-  )
-  cat(sprintf("  C-index: %.3f (SE: %.4f)\n", 
-              cindex$concordance, sqrt(cindex$var)))
-  
-  cat("\n")
-  
-  fold_time <- difftime(Sys.time(), fold_start_time, units = "mins")
-  cat(sprintf("Fold completed in %.1f minutes\n", fold_time))
   
   # --------------------------------------------------------------------------
   # SAVE FOLD RESULTS
@@ -622,8 +553,6 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   outer_fold_results[[fold_idx]] <- list(
     # Fold information
     fold_idx = fold_idx,
-    train_idx = train_idx,
-    test_idx = test_idx,
     train_samples = rownames(X_train),
     test_samples = rownames(X_test),
     n_train = nrow(X_train),
@@ -634,30 +563,21 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     features_death = features_death,
     features_pooled = features_pooled,
     n_features_final = length(features_pooled),
-    variance_threshold = var_threshold,
-    
+
     # CoxNet models and hyperparameters
     coxnet_rfi_model = final_fit_outer_rfi,
     coxnet_rfi_alpha = best_alpha_rfi,
     coxnet_rfi_lambda = best_lambda_rfi,
     coxnet_rfi_cv_result = best_rfi_result,
-    coxnet_rfi_coefficients = data.frame(
-      feature = features_rfi,
-      coefficient = as.vector(coef_rfi[features_rfi, ])
-    ),
-    
+
     coxnet_death_model = final_fit_outer_death,
     coxnet_death_alpha = best_alpha_death,
     coxnet_death_lambda = best_lambda_death,
     coxnet_death_cv_result = best_death_result,
-    coxnet_death_coefficients = data.frame(
-      feature = features_death,
-      coefficient = as.vector(coef_death[features_death, ])
-    ),
     
     # Fine-Gray model
     finegray_model = fit_fg,
-    fg_coefficients = coef_table,
+    fold_model_coefficients = coef_comparison,
     
     # Performance metrics
     auc_by_time = auc_fg,
@@ -675,10 +595,8 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     # Scaling parameters (for future use)
     scale_centers = centers,
     scale_scales = scales,
-    continuous_cols = cont_cols,
+    continuous_cols = cont_cols
     
-    # Timing
-    fold_duration_mins = as.numeric(fold_time)
   )
   
   # Store predictions with actual outcomes for later aggregation
