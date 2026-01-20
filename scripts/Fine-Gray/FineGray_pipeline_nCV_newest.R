@@ -610,8 +610,9 @@ cat(sprintf("Features before filtering: %d (preserved: %d)\n",
 
 # Variance filtering
 X_all_filtered <- filter_by_variance(X_all_to_filter, variance_quantile = VARIANCE_QUANTILE)
+
 # Combine filtered features with preserved features
-X_all_filtered <- cbind(X_filtered, X_train_preserved)
+X_all_filtered <- cbind(X_all_filtered, X_all_preserved)  # FIX: was X_filtered, X_train_preserved
 cat(sprintf("Total features for modeling: %d\n", ncol(X_all_filtered)))
 
 #-------------------------------------------------------------------------------
@@ -637,7 +638,7 @@ rfi_model_all <- tune_and_fit_coxnet(
 )
 
 # Extract coefficients and features
-rfi_coef_res_all <- extract_nonzero_coefs(death_model$final_fit)
+rfi_coef_res_all <- extract_nonzero_coefs(rfi_model_all$final_fit)  # FIX: was death_model
 coef_rfi_df_all <- rfi_coef_res_all$coef_df
 features_rfi_all <- rfi_coef_res_all$features
 
@@ -664,7 +665,7 @@ death_model_all <- tune_and_fit_coxnet(
 )
 
 # Extract coefficients and features
-death_coef_res_all <- extract_nonzero_coefs(death_model$final_fit)
+death_coef_res_all <- extract_nonzero_coefs(death_model_all$final_fit)  # FIX: was death_model
 coef_death_df_all <- death_coef_res_all$coef_df
 features_death_all <- death_coef_res_all$features
 
@@ -685,16 +686,18 @@ features_pooled_all <- union(features_rfi_all, features_death_all)
 X_pooled_all <- X_all_filtered[, features_pooled_all, drop = FALSE]
 
 cat(sprintf("\n--- Feature Pooling ---\n"))
-cat(sprintf("RFI features: %d\n", length(features_rfi)))
-cat(sprintf("Death features: %d\n", length(features_death)))
-cat(sprintf("Overlap: %d\n", length(intersect(features_rfi, features_death))))
-cat(sprintf("Pooled total: %d\n", length(features_pooled)))
+cat(sprintf("RFI features: %d\n", length(features_rfi_all)))  # FIX: was features_rfi
+cat(sprintf("Death features: %d\n", length(features_death_all)))  # FIX: was features_death
+cat(sprintf("Overlap: %d\n", length(intersect(features_rfi_all, features_death_all))))  # FIX
+cat(sprintf("Pooled total: %d\n", length(features_pooled_all)))  # FIX: was features_pooled
 
 # Only scale continuous variables, leave one-hot encoded variables as-is
 cat(sprintf("\n--- Scaling Cont. Features ---\n"))
-scale_res_all <- scale_continuous_features(X_train = X_pooled_all, 
-                                       X_test = NULL, 
-                                       dont_scale = encoded_result$encoded_cols)
+scale_res_all <- scale_continuous_features(
+  X_train = X_pooled_all, 
+  X_test = NULL, 
+  dont_scale = encoded_result$encoded_cols
+)
 
 X_all_scaled <- scale_res_all$X_train_scaled
 
@@ -703,9 +706,10 @@ X_all_scaled <- scale_res_all$X_train_scaled
 # prepare input data
 cat(sprintf("\n--- Fitting Fine-Gray Model ---\n"))
 
-# prepare input data
-#identical(clinical_all$Sample,rownames(X_train_scaled))
-fgr_all_data <- cbind(clinical_all[c("time_to_CompRisk_event","CompRisk_event_coded")], X_all_scaled)
+fgr_all_data <- cbind(
+  clinical_all[c("time_to_CompRisk_event","CompRisk_event_coded")], 
+  X_all_scaled
+)
 
 # Build formula explicitly
 feature_cols <- setdiff(colnames(fgr_all_data), 
@@ -743,7 +747,6 @@ coef_comparison_final <- coef_comparison_final[order(abs(coef_comparison_final$f
 rownames(coef_comparison_final) <- NULL
 
 print(coef_comparison_final)
-
 
 # feature importance also
 ################################################################################
