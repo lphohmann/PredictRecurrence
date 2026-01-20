@@ -255,9 +255,10 @@ tune_and_fit_coxnet <- function(X_train, y_train, clinical_train, event_col,
 }
 
 
-scale_continuous_features <- function(X_train, X_test, dont_scale) {
+scale_continuous_features <- function(X_train, X_test = NULL, dont_scale) {
   # Scale continuous features using training set parameters
   # One-hot encoded columns are left unscaled
+  # X_test is optional - only scale if provided
   
   # Identify continuous columns (not one-hot encoded)
   cont_cols <- setdiff(colnames(X_train), dont_scale)
@@ -272,12 +273,16 @@ scale_continuous_features <- function(X_train, X_test, dont_scale) {
   X_train_scaled[, cont_cols] <- train_cont_scaled
   
   # Scale test set using TRAINING set's mean and SD (no data leakage!)
-  X_test_scaled <- X_test
-  X_test_scaled[, cont_cols] <- scale(
-    X_test[, cont_cols, drop = FALSE],
-    center = centers,
-    scale  = scales
-  )
+  if (!is.null(X_test)) {
+    X_test_scaled <- X_test
+    X_test_scaled[, cont_cols] <- scale(
+      X_test[, cont_cols, drop = FALSE],
+      center = centers,
+      scale  = scales
+    )
+  } else {
+    X_test_scaled <- NULL
+  }
   
   cat(sprintf("Scaled %d continuous features\n", length(cont_cols)))
   
@@ -287,5 +292,220 @@ scale_continuous_features <- function(X_train, X_test, dont_scale) {
     centers = centers,
     scales = scales,
     cont_cols = cont_cols
+  ))
+}
+
+aggregate_cv_performance <- function(outer_fold_results, 
+                                     round_digits = 3, 
+                                     conf_level = 0.95,
+                                     verbose = TRUE) {
+  # Aggregates performance metrics across CV folds with mean, SE, and CI
+  
+  if (verbose) cat("\n========== AGGREGATED PERFORMANCE ==========\n")
+  
+  # Extract performance dataframes from all folds
+  performance_list <- lapply(outer_fold_results, function(fold) fold$performance_df)
+  
+  # Combine all folds into one dataframe
+  all_performance <- do.call(rbind, performance_list)
+  
+  # Get metric column names (exclude 'model' column)
+  metric_cols <- setdiff(names(all_performance), "model")
+  
+  # Calculate mean and SE for each metric
+  performance_summary <- data.frame(
+    metric = metric_cols,
+    mean = sapply(metric_cols, function(col) mean(all_performance[[col]], na.rm = TRUE)),
+    se = sapply(metric_cols, function(col) sd(all_performance[[col]], na.rm = TRUE) / sqrt(nrow(all_performance))),
+    sd = sapply(metric_cols, function(col) sd(all_performance[[col]], na.rm = TRUE))
+  )
+  
+  # Round to specified decimal places
+  performance_summary[, c("mean", "se", "sd")] <- round(performance_summary[, c("mean", "se", "sd")], round_digits)
+  
+  # Add confidence intervals
+  z_score <- qnorm(1 - (1 - conf_level) / 2)
+  performance_summary$ci_lower <- round(performance_summary$mean - z_score * performance_summary$se, round_digits)
+  performance_summary$ci_upper <- round(performance_summary$mean + z_score * performance_summary$se, round_digits)
+  
+  rownames(performance_summary) <- NULL
+  
+  if (verbose) {
+    #print(performance_summary)
+    # Show individual fold results
+    cat("\nIndividual Fold Performance:\n")
+    print(all_performance)
+    
+    # Print in readable format
+    cat(sprintf("\nPerformance Summary (Mean ± SE, %d%% CI):\n", conf_level * 100))
+    for (i in 1:nrow(performance_summary)) {
+      cat(sprintf("%15s: %.3f ± %.3f (95%% CI: %.3f - %.3f)\n",
+                  performance_summary$metric[i],
+                  performance_summary$mean[i],
+                  performance_summary$se[i],
+                  performance_summary$ci_lower[i],
+                  performance_summary$ci_upper[i]))
+    }
+    
+
+  }
+  
+  return(list(
+    summary = performance_summary,
+    all_folds = all_performance
+  ))
+}
+
+assess_feature_stability <- function(outer_fold_results, 
+                                     min_folds = NULL,  # Minimum number of folds for stability
+                                     verbose = TRUE) {
+  # Assess feature selection stability across CV folds for all three models
+  
+  n_folds <- length(outer_fold_results)
+  
+  # Calculate minimum folds threshold
+  # Default: majority (>50%)
+  if (is.null(min_folds)) {
+    min_folds <- ceiling(n_folds / 2)
+  }
+  
+  stability_threshold <- min_folds / n_folds
+  
+  if (verbose) cat("\n========== FEATURE SELECTION STABILITY ==========\n")
+  
+  # Extract coefficient tables from all folds
+  coef_list <- lapply(outer_fold_results, function(fold) fold$fold_model_coefficients)
+  
+  # Get all unique features across all folds
+  all_features <- unique(unlist(lapply(coef_list, function(df) df$feature)))
+  
+  # Calculate for all three models
+  stability_rfi <- calculate_stability("cox_rfi_coef")
+  stability_death <- calculate_stability("cox_death_coef")
+  stability_fg <- calculate_stability("fg_coef")
+  
+  if (verbose) {
+    cat(sprintf("\nTotal folds: %d\n", n_folds))
+    cat(sprintf("Stability threshold: ≥%d folds (%.0f%%)\n\n", 
+                min_folds, stability_threshold * 100))
+    
+    # Summary for each model
+    for (model_name in c("CoxNet RFI", "CoxNet Death", "Fine-Gray")) {
+      stability_df <- switch(model_name,
+                             "CoxNet RFI" = stability_rfi,
+                             "CoxNet Death" = stability_death,
+                             "Fine-Gray" = stability_fg)
+      
+      cat(sprintf("--- %s ---\n", model_name))
+      cat(sprintf("Total features ever selected: %d\n", sum(stability_df$n_selected > 0)))
+      cat(sprintf("Stable features (≥%d/%d folds): %d\n", 
+                  min_folds, n_folds,
+                  sum(stability_df$n_selected >= min_folds)))
+      
+      # Show stable features
+      stable_features <- stability_df[stability_df$n_selected >= min_folds, ]
+      if (nrow(stable_features) > 0) {
+        cat("\nStable features:\n")
+        print(stable_features)
+      }
+      cat("\n")
+    }
+  }
+  
+  return(list(
+    cox_rfi_stability = stability_rfi,
+    cox_death_stability = stability_death,
+    finegray_stability = stability_fg,
+    n_folds = n_folds,
+    min_folds = min_folds
+  ))
+}
+
+# Function to calculate stability for one model type
+calculate_stability <- function(coef_col_name) {
+  
+  # For each feature, count selections and get coefficients
+  feature_stats <- lapply(all_features, function(feat) {
+    
+    # Extract coefficients for this feature across folds
+    coefs <- sapply(coef_list, function(df) {
+      idx <- which(df$feature == feat)
+      if (length(idx) == 0) return(0)
+      df[[coef_col_name]][idx]
+    })
+    
+    # Count non-zero selections
+    n_selected <- sum(coefs != 0)
+    selection_freq <- n_selected / n_folds
+    
+    # Count direction
+    n_positive <- sum(coefs > 0)
+    n_negative <- sum(coefs < 0)
+    
+    # Calculate stats for non-zero coefficients
+    nonzero_coefs <- coefs[coefs != 0]
+    if (length(nonzero_coefs) > 0) {
+      mean_coef <- mean(nonzero_coefs)
+      sd_coef <- sd(nonzero_coefs)
+      # Check direction consistency
+      all_positive <- all(nonzero_coefs > 0)
+      all_negative <- all(nonzero_coefs < 0)
+      direction_consistent <- all_positive || all_negative
+    } else {
+      mean_coef <- 0
+      sd_coef <- 0
+      direction_consistent <- NA
+    }
+    
+    data.frame(
+      feature = feat,
+      n_selected = n_selected,
+      selection_freq = selection_freq,
+      n_positive = n_positive,
+      n_negative = n_negative,
+      direction_consistent = direction_consistent,
+      mean_coef = mean_coef,
+      sd_coef = sd_coef
+    )
+  })
+  
+  # Combine and sort by selection frequency
+  stability_df <- do.call(rbind, feature_stats)
+  stability_df <- stability_df[order(stability_df$selection_freq, decreasing = TRUE), ]
+  rownames(stability_df) <- NULL
+  
+  # Round
+  stability_df$selection_freq <- round(stability_df$selection_freq, 3)
+  stability_df$mean_coef <- round(stability_df$mean_coef, 3)
+  stability_df$sd_coef <- round(stability_df$sd_coef, 3)
+  
+  return(stability_df)
+}
+
+
+extract_nonzero_coefs <- function(model_fit, sort_by_abs = TRUE) {
+  # Extract non-zero coefficients from a fitted glmnet model
+  # Returns list with dataframe of coefficients and vector of feature names
+  
+  coef_matrix <- coef(model_fit)
+  
+  # Filter to non-zero coefficients
+  nonzero_mask <- as.vector(coef_matrix != 0)
+  
+  coef_df <- data.frame(
+    feature = rownames(coef_matrix)[nonzero_mask],
+    coefficient = as.vector(coef_matrix)[nonzero_mask]
+  )
+  
+  # Sort by absolute coefficient value
+  if (sort_by_abs) {
+    coef_df <- coef_df[order(abs(coef_df$coefficient), decreasing = TRUE), ]
+  }
+  
+  rownames(coef_df) <- NULL
+  
+  return(list(
+    coef_df = coef_df,
+    features = coef_df$feature
   ))
 }

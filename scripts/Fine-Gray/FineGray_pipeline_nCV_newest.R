@@ -166,6 +166,7 @@ if (!is.null(c(CLIN_CONT, CLIN_CATEGORICAL))) {
 
 # Variables to preserve during filtering (all clinical variables)
 VARS_PRESERVE <- clinvars
+VARS_NO_PENALIZATION <- clinvars
 
 # Validate preserved and non-penalized variables
 if (!is.null(VARS_PRESERVE)) {
@@ -340,13 +341,9 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   )
   
   # Extract coefficients and features
-  coef_rfi <- coef(rfi_model$final_fit)
-  coef_rfi_df <- data.frame(
-    feature = rownames(coef_rfi)[as.vector(coef_rfi != 0)],
-    coefficient = as.vector(coef_rfi)[as.vector(coef_rfi != 0)])
-  coef_rfi_df <- coef_rfi_df[order(abs(coef_rfi_df$coefficient), decreasing = TRUE), ]
-  rownames(coef_rfi_df) <- NULL
-  features_rfi <- coef_rfi_df$feature
+  rfi_coef_res <- extract_nonzero_coefs(death_model$final_fit)
+  coef_rfi_df <- rfi_coef_res$coef_df
+  features_rfi <- rfi_coef_res$features
   
   cat(sprintf(
     "  BEST RFI MODEL: Alpha=%.2f, Lambda=%.6f, Features=%d\n",
@@ -374,13 +371,9 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   )
   
   # Extract coefficients and features
-  coef_death <- coef(death_model$final_fit)
-  coef_death_df <- data.frame(
-    feature = rownames(coef_death)[as.vector(coef_death != 0)],
-    coefficient = as.vector(coef_death)[as.vector(coef_death != 0)])
-  coef_death_df <- coef_death_df[order(abs(coef_death_df$coefficient), decreasing = TRUE), ]
-  rownames(coef_death_df) <- NULL
-  features_death <- coef_death_df$feature
+  death_coef_res <- extract_nonzero_coefs(death_model$final_fit)
+  coef_death_df <- death_coef_res$coef_df
+  features_death <- death_coef_res$features
   
   cat(sprintf(
     "  BEST DeathNoR MODEL: Alpha=%.2f, Lambda=%.6f, Features=%d\n",
@@ -462,7 +455,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     formula = Hist(time_to_CompRisk_event, CompRisk_event_coded) ~ 1,
     data = fgr_test_data,
     cause = 1,                              # Explicit: RFI is event of interest
-    times = c(1, 3, 5, 10),                # Time points in years
+    times = EVAL_TIMES,                # Time points in years
     metrics = c("auc", "brier"),           # AUC and Brier score
     summary = c("ibs"),             # R² and integrated Brier
     #plots = c("ROC", "Calibration"),       # Data for plotting (optional)
@@ -585,13 +578,174 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
 # AGGREGATE RESULTS ACROSS FOLDS
 ################################################################################
 
-# Calculate mean and SD across folds for each timepoint
-
+source("./src/finegray_functions.R")
+# Get aggregated performance
+perf_results <- aggregate_cv_performance(outer_fold_results)
 
 # Feature selection stability
+stability_results <- assess_feature_stability(outer_fold_results, min_folds = n_folds-1)
 
-# Detailed feature selection by model type
+################################################################################
+# TRAIN FINAL MODEL USING ALL DATA
+################################################################################
 
+# same procedure as in outer loop but no performance eval
+X_all <- X
+y_rfi_all <- y_rfi
+y_death_all <- y_death_no_r
+clinical_all <- clinical_data
+cat(sprintf("Train: n=%d (RFi=%d, Death=%d)\n",
+            nrow(X_all), 
+            sum(clinical_all$RFi_event), 
+            sum(clinical_all$DeathNoR_event)))
+
+#-------------------------------------------------------------------------------
+
+# Separate preserved vs filterable features
+is_preserved <- colnames(X_all) %in% VARS_PRESERVE
+X_all_preserved <- X_all[, is_preserved, drop = FALSE]
+X_all_to_filter <- X_all[, !is_preserved, drop = FALSE]
+cat(sprintf("Features before filtering: %d (preserved: %d)\n", 
+            ncol(X_all), sum(is_preserved)))
+
+# Variance filtering
+X_all_filtered <- filter_by_variance(X_all_to_filter, variance_quantile = VARIANCE_QUANTILE)
+# Combine filtered features with preserved features
+X_all_filtered <- cbind(X_filtered, X_train_preserved)
+cat(sprintf("Total features for modeling: %d\n", ncol(X_all_filtered)))
+
+#-------------------------------------------------------------------------------
+
+# Create penalty factor (0 = not penalized, 1 = penalized)
+penalty_factor <- rep(1, ncol(X_all_filtered))
+if (!is.null(VARS_NO_PENALIZATION)) {
+  penalty_factor[colnames(X_all_filtered) %in% VARS_NO_PENALIZATION] <- 0
+}
+
+#-------------------------------------------------------------------------------
+
+# CoxNet for RFI
+rfi_model_all <- tune_and_fit_coxnet(
+  X_train = X_all_filtered,
+  y_train = y_rfi_all,
+  clinical_train = clinical_all,
+  event_col = "RFi_event",
+  alpha_grid = ALPHA_GRID,
+  penalty_factor = penalty_factor,
+  n_inner_folds = N_INNER_FOLDS,
+  outcome_name = "RFI"
+)
+
+# Extract coefficients and features
+rfi_coef_res_all <- extract_nonzero_coefs(death_model$final_fit)
+coef_rfi_df_all <- rfi_coef_res_all$coef_df
+features_rfi_all <- rfi_coef_res_all$features
+
+cat(sprintf(
+  "  BEST RFI MODEL: Alpha=%.2f, Lambda=%.6f, Features=%d\n",
+  rfi_model_all$best_alpha, 
+  rfi_model_all$best_lambda, 
+  length(features_rfi_all)
+))
+cat("    Selected:", paste(features_rfi_all, collapse=", "), "\n")
+
+#-------------------------------------------------------------------------------
+
+# CoxNet for Death
+death_model_all <- tune_and_fit_coxnet(
+  X_train = X_all_filtered,
+  y_train = y_death_all,
+  clinical_train = clinical_all,
+  event_col = "DeathNoR_event",
+  alpha_grid = ALPHA_GRID,
+  penalty_factor = penalty_factor,
+  n_inner_folds = N_INNER_FOLDS,
+  outcome_name = "DeathNoR"
+)
+
+# Extract coefficients and features
+death_coef_res_all <- extract_nonzero_coefs(death_model$final_fit)
+coef_death_df_all <- death_coef_res_all$coef_df
+features_death_all <- death_coef_res_all$features
+
+cat(sprintf(
+  "  BEST DEATH MODEL: Alpha=%.2f, Lambda=%.6f, Features=%d\n",
+  death_model_all$best_alpha, 
+  death_model_all$best_lambda, 
+  length(features_death_all)
+))
+cat("    Selected:", paste(features_death_all, collapse=", "), "\n")
+
+#-------------------------------------------------------------------------------
+
+# pool
+features_pooled_all <- union(features_rfi_all, features_death_all)
+
+# prepare FG input
+X_pooled_all <- X_all_filtered[, features_pooled_all, drop = FALSE]
+
+cat(sprintf("\n--- Feature Pooling ---\n"))
+cat(sprintf("RFI features: %d\n", length(features_rfi)))
+cat(sprintf("Death features: %d\n", length(features_death)))
+cat(sprintf("Overlap: %d\n", length(intersect(features_rfi, features_death))))
+cat(sprintf("Pooled total: %d\n", length(features_pooled)))
+
+# Only scale continuous variables, leave one-hot encoded variables as-is
+cat(sprintf("\n--- Scaling Cont. Features ---\n"))
+scale_res_all <- scale_continuous_features(X_train = X_pooled_all, 
+                                       X_test = NULL, 
+                                       dont_scale = encoded_result$encoded_cols)
+
+X_all_scaled <- scale_res_all$X_train_scaled
+
+#-------------------------------------------------------------------------------
+
+# prepare input data
+cat(sprintf("\n--- Fitting Fine-Gray Model ---\n"))
+
+# prepare input data
+#identical(clinical_all$Sample,rownames(X_train_scaled))
+fgr_all_data <- cbind(clinical_all[c("time_to_CompRisk_event","CompRisk_event_coded")], X_all_scaled)
+
+# Build formula explicitly
+feature_cols <- setdiff(colnames(fgr_all_data), 
+                        c("time_to_CompRisk_event", "CompRisk_event_coded"))
+formula_str <- paste("Hist(time_to_CompRisk_event, CompRisk_event_coded) ~", 
+                     paste(feature_cols, collapse = " + "))
+formula_fg <- as.formula(formula_str)
+
+fgr_final <- FGR(
+  formula = formula_fg,
+  data    = fgr_all_data,
+  cause   = 1
+)
+
+cat(sprintf("Fine-Gray model fitted with %d features\n", length(feature_cols)))
+
+#-------------------------------------------------------------------------------
+
+# Extract FGR coefficients
+fg_final_coef <- fgr_final$crrFit$coef
+coef_fg_final_df <- data.frame(
+  feature = names(fg_final_coef),
+  fg_final_coef = as.vector(fg_final_coef)
+)
+names(coef_rfi_df_all) <- c("feature","cox_rfi_final_coef") 
+names(coef_death_df_all) <- c("feature","cox_death_final_coef")
+
+# Merge all three
+coef_comparison_final <- merge(coef_fg_final_df, coef_rfi_df_all, by = "feature", all = TRUE)
+coef_comparison_final <- merge(coef_comparison_final, coef_death_df_all, by = "feature", all = TRUE)
+coef_comparison_final[is.na(coef_comparison_final)] <- 0
+
+# Sort by absolute FG coefficient
+coef_comparison_final <- coef_comparison_final[order(abs(coef_comparison_final$fg_final_coef), decreasing = TRUE), ]
+rownames(coef_comparison_final) <- NULL
+
+print(coef_comparison_final)
+
+
+# feature importance also
 ################################################################################
 # SAVE ALL RESULTS
 ################################################################################
