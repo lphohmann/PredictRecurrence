@@ -60,6 +60,7 @@ library(cmprsk)
 library(caret)        # Cross-validation fold creation
 library(data.table)   # Fast data reading with fread
 library(riskRegression) # Score() function for competing risks metrics
+source("./src/finegray_functions.R")
 
 ################################################################################
 # SETTINGS
@@ -114,133 +115,6 @@ ALPHA_GRID <- c(0.9)  # Elastic net mixing: 0=ridge, 1=lasso, 0.9=mostly lasso
 # Performance evaluation timepoints (in years)
 EVAL_TIMES <- seq(1, 10)
 
-################################################################################
-# HELPER FUNCTIONS
-################################################################################
-
-load_training_data <- function(train_ids, beta_path, clinical_path) {
-  # Load clinical data
-  clinical_data <- read_csv(clinical_path, show_col_types = FALSE)
-  clinical_data <- as.data.frame(clinical_data)
-  rownames(clinical_data) <- clinical_data$Sample
-  clinical_data <- clinical_data[train_ids, , drop = FALSE]
-  
-  # Load methylation data - fread is faster than read_csv for large files
-  cat("Loading methylation data...\n")
-  beta_matrix <- fread(beta_path, header = TRUE, data.table = FALSE)
-  
-  rownames(beta_matrix) <- beta_matrix[[1]]
-  beta_matrix <- beta_matrix[, -1]
-  
-  # Transpose: rows = samples, columns = CpGs
-  cat("Transposing...\n")
-  beta_matrix <- t(beta_matrix)
-  
-  # Subset to train_ids
-  beta_matrix <- beta_matrix[train_ids, , drop = FALSE]
-  beta_matrix <- as.data.frame(beta_matrix)
-  
-  cat(sprintf("Loaded %d samples x %d CpGs\n", nrow(beta_matrix), ncol(beta_matrix)))
-  
-  return(list(beta_matrix = beta_matrix, clinical_data = clinical_data))
-}
-
-beta_to_m <- function(beta, beta_threshold = 1e-3) {
-  # Convert beta values to M-values
-  # M = log2(beta / (1 - beta))
-  # 
-  # Why M-values?
-  # - Beta values are bounded [0,1], heteroscedastic
-  # - M-values are unbounded, more normally distributed
-  # - Better for linear modeling and differential analysis
-  
-  was_df <- is.data.frame(beta)
-  if (was_df) {
-    row_names <- rownames(beta)
-    col_names <- colnames(beta)
-    beta <- as.matrix(beta)
-  }
-  
-  # Prevent log of 0 or 1 by capping at small threshold
-  beta <- pmax(pmin(beta, 1 - beta_threshold), beta_threshold)
-  m_values <- log2(beta / (1 - beta))
-  
-  if (was_df) {
-    m_values <- as.data.frame(m_values)
-    rownames(m_values) <- row_names
-    colnames(m_values) <- col_names
-  }
-  return(m_values)
-}
-
-apply_admin_censoring <- function(df, time_col, event_col, time_cutoff) {
-  # Apply administrative censoring at specified time
-  # Patients with follow-up > cutoff are censored at cutoff
-  # This standardizes follow-up time across cohorts
-  
-  mask <- df[[time_col]] > time_cutoff
-  df[mask, time_col] <- time_cutoff
-  df[mask, event_col] <- 0
-  cat(sprintf("Applied censoring at %.1f for %s/%s (n=%d).\n", 
-              time_cutoff, time_col, event_col, sum(mask)))
-  return(df)
-}
-
-subset_methylation <- function(mval_matrix, cpg_ids_file) {
-  # Subset to predefined CpGs (e.g., from ATAC-seq overlap)
-  cpg_ids <- trimws(readLines(cpg_ids_file))
-  cpg_ids <- cpg_ids[cpg_ids != ""]
-  valid_cpgs <- cpg_ids[cpg_ids %in% colnames(mval_matrix)]
-  cat(sprintf("Subsetted to %d CpGs (from %d in file).\n", 
-              length(valid_cpgs), length(cpg_ids)))
-  return(mval_matrix[, valid_cpgs, drop = FALSE])
-}
-
-onehot_encode_clinical <- function(clin, clin_categorical) {
-  # One-hot encode categorical variables
-  # Drops reference level to avoid multicollinearity
-  # 
-  # Example: NHG with levels 1,2,3 → NHG2, NHG3 (NHG1 is reference)
-  
-  for (var in clin_categorical) {
-    if (var == "LN") {
-      clin[[var]] <- factor(clin[[var]], levels = c("N0", "N+"))
-    } else if (var == "NHG") {
-      clin[[var]] <- factor(clin[[var]], levels = c("1", "2", "3"))
-    } else {
-      clin[[var]] <- as.factor(clin[[var]])
-    }
-  }
-  
-  # Keep continuous variables as-is
-  continuous_vars <- setdiff(colnames(clin), clin_categorical)
-  clin_encoded <- if (length(continuous_vars) > 0) {
-    clin[, continuous_vars, drop = FALSE]
-  } else {
-    data.frame(row.names = rownames(clin))
-  }
-  
-  # One-hot encode categorical variables
-  encoded_cols <- c()
-  for (var in clin_categorical) {
-    # model.matrix creates intercept + k-1 dummies
-    dummy_df <- as.data.frame(model.matrix(
-      as.formula(paste("~", var)),
-      data = clin
-    ))
-    
-    # Drop intercept (first column)
-    dummy_df <- dummy_df[, -1, drop = FALSE]
-    rownames(dummy_df) <- rownames(clin)
-    encoded_cols <- c(encoded_cols, colnames(dummy_df))
-    clin_encoded <- cbind(clin_encoded, dummy_df)
-  }
-  
-  return(list(
-    encoded_df = clin_encoded, 
-    encoded_cols = encoded_cols
-  ))
-}
 
 ################################################################################
 # LOAD AND PREPARE DATA
@@ -432,15 +306,8 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   cat(sprintf("Features before filtering: %d (preserved: %d)\n", 
               ncol(X_train), sum(is_preserved)))
   
-  # Variance filtering: Keep top 25% most variable features
-  # Low variance features carry little information
-  variances <- apply(X_train_to_filter, 2, var, na.rm = TRUE)
-  var_threshold <- quantile(variances, probs = VARIANCE_QUANTILE, na.rm = TRUE)
-  keep_var <- names(variances[variances >= var_threshold])
-  X_filtered <- X_train_to_filter[, keep_var, drop = FALSE]
-  
-  cat(sprintf("After variance filter (>= %.0fth percentile): %d features\n", 
-              VARIANCE_QUANTILE * 100, length(keep_var)))
+  # Variance filtering
+  X_filtered <- filter_by_variance(X_train_to_filter, variance_quantile = VARIANCE_QUANTILE)
   
   # Combine filtered features with preserved features
   X_train_filtered <- cbind(X_filtered, X_train_preserved)
@@ -461,193 +328,81 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # PURPOSE: Select features predictive of recurrence
   # Uses Cox proportional hazards with elastic net regularization
   
-  cat(sprintf("\n--- Inner CV: Tuning CoxNet for RFI ---\n"))
-  
-  # Create stratified inner folds
-  set.seed(123)
-  inner_folds_rfi <- createFolds(
-    y = clinical_train$RFi_event,
-    k = N_INNER_FOLDS,
-    list = TRUE,
-    returnTrain = FALSE
+  rfi_model <- tune_and_fit_coxnet(
+    X_train = X_train_filtered,
+    y_train = y_rfi_train,
+    clinical_train = clinical_train,
+    event_col = "RFi_event",
+    alpha_grid = ALPHA_GRID,
+    penalty_factor = penalty_factor,
+    n_inner_folds = N_INNER_FOLDS,
+    outcome_name = "RFI"
   )
   
-  # Create foldid vector for cv.glmnet
-  foldid_rfi <- rep(NA, nrow(X_train_filtered))
-  for (i in 1:N_INNER_FOLDS) {
-    foldid_rfi[inner_folds_rfi[[i]]] <- i
-  }
-  
-  # Test each alpha value (elastic net mixing parameter)
-  cv_rfi_inner <- list()
-  for (alpha_val in ALPHA_GRID) {
-    set.seed(123)
-    cv_fit <- cv.glmnet(
-      x = as.matrix(X_train_filtered),
-      y = y_rfi_train,
-      family = "cox",
-      alpha = alpha_val,
-      penalty.factor = penalty_factor,
-      foldid = foldid_rfi
-    )
-    
-    # Performance at lambda.min (best cross-validated lambda)
-    perf_min <- cv_fit$cvm[cv_fit$lambda == cv_fit$lambda.min]
-    
-    # Extract selected features
-    beta <- coef(cv_fit, s = "lambda.min")
-    selected_features <- rownames(beta)[as.vector(beta != 0)]
-    
-    cv_rfi_inner[[as.character(alpha_val)]] <- list(
-      alpha = alpha_val,
-      lambda = cv_fit$lambda.min,
-      cvm_min = perf_min,
-      cvm_se = cv_fit$cvsd[cv_fit$lambda == cv_fit$lambda.min],
-      n_features = length(selected_features),
-      features = selected_features,
-      fit = cv_fit
-    )
-    
-    cat(sprintf(
-      "  Alpha=%.2f: CV-deviance=%.4f (SE=%.4f), Lambda=%.6f, Features=%d\n",
-      alpha_val,
-      perf_min,
-      cv_fit$cvsd[cv_fit$lambda == cv_fit$lambda.min],
-      cv_fit$lambda.min,
-      length(selected_features)
-    ))
-  }
-  
-  # Select best hyperparameters based on CV performance
-  best_rfi_idx <- which.min(sapply(cv_rfi_inner, function(x) x$cvm_min))
-  best_rfi_result <- cv_rfi_inner[[best_rfi_idx]]
-  best_alpha_rfi <- best_rfi_result$alpha
-  best_lambda_rfi <- best_rfi_result$lambda
-  
-  # Fit model on whole training set with best hyperparameters
-  final_fit_outer_rfi <- glmnet(
-    x = as.matrix(X_train_filtered),
-    y = y_rfi_train,
-    family = "cox",
-    alpha = best_alpha_rfi,
-    lambda = best_lambda_rfi,
-    penalty.factor = penalty_factor
-  )
-  
-  # Extract selected features in final model
-  coef_rfi <- coef(final_fit_outer_rfi)
-  features_rfi <- rownames(coef_rfi)[as.vector(coef_rfi != 0)]
+  # Extract coefficients and features
+  coef_rfi <- coef(rfi_model$final_fit)
+  coef_rfi_df <- data.frame(
+    feature = rownames(coef_rfi)[as.vector(coef_rfi != 0)],
+    coefficient = as.vector(coef_rfi)[as.vector(coef_rfi != 0)])
+  coef_rfi_df <- coef_rfi_df[order(abs(coef_rfi_df$coefficient), decreasing = TRUE), ]
+  rownames(coef_rfi_df) <- NULL
+  features_rfi <- coef_rfi_df$feature
   
   cat(sprintf(
     "  BEST RFI MODEL: Alpha=%.2f, Lambda=%.6f, Features=%d\n",
-    best_alpha_rfi, best_lambda_rfi, length(features_rfi)
+    rfi_model$best_alpha, 
+    rfi_model$best_lambda, 
+    length(features_rfi)
   ))
-  if (length(features_rfi) <= 20) {
-    cat("    Selected:", paste(features_rfi, collapse=", "), "\n")
-  } else {
-    cat("    Selected:", paste(head(features_rfi, 20), collapse=", "), "...\n")
-  }
+  
+  cat("    Selected:", paste(features_rfi, collapse=", "), "\n")
   
   # --------------------------------------------------------------------------
   # INNER CV LOOP #2: CoxNet for Death without Recurrence
   # --------------------------------------------------------------------------
   # PURPOSE: Select features predictive of death (competing risk)
   # This ensures we account for features that predict competing events
-  
-  cat(sprintf("\n--- Inner CV: Tuning CoxNet for Death without Recurrence ---\n"))
-  
-  # Create stratified inner folds
-  set.seed(123)
-  inner_folds_death <- createFolds(
-    y = clinical_train$DeathNoR_event,
-    k = N_INNER_FOLDS,
-    list = TRUE,
-    returnTrain = FALSE
+  death_model <- tune_and_fit_coxnet(
+    X_train = X_train_filtered,
+    y_train = y_death_train,
+    clinical_train = clinical_train,
+    event_col = "DeathNoR_event",
+    alpha_grid = ALPHA_GRID,
+    penalty_factor = penalty_factor,
+    n_inner_folds = N_INNER_FOLDS,
+    outcome_name = "DeathNoR"
   )
   
-  # Create foldid vector for cv.glmnet
-  foldid_death <- rep(NA, nrow(X_train_filtered))
-  for (i in 1:N_INNER_FOLDS) {
-    foldid_death[inner_folds_death[[i]]] <- i
-  }
-  
-  # Test each alpha value
-  cv_death_inner <- list()
-  for (alpha_val in ALPHA_GRID) {
-    set.seed(123)
-    cv_fit <- cv.glmnet(
-      x = as.matrix(X_train_filtered),
-      y = y_death_train,
-      family = "cox",
-      alpha = alpha_val,
-      penalty.factor = penalty_factor,
-      foldid = foldid_death
-    )
-    
-    # Performance at lambda.min
-    perf_min <- cv_fit$cvm[cv_fit$lambda == cv_fit$lambda.min]
-    
-    # Extract selected features
-    beta <- coef(cv_fit, s = "lambda.min")
-    selected_features <- rownames(beta)[as.vector(beta != 0)]
-    
-    cv_death_inner[[as.character(alpha_val)]] <- list(
-      alpha = alpha_val,
-      lambda = cv_fit$lambda.min,
-      cvm_min = perf_min,
-      cvm_se = cv_fit$cvsd[cv_fit$lambda == cv_fit$lambda.min],
-      n_features = length(selected_features),
-      features = selected_features,
-      fit = cv_fit
-    )
-    
-    cat(sprintf(
-      "  Alpha=%.2f: CV-deviance=%.4f (SE=%.4f), Lambda=%.6f, Features=%d\n",
-      alpha_val,
-      perf_min,
-      cv_fit$cvsd[cv_fit$lambda == cv_fit$lambda.min],
-      cv_fit$lambda.min,
-      length(selected_features)
-    ))
-  }
-  
-  # Select best hyperparameters
-  best_death_idx <- which.min(sapply(cv_death_inner, function(x) x$cvm_min))
-  best_death_result <- cv_death_inner[[best_death_idx]]
-  best_alpha_death <- best_death_result$alpha
-  best_lambda_death <- best_death_result$lambda
-  
-  # Fit model on whole training set
-  final_fit_outer_death <- glmnet(
-    x = as.matrix(X_train_filtered),
-    y = y_death_train,
-    family = "cox",
-    alpha = best_alpha_death,
-    lambda = best_lambda_death,
-    penalty.factor = penalty_factor
-  )
-  
-  # Extract selected features
-  coef_death <- coef(final_fit_outer_death)
-  features_death <- rownames(coef_death)[as.vector(coef_death != 0)]
+  # Extract coefficients and features
+  coef_death <- coef(death_model$final_fit)
+  coef_death_df <- data.frame(
+    feature = rownames(coef_death)[as.vector(coef_death != 0)],
+    coefficient = as.vector(coef_death)[as.vector(coef_death != 0)])
+  coef_death_df <- coef_death_df[order(abs(coef_death_df$coefficient), decreasing = TRUE), ]
+  rownames(coef_death_df) <- NULL
+  features_death <- coef_death_df$feature
   
   cat(sprintf(
-    "  BEST DEATH MODEL: Alpha=%.2f, Lambda=%.6f, Features=%d\n",
-    best_alpha_death, best_lambda_death, length(features_death)
+    "  BEST DeathNoR MODEL: Alpha=%.2f, Lambda=%.6f, Features=%d\n",
+    death_model$best_alpha, 
+    death_model$best_lambda, 
+    length(features_death)
   ))
-  if (length(features_death) <= 20) {
-    cat("    Selected:", paste(features_death, collapse=", "), "\n")
-  } else {
-    cat("    Selected:", paste(head(features_death, 20), collapse=", "), "...\n")
-  }
+  
+  cat("    Selected:", paste(features_death, collapse=", "), "\n")
   
   # --------------------------------------------------------------------------
   # Pool Features from Both Models
   # --------------------------------------------------------------------------
   # WHY: Fine-Gray model should include features predictive of EITHER outcome
   # This ensures we model the subdistribution hazard properly
+  source("./src/finegray_functions.R")
   
   features_pooled <- union(features_rfi, features_death)
+  
+  # prepare FG input
+  X_pooled_train <- X_train_filtered[, features_pooled, drop = FALSE]
+  X_pooled_test <- X_test_filtered[, features_pooled, drop = FALSE]
   
   cat(sprintf("\n--- Feature Pooling ---\n"))
   cat(sprintf("RFI features: %d\n", length(features_rfi)))
@@ -661,39 +416,18 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # WHY: Fine-Gray model is sensitive to feature scales
   # Only scale continuous variables, leave one-hot encoded variables as-is
   
-  cat(sprintf("\n--- Scaling Features ---\n"))
+  cat(sprintf("\n--- Scaling Cont. Features ---\n"))
+  scale_res <- scale_continuous_features(X_train = X_pooled_train, 
+                            X_test = X_pooled_test, 
+                            dont_scale = encoded_result$encoded_cols)
   
-  X_pooled_train <- X_train_filtered[, features_pooled, drop = FALSE]
-  X_pooled_test <- X_test_filtered[, features_pooled, drop = FALSE]
-  
-  # Identify continuous columns (not one-hot encoded)
-  cont_cols <- setdiff(colnames(X_pooled_train), encoded_result$encoded_cols)
-  
-  # Scale continuous variables in training set and save parameters
-  train_cont_scaled <- scale(X_pooled_train[, cont_cols, drop = FALSE])
-  centers <- attr(train_cont_scaled, "scaled:center")
-  scales  <- attr(train_cont_scaled, "scaled:scale")
-  
-  # Apply scaling to training set
-  X_train_scaled <- X_pooled_train
-  X_train_scaled[, cont_cols] <- train_cont_scaled
-  
-  # Scale test set using TRAINING set's mean and SD (no data leakage!)
-  X_test_scaled <- X_pooled_test
-  X_test_scaled[, cont_cols] <- scale(
-    X_pooled_test[, cont_cols, drop = FALSE],
-    center = centers,
-    scale  = scales
-  )
-  
-  cat(sprintf("Scaled %d continuous features\n", length(cont_cols)))
+  X_train_scaled <- scale_res$X_train_scaled
+  X_test_scaled <- scale_res$X_test_scaled
   
   # --------------------------------------------------------------------------
   # Fit Fine-Gray Model on Pooled Features
   # --------------------------------------------------------------------------
   # Fine-Gray model: Models subdistribution hazard for event of interest
-  # Accounts for competing risks by treating competing events differently
-  # from censoring
   
   cat(sprintf("\n--- Fitting Fine-Gray Model ---\n"))
   
