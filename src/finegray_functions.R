@@ -88,7 +88,7 @@ onehot_encode_clinical <- function(clin, clin_categorical) {
   
   for (var in clin_categorical) {
     if (var == "LN") {
-      clin[[var]] <- factor(clin[[var]], levels = c("N0", "N+"))
+      clin[[var]] <- factor(clin[[var]], levels = c("N0", "Np"))
     } else if (var == "NHG") {
       clin[[var]] <- factor(clin[[var]], levels = c("1", "2", "3"))
     } else {
@@ -158,7 +158,8 @@ cv_glmnet_alpha_grid <- function(X_train, y_train, alpha_grid, penalty_factor = 
       family = family,
       alpha = alpha_val,
       penalty.factor = penalty_factor,
-      foldid = foldid
+      foldid = foldid,
+      standardize = TRUE
     )
     
     # Performance at lambda.min
@@ -380,9 +381,9 @@ assess_feature_stability <- function(outer_fold_results,
   all_features <- unique(unlist(lapply(coef_list, function(df) df$feature)))
   
   # Calculate for all three models
-  stability_rfi <- calculate_stability("cox_rfi_coef")
-  stability_death <- calculate_stability("cox_death_coef")
-  stability_fg <- calculate_stability("fg_coef")
+  stability_rfi <- calculate_stability(all_features,"cox_rfi_coef")
+  stability_death <- calculate_stability(all_features,"cox_death_coef")
+  stability_fg <- calculate_stability(all_features,"fg_coef")
   
   if (verbose) {
     cat(sprintf("\nTotal folds: %d\n", n_folds))
@@ -422,7 +423,7 @@ assess_feature_stability <- function(outer_fold_results,
 }
 
 # Function to calculate stability for one model type
-calculate_stability <- function(coef_col_name) {
+calculate_stability <- function(all_features,coef_col_name) {
   
   # For each feature, count selections and get coefficients
   feature_stats <- lapply(all_features, function(feat) {
@@ -508,4 +509,26 @@ extract_nonzero_coefs <- function(model_fit, sort_by_abs = TRUE) {
     coef_df = coef_df,
     features = coef_df$feature
   ))
+}
+
+
+
+prepare_filtered_features <- function(X, vars_preserve, variance_quantile = 0.75) {
+  # Separate preserved vs filterable features
+  is_preserved <- colnames(X) %in% vars_preserve
+  X_preserved <- X[, is_preserved, drop = FALSE]
+  X_to_filter <- X[, !is_preserved, drop = FALSE]
+  
+  cat(sprintf("Features before filtering: %d (preserved: %d)\n", 
+              ncol(X), sum(is_preserved)))
+  
+  # Variance filtering
+  X_filtered <- filter_by_variance(X_to_filter, variance_quantile = variance_quantile)
+  
+  # Combine
+  X_final <- cbind(X_filtered, X_preserved)
+  
+  cat(sprintf("Total features for modeling: %d\n", ncol(X_final)))
+  
+  return(X_final)
 }

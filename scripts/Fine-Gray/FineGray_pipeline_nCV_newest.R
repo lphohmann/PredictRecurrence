@@ -106,12 +106,11 @@ VARIANCE_QUANTILE <- 0.75  # Keep top 25% most variable features
 
 # Variables to not penalize in elastic net (after one-hot encoding)
 # These get coefficient shrinkage but not eliminated (penalty_factor = 0)
-VARS_NO_PENALIZATION <- NULL
 
 # Cross-validation
-N_OUTER_FOLDS <- 3
+N_OUTER_FOLDS <- 5
 N_INNER_FOLDS <- 3
-ALPHA_GRID <- c(0.9,0.95)  # Elastic net mixing: 0=ridge, 1=lasso, 0.9=mostly lasso
+ALPHA_GRID <- c(0.5,0.7,0.9)  # Elastic net mixing: 0=ridge, 1=lasso, 0.9=mostly lasso
 
 # Performance evaluation timepoints (in years)
 EVAL_TIMES <- seq(1, 10)
@@ -154,6 +153,8 @@ if (!is.null(TRAIN_CPGS)) {
 X <- mvals
 
 if (!is.null(c(CLIN_CONT, CLIN_CATEGORICAL))) {
+  # Recode N+ to Np to avoid special character issues in formulas
+  clinical_data$LN <- gsub("N\\+", "Np", clinical_data$LN)
   clin <- clinical_data[c(CLIN_CONT, CLIN_CATEGORICAL)]
   clin <- clin[rownames(X), , drop = FALSE]
   encoded_result <- onehot_encode_clinical(clin, CLIN_CATEGORICAL)
@@ -166,7 +167,7 @@ if (!is.null(c(CLIN_CONT, CLIN_CATEGORICAL))) {
 
 # Variables to preserve during filtering (all clinical variables)
 VARS_PRESERVE <- clinvars
-VARS_NO_PENALIZATION <- clinvars
+VARS_NO_PENALIZATION <- clinvars # NULL
 
 # Validate preserved and non-penalized variables
 if (!is.null(VARS_PRESERVE)) {
@@ -299,22 +300,11 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   
   cat(sprintf("\n--- Feature Filtering ---\n"))
   
-  # Separate preserved vs filterable features
-  is_preserved <- colnames(X_train) %in% VARS_PRESERVE
-  X_train_preserved <- X_train[, is_preserved, drop = FALSE]
-  X_train_to_filter <- X_train[, !is_preserved, drop = FALSE]
+  X_train_filtered <- prepare_filtered_features(X_train,vars_preserve=VARS_PRESERVE, variance_quantile = VARIANCE_QUANTILE)
   
-  cat(sprintf("Features before filtering: %d (preserved: %d)\n", 
-              ncol(X_train), sum(is_preserved)))
-  
-  # Variance filtering
-  X_filtered <- filter_by_variance(X_train_to_filter, variance_quantile = VARIANCE_QUANTILE)
-  
-  # Combine filtered features with preserved features
-  X_train_filtered <- cbind(X_filtered, X_train_preserved)
   X_test_filtered <- X_test[, colnames(X_train_filtered), drop = FALSE]
   
-  cat(sprintf("Total features for modeling: %d\n", ncol(X_train_filtered)))
+  # --------------------------------------------------------------------------
   
   # Create penalty factor (0 = not penalized, 1 = penalized)
   # Unpenalized features can still be shrunk but won't be eliminated
@@ -341,7 +331,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   )
   
   # Extract coefficients and features
-  rfi_coef_res <- extract_nonzero_coefs(death_model$final_fit)
+  rfi_coef_res <- extract_nonzero_coefs(rfi_model$final_fit)
   coef_rfi_df <- rfi_coef_res$coef_df
   features_rfi <- rfi_coef_res$features
   
@@ -420,7 +410,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # Fit Fine-Gray Model on Pooled Features
   # --------------------------------------------------------------------------
   # Fine-Gray model: Models subdistribution hazard for event of interest
-  
+
   # prepare input data
   cat(sprintf("\n--- Fitting Fine-Gray Model ---\n"))
   
@@ -532,10 +522,16 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   coef_comparison <- merge(coef_comparison, coef_death_df, by = "feature", all = TRUE)
   coef_comparison[is.na(coef_comparison)] <- 0
   
+  coef_comparison$fg_HR <- exp(coef_comparison$fg_coef)
+  coef_comparison <- coef_comparison[c("feature","cox_rfi_coef",
+                                       "cox_death_coef","fg_coef",
+                                       "fg_HR")]
+  
   # Sort by absolute FG coefficient
-  coef_comparison <- coef_comparison[order(abs(coef_comparison$fg_coef), decreasing = TRUE), ]
+  coef_comparison <- coef_comparison[order(abs(coef_comparison$fg_HR), decreasing = TRUE), ]
   rownames(coef_comparison) <- NULL
   
+
   print(coef_comparison)
   
   # --------------------------------------------------------------------------
@@ -578,12 +574,12 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
 # AGGREGATE RESULTS ACROSS FOLDS
 ################################################################################
 
-source("./src/finegray_functions.R")
+#source("./src/finegray_functions.R")
 # Get aggregated performance
 perf_results <- aggregate_cv_performance(outer_fold_results)
 
 # Feature selection stability
-stability_results <- assess_feature_stability(outer_fold_results, min_folds = n_folds-1)
+stability_results <- assess_feature_stability(outer_fold_results, min_folds = N_OUTER_FOLDS-1)
 
 ################################################################################
 # TRAIN FINAL MODEL USING ALL DATA
@@ -601,19 +597,7 @@ cat(sprintf("Train: n=%d (RFi=%d, Death=%d)\n",
 
 #-------------------------------------------------------------------------------
 
-# Separate preserved vs filterable features
-is_preserved <- colnames(X_all) %in% VARS_PRESERVE
-X_all_preserved <- X_all[, is_preserved, drop = FALSE]
-X_all_to_filter <- X_all[, !is_preserved, drop = FALSE]
-cat(sprintf("Features before filtering: %d (preserved: %d)\n", 
-            ncol(X_all), sum(is_preserved)))
-
-# Variance filtering
-X_all_filtered <- filter_by_variance(X_all_to_filter, variance_quantile = VARIANCE_QUANTILE)
-
-# Combine filtered features with preserved features
-X_all_filtered <- cbind(X_all_filtered, X_all_preserved)  # FIX: was X_filtered, X_train_preserved
-cat(sprintf("Total features for modeling: %d\n", ncol(X_all_filtered)))
+X_all_filtered <- prepare_filtered_features(X_all,vars_preserve=VARS_PRESERVE, variance_quantile = VARIANCE_QUANTILE)
 
 #-------------------------------------------------------------------------------
 
@@ -741,14 +725,80 @@ names(coef_death_df_all) <- c("feature","cox_death_final_coef")
 coef_comparison_final <- merge(coef_fg_final_df, coef_rfi_df_all, by = "feature", all = TRUE)
 coef_comparison_final <- merge(coef_comparison_final, coef_death_df_all, by = "feature", all = TRUE)
 coef_comparison_final[is.na(coef_comparison_final)] <- 0
+coef_comparison_final$fg_final_HR <- exp(coef_comparison_final$fg_final_coef)
+coef_comparison_final <- coef_comparison_final[c("feature","cox_rfi_final_coef",
+                                                 "cox_death_final_coef","fg_final_coef",
+                                                 "fg_final_HR")]
 
 # Sort by absolute FG coefficient
-coef_comparison_final <- coef_comparison_final[order(abs(coef_comparison_final$fg_final_coef), decreasing = TRUE), ]
+coef_comparison_final <- coef_comparison_final[order(
+  abs(coef_comparison_final$fg_final_HR), decreasing = TRUE), ]
 rownames(coef_comparison_final) <- NULL
 
 print(coef_comparison_final)
 
-# feature importance also
+# --------------------------------------------------------------------------
+# Variable Importance for Fine-Gray Model
+# --------------------------------------------------------------------------
+
+cat("\n--- Fine-Gray Variable Importance ---\n")
+
+# Get variance-covariance matrix and standard errors
+fg_vcov <- fgr_final$crrFit$var
+fg_se <- sqrt(diag(fg_vcov))
+
+# Match features with their SEs
+fg_se_matched <- fg_se[names(fg_final_coef)]
+
+# Create comprehensive importance table
+vimp_fg_final <- data.frame(
+  feature = names(fg_final_coef),
+  coefficient = fg_final_coef,
+  se = fg_se_matched,
+  HR = exp(fg_final_coef),
+  abs_HR = exp(abs(fg_final_coef)),
+  wald_z = fg_final_coef / fg_se_matched,
+  abs_wald_z = abs(fg_final_coef / fg_se_matched),
+  p_value = pchisq((fg_final_coef / fg_se_matched)^2, df = 1, lower.tail = FALSE),
+  type = ifelse(names(fg_final_coef) %in% encoded_result$encoded_cols, 
+                "categorical", "continuous")
+)
+
+# Sort by absolute Wald z-score (statistical importance)
+vimp_fg_final <- vimp_fg_final[order(vimp_fg_final$abs_wald_z, decreasing = TRUE), ]
+rownames(vimp_fg_final) <- NULL
+
+# Round for display
+vimp_fg_final$coefficient <- round(vimp_fg_final$coefficient, 3)
+vimp_fg_final$se <- round(vimp_fg_final$se, 3)
+vimp_fg_final$HR <- round(vimp_fg_final$HR, 2)
+vimp_fg_final$abs_HR <- round(vimp_fg_final$abs_HR, 2)
+vimp_fg_final$wald_z <- round(vimp_fg_final$wald_z, 2)
+vimp_fg_final$abs_wald_z <- round(vimp_fg_final$abs_wald_z, 2)
+vimp_fg_final$p_value <- round(vimp_fg_final$p_value, 4)
+
+cat("\nVariable Importance (sorted by statistical significance):\n")
+print(vimp_fg_final)
+
+# Summary by variable type
+cat("\n--- Top 5 Most Important Variables ---\n")
+cat("\nBy Wald z-score (statistical importance):\n")
+print(head(vimp_fg_final[, c("feature", "coefficient", "HR", "wald_z", "p_value", "type")], 5))
+
+cat("\nBy effect size (absolute HR):\n")
+vimp_by_hr <- vimp_fg_final[order(vimp_fg_final$abs_HR, decreasing = TRUE), ]
+print(head(vimp_by_hr[, c("feature", "coefficient", "HR", "abs_HR", "type")], 5))
+
+# Separate categorical and continuous
+cat("\n--- Most Important by Type ---\n")
+cat("\nCategorical (vs reference):\n")
+vimp_cat <- vimp_fg_final[vimp_fg_final$type == "categorical", ]
+print(head(vimp_cat[, c("feature", "HR", "wald_z", "p_value")], 5))
+
+cat("\nContinuous (per 1 SD):\n")
+vimp_cont <- vimp_fg_final[vimp_fg_final$type == "continuous", ]
+print(head(vimp_cont[, c("feature", "HR", "wald_z", "p_value")], 5))
+
 ################################################################################
 # SAVE ALL RESULTS
 ################################################################################
