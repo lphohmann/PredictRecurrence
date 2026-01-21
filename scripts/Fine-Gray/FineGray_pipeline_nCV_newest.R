@@ -72,7 +72,7 @@ setwd("~/PhD_Workspace/PredictRecurrence/")
 COHORT_NAME <- "ERpHER2n"
 DATA_MODE <- "combined"
 TRAIN_CPGS <- "./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt"
-OUTPUT_BASE_DIR <- "./output/FineGray_fastcmprsk"
+OUTPUT_BASE_DIR <- "./output/FineGray"
 
 # Input files
 INFILE_METHYLATION <- "./data/train/train_methylation_unadjusted.csv"
@@ -743,62 +743,155 @@ print(coef_comparison_final)
 
 cat("\n--- Fine-Gray Variable Importance ---\n")
 
-# Get variance-covariance matrix and standard errors
-fg_vcov <- fgr_final$crrFit$var
-fg_se <- sqrt(diag(fg_vcov))
-
-# Match features with their SEs
-fg_se_matched <- fg_se[names(fg_final_coef)]
-
-# Create comprehensive importance table
-vimp_fg_final <- data.frame(
-  feature = names(fg_final_coef),
-  coefficient = fg_final_coef,
-  se = fg_se_matched,
-  HR = exp(fg_final_coef),
-  abs_HR = exp(abs(fg_final_coef)),
-  wald_z = fg_final_coef / fg_se_matched,
-  abs_wald_z = abs(fg_final_coef / fg_se_matched),
-  p_value = pchisq((fg_final_coef / fg_se_matched)^2, df = 1, lower.tail = FALSE),
-  type = ifelse(names(fg_final_coef) %in% encoded_result$encoded_cols, 
-                "categorical", "continuous")
+# Full output with summaries
+vimp_fg_final <- calculate_fgr_importance(
+  fgr_model = fgr_final,
+  encoded_cols = encoded_result$encoded_cols,
+  verbose = TRUE
 )
 
-# Sort by absolute Wald z-score (statistical importance)
-vimp_fg_final <- vimp_fg_final[order(vimp_fg_final$abs_wald_z, decreasing = TRUE), ]
-rownames(vimp_fg_final) <- NULL
-
-# Round for display
-vimp_fg_final$coefficient <- round(vimp_fg_final$coefficient, 3)
-vimp_fg_final$se <- round(vimp_fg_final$se, 3)
-vimp_fg_final$HR <- round(vimp_fg_final$HR, 2)
-vimp_fg_final$abs_HR <- round(vimp_fg_final$abs_HR, 2)
-vimp_fg_final$wald_z <- round(vimp_fg_final$wald_z, 2)
-vimp_fg_final$abs_wald_z <- round(vimp_fg_final$abs_wald_z, 2)
-vimp_fg_final$p_value <- round(vimp_fg_final$p_value, 4)
-
-cat("\nVariable Importance (sorted by statistical significance):\n")
+# Access the dataframe
 print(vimp_fg_final)
 
-# Summary by variable type
-cat("\n--- Top 5 Most Important Variables ---\n")
-cat("\nBy Wald z-score (statistical importance):\n")
-print(head(vimp_fg_final[, c("feature", "coefficient", "HR", "wald_z", "p_value", "type")], 5))
-
-cat("\nBy effect size (absolute HR):\n")
-vimp_by_hr <- vimp_fg_final[order(vimp_fg_final$abs_HR, decreasing = TRUE), ]
-print(head(vimp_by_hr[, c("feature", "coefficient", "HR", "abs_HR", "type")], 5))
-
-# Separate categorical and continuous
-cat("\n--- Most Important by Type ---\n")
-cat("\nCategorical (vs reference):\n")
-vimp_cat <- vimp_fg_final[vimp_fg_final$type == "categorical", ]
-print(head(vimp_cat[, c("feature", "HR", "wald_z", "p_value")], 5))
-
-cat("\nContinuous (per 1 SD):\n")
-vimp_cont <- vimp_fg_final[vimp_fg_final$type == "continuous", ]
-print(head(vimp_cont[, c("feature", "HR", "wald_z", "p_value")], 5))
 
 ################################################################################
 # SAVE ALL RESULTS
 ################################################################################
+
+cat("\n========== SAVING RESULTS ==========\n")
+
+# Create output directory
+results_dir <- file.path(current_output_dir, "final_results")
+dir.create(results_dir, recursive = TRUE, showWarnings = FALSE)
+
+#-------------------------------------------------------------------------------
+# Extract CV predictions for ROC/calibration plots
+#-------------------------------------------------------------------------------
+
+cat("Extracting CV predictions...\n")
+
+cv_predictions <- do.call(rbind, lapply(1:N_OUTER_FOLDS, function(i) {
+  fold <- outer_fold_results[[i]]
+  
+  # Get test samples for this fold
+  test_samples <- fold$test_samples
+  clinical_test_fold <- clinical_data[test_samples, ]
+  
+  # Get scaled test data from fold
+  X_test_fold <- X[test_samples, fold$features_pooled, drop = FALSE]
+  cont_cols <- fold$scale_params$cont_cols
+  
+  X_test_scaled <- X_test_fold
+  X_test_scaled[, cont_cols] <- scale(
+    X_test_fold[, cont_cols, drop = FALSE],
+    center = fold$scale_params$centers,
+    scale = fold$scale_params$scales
+  )
+  
+  # Predict risks
+  pred_risks <- predictRisk(
+    fold$finegray_model,
+    newdata = X_test_scaled,
+    times = EVAL_TIMES,
+    cause = 1
+  )
+  
+  # Combine with outcomes
+  pred_df <- data.frame(
+    fold = i,
+    sample = test_samples,
+    time = clinical_test_fold$time_to_CompRisk_event,
+    event_coded = clinical_test_fold$CompRisk_event_coded,
+    rfi_event = clinical_test_fold$RFi_event,
+    pred_risks
+  )
+  
+  colnames(pred_df)[6:ncol(pred_df)] <- paste0("risk_", EVAL_TIMES, "yr")
+  
+  return(pred_df)
+}))
+
+#-------------------------------------------------------------------------------
+# Save everything in one .RData file
+#-------------------------------------------------------------------------------
+
+save(
+  # Performance
+  perf_results,
+  
+  # Predictions (NEW!)
+  cv_predictions,
+  
+  # Stability
+  stability_results,
+  
+  # Final model objects
+  fgr_final,
+  rfi_model_all,
+  death_model_all,
+  
+  # Coefficients and importance
+  coef_comparison_final,
+  vimp_fg_final,
+  
+  # Features
+  features_rfi_all,
+  features_death_all,
+  features_pooled_all,
+  
+  # Scaling parameters (CRITICAL for new data)
+  scale_res_all,
+  encoded_result,
+  
+  # CV results
+  outer_fold_results,
+  
+  # Parameters
+  N_OUTER_FOLDS,
+  N_INNER_FOLDS,
+  ALPHA_GRID,
+  EVAL_TIMES,
+  COHORT_NAME,
+  clinvars,
+  
+  file = file.path(results_dir, "all_results.RData")
+)
+
+#-------------------------------------------------------------------------------
+# Also save key CSVs for easy viewing
+#-------------------------------------------------------------------------------
+
+write.csv(perf_results$summary, 
+          file.path(results_dir, "performance_summary.csv"), 
+          row.names = FALSE)
+
+write.csv(perf_results$all_folds, 
+          file.path(results_dir, "performance_all_folds.csv"), 
+          row.names = FALSE)
+
+write.csv(cv_predictions, 
+          file.path(results_dir, "cv_predictions.csv"), 
+          row.names = FALSE)
+
+write.csv(vimp_fg_final, 
+          file.path(results_dir, "variable_importance.csv"), 
+          row.names = FALSE)
+
+write.csv(coef_comparison_final, 
+          file.path(results_dir, "final_coefficients.csv"), 
+          row.names = FALSE)
+
+write.csv(stability_results$finegray_stability, 
+          file.path(results_dir, "stability_finegray.csv"), 
+          row.names = FALSE)
+
+#-------------------------------------------------------------------------------
+
+cat(sprintf("\n✓ Results saved to: %s\n", results_dir))
+cat("  - all_results.RData (everything)\n")
+cat("  - performance_summary.csv\n")
+cat("  - performance_all_folds.csv\n")
+cat("  - cv_predictions.csv (for ROC/calibration)\n")
+cat("  - variable_importance.csv\n")
+cat("  - final_coefficients.csv\n")
+cat("  - stability_finegray.csv\n")
