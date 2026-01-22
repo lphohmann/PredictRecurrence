@@ -4,11 +4,12 @@
 # Fine-Gray Competing Risks with Nested Cross-Validation
 # Author: Lennart Hohmann
 #
-# PIPELINE OVERVIEW:
+## PIPELINE OVERVIEW:
 # ==================
 # This pipeline implements nested cross-validation for competing risks analysis
-# of breast cancer recurrence using DNA methylation + clinical variables.
-#
+# of breast cancer recurrence using DNA methylation features (with or without
+# clinical variables). For clinical-only analysis, use finegray_clinical.R.
+
 # 1. DATA PREPARATION
 #    - Load methylation beta values (CpG sites) and clinical data
 #    - Convert beta → M-values: log2(beta/(1-beta)) for better normal distribution
@@ -66,14 +67,72 @@ setwd("~/PhD_Workspace/PredictRecurrence/")
 source("./src/finegray_functions.R") # match real name
 
 ################################################################################
-# SETTINGS
+# SETTINGS - Command Line Arguments
 ################################################################################
 
+# Parse command line arguments
+args <- commandArgs(trailingOnly = TRUE)
 
-COHORT_NAME <- "ERpHER2n"
-DATA_MODE <- "combined"
-TRAIN_CPGS <- "./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt"
-OUTPUT_BASE_DIR <- "./output/FineGray"
+# Set defaults
+DEFAULT_COHORT <- "ERpHER2n"
+DEFAULT_DATA_MODE <- "methylation"
+DEFAULT_TRAIN_CPGS <- "./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt"
+DEFAULT_OUTPUT_DIR <- "./output/FineGray"
+
+# Parse arguments or use defaults
+if (length(args) == 0) {
+  # No arguments - use defaults
+  cat("No command line arguments provided. Using defaults.\n")
+  COHORT_NAME <- DEFAULT_COHORT
+  DATA_MODE <- DEFAULT_DATA_MODE
+  TRAIN_CPGS <- DEFAULT_TRAIN_CPGS
+  OUTPUT_BASE_DIR <- DEFAULT_OUTPUT_DIR
+  
+} else if (length(args) == 4) {
+  # All four arguments provided
+  COHORT_NAME <- args[1]
+  DATA_MODE <- args[2]
+  TRAIN_CPGS <- args[3]
+  OUTPUT_BASE_DIR <- args[4]
+  
+} else {
+  # Wrong number of arguments - show usage and exit
+  cat("\n=== USAGE ===\n")
+  cat("Rscript finegray_pipeline.R <COHORT> <DATA_MODE> <TRAIN_CPGS> <OUTPUT_DIR>\n\n")
+  cat("Arguments:\n")
+  cat("  COHORT      : 'TNBC', 'ERpHER2n', or 'All'\n")
+  cat("  DATA_MODE   : 'methylation' or 'combined'\n")
+  cat("  TRAIN_CPGS  : Path to CpG IDs file (or 'NULL' to use all)\n")
+  cat("  OUTPUT_DIR  : Base output directory\n\n")
+  cat("Example:\n")
+  cat("  Rscript finegray_pipeline.R ERpHER2n methylation ./data/cpg_ids.txt ./output/FineGray\n\n")
+  cat("Or run without arguments to use defaults:\n")
+  cat("  Rscript finegray_pipeline.R\n\n")
+  stop("Incorrect number of arguments provided.")
+}
+
+# Validate COHORT_NAME
+if (!COHORT_NAME %in% c("TNBC", "ERpHER2n", "All")) {
+  stop(sprintf("Invalid COHORT_NAME: '%s'. Must be 'TNBC', 'ERpHER2n', or 'All'", COHORT_NAME))
+}
+
+# Validate DATA_MODE
+if (!DATA_MODE %in% c("methylation", "combined")) {
+  stop(sprintf("Invalid DATA_MODE: '%s'. Must be 'methylation' or 'combined'. For clinical-only, use finegray_clinical.R", DATA_MODE))
+}
+
+# Handle NULL for TRAIN_CPGS
+if (TRAIN_CPGS == "NULL") {
+  TRAIN_CPGS <- NULL
+}
+
+# Print settings
+cat(sprintf("\n=== PIPELINE SETTINGS ===\n"))
+cat(sprintf("Cohort:      %s\n", COHORT_NAME))
+cat(sprintf("Data mode:   %s\n", DATA_MODE))
+cat(sprintf("CpG file:    %s\n", ifelse(is.null(TRAIN_CPGS), "NULL (all CpGs)", TRAIN_CPGS)))
+cat(sprintf("Output dir:  %s\n", OUTPUT_BASE_DIR))
+cat(sprintf("=========================\n\n"))
 
 ################################################################################
 # INPUT OUTPUT SETTINGS
@@ -136,8 +195,8 @@ VARIANCE_QUANTILE <- 0.75  # Keep top 25% most variable features
 # These get coefficient shrinkage but not eliminated (penalty_factor = 0)
 
 # Cross-validation
-N_OUTER_FOLDS <- 5
-N_INNER_FOLDS <- 3
+N_OUTER_FOLDS <- 5#5
+N_INNER_FOLDS <- 3#3
 ALPHA_GRID <- c(0.5,0.7,0.9)  # Elastic net mixing: 0=ridge, 1=lasso, 0.9=mostly lasso
 
 # Performance evaluation timepoints (in years)
@@ -172,25 +231,32 @@ if (!is.null(TRAIN_CPGS)) {
   mvals <- subset_methylation(mvals, TRAIN_CPGS)
 }
 
-# Combine methylation with clinical variables
-X <- mvals
-
-if (!is.null(c(CLIN_CONT, CLIN_CATEGORICAL))) {
-  # Recode N+ to Np to avoid special character issues in formulas
+# Combine methylation with clinical variables based on DATA_MODE
+if (DATA_MODE == "methylation") {
+  # Methylation only - no clinical variables
+  X <- mvals
+  clinvars <- NULL
+  encoded_result <- list(encoded_cols = NULL)  # Create empty for compatibility
+  cat(sprintf("Using methylation features only: %d CpGs\n", ncol(X)))
+  
+} else if (DATA_MODE == "combined") {
+  # Combined - methylation + clinical
+  X <- mvals
   clinical_data$LN <- gsub("N\\+", "Np", clinical_data$LN)
   clin <- clinical_data[c(CLIN_CONT, CLIN_CATEGORICAL)]
   clin <- clin[rownames(X), , drop = FALSE]
   encoded_result <- onehot_encode_clinical(clin, CLIN_CATEGORICAL)
   X <- cbind(X, encoded_result$encoded_df)
-  
   clinvars <- c(CLIN_CONT, encoded_result$encoded_cols)
-  cat(sprintf("Added clinical variables: %s\n", 
-              paste(clinvars, collapse = ", ")))
+  cat(sprintf("Combined features: %d CpGs + %d clinical = %d total\n", 
+              ncol(mvals), length(clinvars), ncol(X)))
+  cat(sprintf("Clinical variables: %s\n", paste(clinvars, collapse = ", ")))
+  
 }
 
 # Variables to preserve during filtering (all clinical variables)
-VARS_PRESERVE <- clinvars
-VARS_NO_PENALIZATION <- clinvars  # Set to NULL to penalize all features
+VARS_PRESERVE <- if (DATA_MODE == "methylation") NULL else clinvars
+VARS_NO_PENALIZATION <- if (DATA_MODE == "methylation") NULL else clinvars  # Set to NULL to penalize all features
 
 # Validate preserved and non-penalized variables
 if (!is.null(VARS_PRESERVE)) {
@@ -438,7 +504,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   scale_res <- scale_continuous_features(
     X_train = X_pooled_train, 
     X_test = X_pooled_test, 
-    dont_scale = encoded_result$encoded_cols
+    dont_scale = if (DATA_MODE == "methylation") NULL else encoded_result$encoded_cols
   )
   
   X_train_scaled <- scale_res$X_train_scaled
@@ -755,7 +821,7 @@ cat(sprintf("\n--- Scaling Continuous Features ---\n"))
 scale_res_all <- scale_continuous_features(
   X_train = X_pooled_all, 
   X_test = NULL, 
-  dont_scale = encoded_result$encoded_cols
+  dont_scale = if (DATA_MODE == "methylation") NULL else encoded_result$encoded_cols
 )
 
 X_all_scaled <- scale_res_all$X_train_scaled
@@ -821,7 +887,7 @@ cat("\n--- Fine-Gray Variable Importance ---\n")
 
 vimp_fg_final <- calculate_fgr_importance(
   fgr_model = fgr_final,
-  encoded_cols = encoded_result$encoded_cols,
+  encoded_cols = if (DATA_MODE == "methylation") NULL else encoded_result$encoded_cols,
   verbose = TRUE
 )
 
