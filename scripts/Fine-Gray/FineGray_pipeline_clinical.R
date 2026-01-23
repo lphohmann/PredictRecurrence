@@ -109,9 +109,17 @@ cat(sprintf("%s\n\n", paste(rep("=", 80), collapse = "")))
 
 # Clinical variables
 ADMIN_CENSORING_CUTOFF <- if (COHORT_NAME == "TNBC") 5.01 else NULL
-CLIN_CATEGORICAL <- c("NHG", "LN")
+
+# Categorical variables depend on cohort
+if (COHORT_NAME == "All") {
+  CLIN_CATEGORICAL <- c("NHG", "LN", "ER", "PR", "HER2")
+} else {
+  CLIN_CATEGORICAL <- c("NHG", "LN")
+}
+
 CLIN_CONT <- c("Age", "Size.mm")
 
+cat(sprintf("Clinical categorical variables: %s\n", paste(CLIN_CATEGORICAL, collapse=", ")))
 # Cross-validation
 N_FOLDS <- 5  # Can use more folds since no inner CV
 

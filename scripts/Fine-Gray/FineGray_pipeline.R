@@ -74,8 +74,8 @@ source("./src/finegray_functions.R") # match real name
 args <- commandArgs(trailingOnly = TRUE)
 
 # Set defaults
-DEFAULT_COHORT <- "ERpHER2n"
-DEFAULT_DATA_MODE <- "methylation"
+DEFAULT_COHORT <- "All"
+DEFAULT_DATA_MODE <- "combined" #combined
 DEFAULT_TRAIN_CPGS <- "./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt"
 DEFAULT_OUTPUT_DIR <- "./output/FineGray"
 
@@ -185,8 +185,17 @@ cat(sprintf("%s\n\n", paste(rep("=", 80), collapse = "")))
 
 # Clinical variables - always preserved in filtering
 ADMIN_CENSORING_CUTOFF <- if (COHORT_NAME == "TNBC") 5.01 else NULL
-CLIN_CATEGORICAL <- c("NHG", "LN")
+
+# Categorical variables depend on cohort
+if (COHORT_NAME == "All") {
+  CLIN_CATEGORICAL <- c("NHG", "LN", "ER", "PR", "HER2")
+} else {
+  CLIN_CATEGORICAL <- c("NHG", "LN")
+}
+
 CLIN_CONT <- c("Age", "Size.mm")
+
+cat(sprintf("Clinical categorical variables: %s\n", paste(CLIN_CATEGORICAL, collapse=", ")))
 
 # Feature selection - variance filter only
 VARIANCE_QUANTILE <- 0.75  # Keep top 25% most variable features
@@ -195,8 +204,8 @@ VARIANCE_QUANTILE <- 0.75  # Keep top 25% most variable features
 # These get coefficient shrinkage but not eliminated (penalty_factor = 0)
 
 # Cross-validation
-N_OUTER_FOLDS <- 5#5
-N_INNER_FOLDS <- 3#3
+N_OUTER_FOLDS <- 5
+N_INNER_FOLDS <- 3
 ALPHA_GRID <- c(0.5,0.7,0.9)  # Elastic net mixing: 0=ridge, 1=lasso, 0.9=mostly lasso
 
 # Performance evaluation timepoints (in years)
@@ -380,47 +389,42 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
               nrow(X_test), 
               sum(clinical_test$RFi_event), 
               sum(clinical_test$DeathNoR_event)))
-  
-  # --------------------------------------------------------------------------
-  # Feature Filtering on Outer Training Data
-  # --------------------------------------------------------------------------
-  # WHY: Reduce dimensionality before elastic net
-  # IMPORTANT: Filtering done ONLY on training data to prevent data leakage
-  
-  cat(sprintf("\n--- Feature Filtering ---\n"))
-  
-  X_train_filtered <- prepare_filtered_features(
-    X_train,
-    vars_preserve = VARS_PRESERVE, 
-    variance_quantile = VARIANCE_QUANTILE
-  )
-  
-  X_test_filtered <- X_test[, colnames(X_train_filtered), drop = FALSE]
-  
-  # --------------------------------------------------------------------------
-  # Create Penalty Factor for Elastic Net
-  # --------------------------------------------------------------------------
-  
-  # Create penalty factor (0 = not penalized, 1 = penalized)
-  # Unpenalized features can still be shrunk but won't be eliminated
-  penalty_factor <- rep(1, ncol(X_train_filtered))
-  if (!is.null(VARS_NO_PENALIZATION)) {
-    penalty_factor[colnames(X_train_filtered) %in% VARS_NO_PENALIZATION] <- 0
-  }
-  
+
   # --------------------------------------------------------------------------
   # INNER CV LOOP #1: CoxNet for RFI
   # --------------------------------------------------------------------------
+  
+  # Reduce dimensionality before elastic net
+  # Feature Filtering on Outer Training Data
+  cat(sprintf("\n========== COXNET FOR RFI ==========\n"))
+  
+  X_train_filtered_rfi <- prepare_filtered_features(
+    X = X_train,
+    vars_preserve = VARS_PRESERVE,
+    variance_quantile = VARIANCE_QUANTILE,
+    apply_cox_filter = TRUE,
+    y_train = y_rfi_train,
+    cox_selection_method = "top_n",
+    cox_top_n = 5000
+  )
+  
+  # Create penalty factor (0 = not penalized, 1 = penalized)
+  # Unpenalized features can still be shrunk but won't be eliminated
+  penalty_factor_rfi <- rep(1, ncol(X_train_filtered_rfi))
+  if (!is.null(VARS_NO_PENALIZATION)) {
+    penalty_factor_rfi[colnames(X_train_filtered_rfi) %in% VARS_NO_PENALIZATION] <- 0
+  }
+  
   # PURPOSE: Select features predictive of recurrence
   # Uses Cox proportional hazards with elastic net regularization
   
   rfi_model <- tune_and_fit_coxnet(
-    X_train = X_train_filtered,
+    X_train = X_train_filtered_rfi,
     y_train = y_rfi_train,
     clinical_train = clinical_train,
     event_col = "RFi_event",
     alpha_grid = ALPHA_GRID,
-    penalty_factor = penalty_factor,
+    penalty_factor = penalty_factor_rfi,
     n_inner_folds = N_INNER_FOLDS,
     outcome_name = "RFI"
   )
@@ -442,16 +446,37 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # --------------------------------------------------------------------------
   # INNER CV LOOP #2: CoxNet for Death without Recurrence
   # --------------------------------------------------------------------------
+  
+  # Feature Filtering on Outer Training Data
+  cat(sprintf("\n========== COXNET FOR DEATH w/o RECURRENCE ==========\n"))
+  
+  X_train_filtered_death <- prepare_filtered_features(
+    X = X_train,
+    vars_preserve = VARS_PRESERVE,
+    variance_quantile = VARIANCE_QUANTILE,
+    apply_cox_filter = TRUE,
+    y_train = y_death_train,
+    cox_selection_method = "top_n",
+    cox_top_n = 5000
+  )
+  
+  # Create penalty factor (0 = not penalized, 1 = penalized)
+  # Unpenalized features can still be shrunk but won't be eliminated
+  penalty_factor_death <- rep(1, ncol(X_train_filtered_death))
+  if (!is.null(VARS_NO_PENALIZATION)) {
+    penalty_factor_death[colnames(X_train_filtered_death) %in% VARS_NO_PENALIZATION] <- 0
+  }
+  
   # PURPOSE: Select features predictive of death (competing risk)
   # This ensures we account for features that predict competing events
   
   death_model <- tune_and_fit_coxnet(
-    X_train = X_train_filtered,
+    X_train = X_train_filtered_death,
     y_train = y_death_train,
     clinical_train = clinical_train,
     event_col = "DeathNoR_event",
     alpha_grid = ALPHA_GRID,
-    penalty_factor = penalty_factor,
+    penalty_factor = penalty_factor_death,
     n_inner_folds = N_INNER_FOLDS,
     outcome_name = "DeathNoR"
   )
@@ -491,8 +516,8 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   }
   
   # Prepare Fine-Gray input
-  X_pooled_train <- X_train_filtered[, features_pooled, drop = FALSE]
-  X_pooled_test <- X_test_filtered[, features_pooled, drop = FALSE]
+  X_pooled_train <- X_train[, features_pooled, drop = FALSE]
+  X_pooled_test <- X_test[, features_pooled, drop = FALSE]
   
   # --------------------------------------------------------------------------
   # Scale Input Data for Fine-Gray Model
@@ -728,35 +753,34 @@ cat(sprintf("Training samples: n=%d (RFi=%d, Death=%d)\n",
             sum(clinical_all$DeathNoR_event)))
 
 # --------------------------------------------------------------------------
-# Feature Filtering
-# --------------------------------------------------------------------------
-
-X_all_filtered <- prepare_filtered_features(
-  X_all,
-  vars_preserve = VARS_PRESERVE, 
-  variance_quantile = VARIANCE_QUANTILE
-)
-
-# --------------------------------------------------------------------------
-# Create Penalty Factor
-# --------------------------------------------------------------------------
-
-penalty_factor <- rep(1, ncol(X_all_filtered))
-if (!is.null(VARS_NO_PENALIZATION)) {
-  penalty_factor[colnames(X_all_filtered) %in% VARS_NO_PENALIZATION] <- 0
-}
-
-# --------------------------------------------------------------------------
 # CoxNet for RFI
 # --------------------------------------------------------------------------
 
+# Feature Filtering on Outer Training Data
+cat(sprintf("\n========== COXNET FOR RFI ==========\n"))
+
+X_all_filtered_rfi <- prepare_filtered_features(
+  X = X_all,
+  vars_preserve = VARS_PRESERVE,
+  variance_quantile = VARIANCE_QUANTILE,
+  apply_cox_filter = TRUE,
+  y_train = y_rfi_all,
+  cox_selection_method = "top_n",
+  cox_top_n = 5000
+)
+
+penalty_factor_rfi <- rep(1, ncol(X_all_filtered_rfi))
+if (!is.null(VARS_NO_PENALIZATION)) {
+  penalty_factor_rfi[colnames(X_all_filtered_rfi) %in% VARS_NO_PENALIZATION] <- 0
+}
+
 rfi_model_all <- tune_and_fit_coxnet(
-  X_train = X_all_filtered,
+  X_train = X_all_filtered_rfi,
   y_train = y_rfi_all,
   clinical_train = clinical_all,
   event_col = "RFi_event",
   alpha_grid = ALPHA_GRID,
-  penalty_factor = penalty_factor,
+  penalty_factor = penalty_factor_rfi,
   n_inner_folds = N_INNER_FOLDS,
   outcome_name = "RFI"
 )
@@ -776,14 +800,30 @@ cat("    Selected:", paste(features_rfi_all, collapse=", "), "\n")
 # --------------------------------------------------------------------------
 # CoxNet for Death
 # --------------------------------------------------------------------------
+cat(sprintf("\n========== COXNET FOR DEATH w/o RECURRENCE ==========\n"))
+
+X_all_filtered_death <- prepare_filtered_features(
+  X = X_all,
+  vars_preserve = VARS_PRESERVE,
+  variance_quantile = VARIANCE_QUANTILE,
+  apply_cox_filter = TRUE,
+  y_train = y_death_all,
+  cox_selection_method = "top_n",
+  cox_top_n = 5000
+)
+
+penalty_factor_death <- rep(1, ncol(X_all_filtered_death))
+if (!is.null(VARS_NO_PENALIZATION)) {
+  penalty_factor_death[colnames(X_all_filtered_death) %in% VARS_NO_PENALIZATION] <- 0
+}
 
 death_model_all <- tune_and_fit_coxnet(
-  X_train = X_all_filtered,
+  X_train = X_all_filtered_death,
   y_train = y_death_all,
   clinical_train = clinical_all,
   event_col = "DeathNoR_event",
   alpha_grid = ALPHA_GRID,
-  penalty_factor = penalty_factor,
+  penalty_factor = penalty_factor_death,
   n_inner_folds = N_INNER_FOLDS,
   outcome_name = "DeathNoR"
 )
@@ -805,7 +845,7 @@ cat("    Selected:", paste(features_death_all, collapse=", "), "\n")
 # --------------------------------------------------------------------------
 
 features_pooled_all <- union(features_rfi_all, features_death_all)
-X_pooled_all <- X_all_filtered[, features_pooled_all, drop = FALSE]
+X_pooled_all <- X_all[, features_pooled_all, drop = FALSE]
 
 cat(sprintf("\n--- Feature Pooling ---\n"))
 cat(sprintf("RFI features: %d\n", length(features_rfi_all)))
@@ -997,6 +1037,135 @@ cat("  - cv_predictions.csv (for ROC/calibration plots)\n")
 cat("  - variable_importance.csv\n")
 cat("  - final_coefficients.csv\n")
 cat("  - stability_finegray.csv\n")
+
+################################################################################
+# GENERATE PUBLICATION FIGURES
+################################################################################
+
+cat(sprintf("\n%s\n", paste(rep("=", 80), collapse = "")))
+cat("GENERATING PUBLICATION FIGURES\n")
+cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))
+
+# Create figures directory
+plot_dir <- file.path(results_dir, "figures")
+dir.create(plot_dir, showWarnings = FALSE)
+
+# Determine if clinical variables are present
+has_clinical_vars <- !is.null(clinvars) && length(clinvars) > 0
+
+# --------------------------------------------------------------------------
+# Figure 1: Feature Selection Stability Heatmap
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_stability_heatmap(
+    plot_dir = plot_dir,
+    features_pooled_all = features_pooled_all,
+    outer_fold_results = outer_fold_results,
+    N_OUTER_FOLDS = N_OUTER_FOLDS
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate stability heatmap: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 2: Variable Importance Forest Plot
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_variable_importance(
+    plot_dir = plot_dir,
+    vimp_fg_final = vimp_fg_final,
+    features_rfi_all = features_rfi_all,
+    features_death_all = features_death_all,
+    has_clinical = has_clinical_vars
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate variable importance plot: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 3: Feature Selection Comparison
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_feature_selection_comparison(
+    plot_dir = plot_dir,
+    features_pooled_all = features_pooled_all,
+    features_rfi_all = features_rfi_all,
+    features_death_all = features_death_all
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate feature selection comparison: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 4: CoxNet Coefficient Comparison
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_coxnet_coefficient_comparison(
+    plot_dir = plot_dir,
+    coef_comparison_final = coef_comparison_final
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate coefficient comparison: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 5: Performance Over Time
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_performance_over_time(
+    plot_dir = plot_dir,
+    perf_results = perf_results
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate performance over time plot: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 6: Performance Variability
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_performance_variability(
+    plot_dir = plot_dir,
+    perf_results = perf_results
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate performance variability plot: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 7: ROC Curves
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_roc_curves(
+    plot_dir = plot_dir,
+    cv_predictions = cv_predictions,
+    EVAL_TIMES = EVAL_TIMES
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate ROC curves: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 8: Calibration Plots
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_calibration(
+    plot_dir = plot_dir,
+    cv_predictions = cv_predictions,
+    EVAL_TIMES = EVAL_TIMES
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate calibration plots: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Summary
+# --------------------------------------------------------------------------
+cat(sprintf("\n%s\n", paste(rep("=", 80), collapse = "")))
+cat("FIGURES SAVED TO:\n")
+cat(sprintf("%s\n", plot_dir))
+cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))
+cat(">> Publication figures generation complete!\n\n")
 
 cat(sprintf("\nTotal runtime: %.1f minutes\n", 
             as.numeric(difftime(Sys.time(), start_time, units = "mins"))))
