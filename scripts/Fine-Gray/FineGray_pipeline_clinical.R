@@ -191,7 +191,7 @@ clinical_data$CompRisk_event_coded[clinical_data$DeathNoR_event == 1] <- 2
 # Time to event: minimum of RFI time and death time
 clinical_data$time_to_CompRisk_event <- pmin(
   clinical_data$RFi_years, 
-  clinical_data$OS_years
+  clinical_data$DeathNoR_years
 )
 
 cat(sprintf("Competing risks summary:\n"))
@@ -668,6 +668,185 @@ cat("  - cv_predictions.csv (for ROC/calibration plots)\n")
 cat("  - variable_importance.csv\n")
 cat("  - final_coefficients.csv\n")
 cat("  - coefficient_stability.csv\n")
+
+
+
+################################################################################
+# GENERATE PLOTS FOR CLINICAL-ONLY PIPELINE
+################################################################################
+# Add this section after saving results and before session info
+
+cat(sprintf("\n%s\n", paste(rep("=", 80), collapse = "")))
+cat("GENERATING PLOTS\n")
+cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))
+
+# Create figures directory
+plot_dir <- file.path(results_dir, "figures")
+dir.create(plot_dir, showWarnings = FALSE)
+
+# --------------------------------------------------------------------------
+# Prepare Performance Results Object (for plotting functions)
+# --------------------------------------------------------------------------
+
+# The plotting functions expect a specific structure from aggregate_cv_performance
+# We need to create this structure manually for clinical-only pipeline
+
+perf_results <- list(
+  summary = performance_summary,
+  all_folds = all_performance
+)
+
+# --------------------------------------------------------------------------
+# Figure 1: Performance Over Time
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_performance_over_time(
+    plot_dir = plot_dir,
+    perf_results = perf_results
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate performance over time plot: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 2: Performance Variability Across CV Folds
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_performance_variability(
+    plot_dir = plot_dir,
+    perf_results = perf_results
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate performance variability plot: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 3: ROC Curves
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_roc_curves(
+    plot_dir = plot_dir,
+    cv_predictions = cv_predictions,
+    EVAL_TIMES = EVAL_TIMES
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate ROC curves: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 4: Calibration Plots
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_calibration(
+    plot_dir = plot_dir,
+    cv_predictions = cv_predictions,
+    EVAL_TIMES = EVAL_TIMES
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate calibration plots: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 5: Coefficient Stability (Clinical-Specific)
+# --------------------------------------------------------------------------
+# Bar plots showing coefficients and HRs with stability across folds
+
+tryCatch({
+  cat("Creating Figure 5: Coefficient and HR stability...\n")
+  
+  # Prepare data for plotting
+  coef_plot_data <- coef_stability
+  coef_plot_data$feature <- factor(coef_plot_data$feature, 
+                                   levels = coef_plot_data$feature)  # Keep sorted order
+  
+  # Calculate HR confidence bounds
+  coef_plot_data$hr_lower <- exp(coef_plot_data$mean_coef - coef_plot_data$sd_coef)
+  coef_plot_data$hr_upper <- exp(coef_plot_data$mean_coef + coef_plot_data$sd_coef)
+  
+  # Plot A: Coefficients
+  p_coef <- ggplot2::ggplot(coef_plot_data, 
+                            ggplot2::aes(x = mean_coef, y = feature)) +
+    ggplot2::geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
+    ggplot2::geom_errorbarh(
+      ggplot2::aes(xmin = mean_coef - sd_coef, xmax = mean_coef + sd_coef),
+      height = 0.3, alpha = 0.6
+    ) +
+    ggplot2::geom_point(size = 4, color = "steelblue") +
+    ggplot2::labs(
+      title = "Clinical Variable Coefficients",
+      subtitle = "Mean coefficient ± SD across CV folds",
+      x = "Coefficient (log hazard ratio)",
+      y = NULL
+    ) +
+    get_publication_theme() +
+    ggplot2::theme(
+      axis.text.y = ggplot2::element_text(size = 11),
+      panel.grid.major.x = ggplot2::element_line(color = "gray90")
+    )
+  
+  # Plot B: Hazard Ratios
+  p_hr <- ggplot2::ggplot(coef_plot_data, 
+                          ggplot2::aes(x = mean_HR, y = feature)) +
+    ggplot2::geom_vline(xintercept = 1, linetype = "dashed", color = "gray50") +
+    ggplot2::geom_errorbarh(
+      ggplot2::aes(xmin = hr_lower, xmax = hr_upper),
+      height = 0.3, alpha = 0.6
+    ) +
+    ggplot2::geom_point(size = 4, color = "darkgreen") +
+    ggplot2::labs(
+      title = "Clinical Variable Hazard Ratios",
+      subtitle = "Mean HR ± SD across CV folds",
+      x = "Hazard Ratio",
+      y = NULL
+    ) +
+    get_publication_theme() +
+    ggplot2::theme(
+      axis.text.y = ggplot2::element_text(size = 11),
+      panel.grid.major.x = ggplot2::element_line(color = "gray90")
+    )
+  
+  # Save coefficient plot
+  ggplot2::ggsave(
+    file.path(plot_dir, "5a_coefficient_stability.pdf"),
+    p_coef, width = 8, height = max(4, nrow(coef_plot_data) * 0.4)
+  )
+  ggplot2::ggsave(
+    file.path(plot_dir, "5a_coefficient_stability.png"),
+    p_coef, width = 8, height = max(4, nrow(coef_plot_data) * 0.4), dpi = 300
+  )
+  
+  cat("  >> Saved: 5a_coefficient_stability.pdf/.png\n")
+  
+  # Save HR plot
+  ggplot2::ggsave(
+    file.path(plot_dir, "5b_hazard_ratio_stability.pdf"),
+    p_hr, width = 8, height = max(4, nrow(coef_plot_data) * 0.4)
+  )
+  ggplot2::ggsave(
+    file.path(plot_dir, "5b_hazard_ratio_stability.png"),
+    p_hr, width = 8, height = max(4, nrow(coef_plot_data) * 0.4), dpi = 300
+  )
+  
+  cat("  >> Saved: 5b_hazard_ratio_stability.pdf/.png\n\n")
+  
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate stability plots: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Summary
+# --------------------------------------------------------------------------
+cat(sprintf("\n%s\n", paste(rep("=", 80), collapse = "")))
+cat("FIGURES SAVED TO:\n")
+cat(sprintf("%s\n", plot_dir))
+cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))
+cat(">> Plot generation complete!\n\n")
+cat("  - 1_performance_over_time.pdf/.png\n")
+cat("  - 2_performance_variability.pdf/.png\n")
+cat("  - 3_roc_curves.pdf/.png\n")
+cat("  - 4_calibration_plots.pdf/.png\n")
+cat("  - 5a_coefficient_stability.pdf/.png\n")
+cat("  - 5b_hazard_ratio_stability.pdf/.png\n\n")
 
 total_runtime <- as.numeric(difftime(Sys.time(), start_time, units = "mins"))
 cat(sprintf("\nTotal runtime: %.1f minutes (%.1f seconds per fold)\n", 

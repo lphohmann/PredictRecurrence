@@ -4,11 +4,12 @@
 # Fine-Gray Competing Risks with Nested Cross-Validation
 # Author: Lennart Hohmann
 #
-# PIPELINE OVERVIEW:
+## PIPELINE OVERVIEW:
 # ==================
 # This pipeline implements nested cross-validation for competing risks analysis
-# of breast cancer recurrence using DNA methylation + clinical variables.
-#
+# of breast cancer recurrence using DNA methylation features (with or without
+# clinical variables). For clinical-only analysis, use finegray_clinical.R.
+
 # 1. DATA PREPARATION
 #    - Load methylation beta values (CpG sites) and clinical data
 #    - Convert beta → M-values: log2(beta/(1-beta)) for better normal distribution
@@ -61,18 +62,88 @@ library(caret)        # Cross-validation fold creation
 library(data.table)   # Fast data reading with fread
 library(riskRegression) # Score() function for competing risks metrics
 library(prodlim) #prodlim::Hist()
-source("./src/finegray_functions.R")
-
-################################################################################
-# SETTINGS
-################################################################################
 
 setwd("~/PhD_Workspace/PredictRecurrence/")
+source("./src/finegray_functions.R") # match real name
 
-COHORT_NAME <- "ERpHER2n"
-DATA_MODE <- "combined"
-TRAIN_CPGS <- "./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt"
-OUTPUT_BASE_DIR <- "./output/FineGray"
+################################################################################
+# SETTINGS - Command Line Arguments
+################################################################################
+
+# Parse command line arguments
+args <- commandArgs(trailingOnly = TRUE)
+
+# Set defaults
+DEFAULT_COHORT <- "ERpHER2n"
+DEFAULT_DATA_MODE <- "combined" #combined
+DEFAULT_TRAIN_CPGS <- "./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt"
+DEFAULT_OUTPUT_DIR <- "./output/FineGray"
+
+# Parse arguments or use defaults
+if (length(args) == 0) {
+  # No arguments - use defaults
+  cat("No command line arguments provided. Using defaults.\n")
+  COHORT_NAME <- DEFAULT_COHORT
+  DATA_MODE <- DEFAULT_DATA_MODE
+  TRAIN_CPGS <- DEFAULT_TRAIN_CPGS
+  OUTPUT_BASE_DIR <- DEFAULT_OUTPUT_DIR
+  
+} else if (length(args) == 2) {
+  # Two arguments - cohort and data mode
+  COHORT_NAME <- args[1]
+  DATA_MODE <- args[2]
+  TRAIN_CPGS <- DEFAULT_TRAIN_CPGS      # Use default
+  OUTPUT_BASE_DIR <- DEFAULT_OUTPUT_DIR  # Use default
+  
+#} else if (length(args) == 4) {
+#  # All four arguments provided (for backward compatibility)
+#  COHORT_NAME <- args[1]
+#  DATA_MODE <- args[2]
+#  TRAIN_CPGS <- args[3]
+#  OUTPUT_BASE_DIR <- args[4]
+  
+} else {
+  # Wrong number of arguments - show usage and exit
+  cat("\n=== USAGE ===\n")
+  cat("Rscript finegray_pipeline.R <COHORT> <DATA_MODE> <TRAIN_CPGS> <OUTPUT_DIR>\n\n")
+  cat("Arguments:\n")
+  cat("  COHORT      : 'TNBC', 'ERpHER2n', or 'All'\n")
+  cat("  DATA_MODE   : 'methylation' or 'combined'\n")
+  cat("  TRAIN_CPGS  : Path to CpG IDs file (or 'NULL' to use all)\n")
+  cat("  OUTPUT_DIR  : Base output directory\n\n")
+  cat("Example:\n")
+  cat("  Rscript finegray_pipeline.R ERpHER2n methylation ./data/cpg_ids.txt ./output/FineGray\n\n")
+  cat("Or run without arguments to use defaults:\n")
+  cat("  Rscript finegray_pipeline.R\n\n")
+  stop("Incorrect number of arguments provided.")
+}
+
+# Validate COHORT_NAME
+if (!COHORT_NAME %in% c("TNBC", "ERpHER2n", "All")) {
+  stop(sprintf("Invalid COHORT_NAME: '%s'. Must be 'TNBC', 'ERpHER2n', or 'All'", COHORT_NAME))
+}
+
+# Validate DATA_MODE
+if (!DATA_MODE %in% c("methylation", "combined")) {
+  stop(sprintf("Invalid DATA_MODE: '%s'. Must be 'methylation' or 'combined'. For clinical-only, use finegray_clinical.R", DATA_MODE))
+}
+
+# Handle NULL for TRAIN_CPGS
+if (TRAIN_CPGS == "NULL") {
+  TRAIN_CPGS <- NULL
+}
+
+# Print settings
+cat(sprintf("\n=== PIPELINE SETTINGS ===\n"))
+cat(sprintf("Cohort:      %s\n", COHORT_NAME))
+cat(sprintf("Data mode:   %s\n", DATA_MODE))
+cat(sprintf("CpG file:    %s\n", ifelse(is.null(TRAIN_CPGS), "NULL (all CpGs)", TRAIN_CPGS)))
+cat(sprintf("Output dir:  %s\n", OUTPUT_BASE_DIR))
+cat(sprintf("=========================\n\n"))
+
+################################################################################
+# INPUT OUTPUT SETTINGS
+################################################################################
 
 # Input files
 INFILE_METHYLATION <- "./data/train/train_methylation_unadjusted.csv"
@@ -93,13 +164,45 @@ current_output_dir <- file.path(
 dir.create(current_output_dir, recursive = TRUE, showWarnings = FALSE)
 
 ################################################################################
+# SETUP LOGGING
+################################################################################
+
+# Create log filename with script name and timestamp
+script_name <- "finegray_pipeline_stability"
+timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+log_filename <- sprintf("%s_%s.log", script_name, timestamp)
+log_path <- file.path(current_output_dir, log_filename)
+
+# Start logging (captures all output and messages)
+log_con <- file(log_path, open = "wt")
+sink(log_con, type = "output", split = TRUE)  # split = TRUE shows output in console too
+sink(log_con, type = "message")
+
+cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))
+cat(sprintf("FINE-GRAY COMPETING RISKS PIPELINE\n"))
+cat(sprintf("Started: %s\n", Sys.time()))
+cat(sprintf("Cohort: %s\n", COHORT_NAME))
+cat(sprintf("Data mode: %s\n", DATA_MODE))
+cat(sprintf("Log file: %s\n", log_path))
+cat(sprintf("%s\n\n", paste(rep("=", 80), collapse = "")))
+
+################################################################################
 # PARAMETERS
 ################################################################################
 
 # Clinical variables - always preserved in filtering
 ADMIN_CENSORING_CUTOFF <- if (COHORT_NAME == "TNBC") 5.01 else NULL
-CLIN_CATEGORICAL <- c("NHG", "LN")
+
+# Categorical variables depend on cohort
+if (COHORT_NAME == "All") {
+  CLIN_CATEGORICAL <- c("NHG", "LN", "ER", "PR", "HER2")
+} else {
+  CLIN_CATEGORICAL <- c("NHG", "LN")
+}
+
 CLIN_CONT <- c("Age", "Size.mm")
+
+cat(sprintf("Clinical categorical variables: %s\n", paste(CLIN_CATEGORICAL, collapse=", ")))
 
 # Feature selection - variance filter only
 VARIANCE_QUANTILE <- 0.75  # Keep top 25% most variable features
@@ -108,13 +211,12 @@ VARIANCE_QUANTILE <- 0.75  # Keep top 25% most variable features
 # These get coefficient shrinkage but not eliminated (penalty_factor = 0)
 
 # Cross-validation
-N_OUTER_FOLDS <- 5
+N_OUTER_FOLDS <- 5#5
 N_INNER_FOLDS <- 3
-ALPHA_GRID <- c(0.5,0.7,0.9)  # Elastic net mixing: 0=ridge, 1=lasso, 0.9=mostly lasso
+ALPHA_GRID <- c(0.9)#c(0.5,0.7,0.9)  # Elastic net mixing: 0=ridge, 1=lasso, 0.9=mostly lasso
 
 # Performance evaluation timepoints (in years)
 EVAL_TIMES <- seq(1, 10)
-
 
 ################################################################################
 # LOAD AND PREPARE DATA
@@ -124,11 +226,7 @@ start_time <- Sys.time()
 cat(sprintf("\n========== LOADING DATA ==========\n"))
 
 # Load data
-train_ids <- read_csv(
-  COHORT_TRAIN_IDS_PATHS[[COHORT_NAME]], 
-  col_names = FALSE, 
-  show_col_types = FALSE
-)[[1]]
+train_ids <- read_csv(COHORT_TRAIN_IDS_PATHS[[COHORT_NAME]], col_names = FALSE, show_col_types = FALSE)[[1]]
 
 data_list <- load_training_data(train_ids, INFILE_METHYLATION, INFILE_CLINICAL)
 beta_matrix <- data_list$beta_matrix
@@ -149,25 +247,32 @@ if (!is.null(TRAIN_CPGS)) {
   mvals <- subset_methylation(mvals, TRAIN_CPGS)
 }
 
-# Combine methylation with clinical variables
-X <- mvals
-
-if (!is.null(c(CLIN_CONT, CLIN_CATEGORICAL))) {
-  # Recode N+ to Np to avoid special character issues in formulas
+# Combine methylation with clinical variables based on DATA_MODE
+if (DATA_MODE == "methylation") {
+  # Methylation only - no clinical variables
+  X <- mvals
+  clinvars <- NULL
+  encoded_result <- list(encoded_cols = NULL)  # Create empty for compatibility
+  cat(sprintf("Using methylation features only: %d CpGs\n", ncol(X)))
+  
+} else if (DATA_MODE == "combined") {
+  # Combined - methylation + clinical
+  X <- mvals
   clinical_data$LN <- gsub("N\\+", "Np", clinical_data$LN)
   clin <- clinical_data[c(CLIN_CONT, CLIN_CATEGORICAL)]
   clin <- clin[rownames(X), , drop = FALSE]
   encoded_result <- onehot_encode_clinical(clin, CLIN_CATEGORICAL)
   X <- cbind(X, encoded_result$encoded_df)
-  
   clinvars <- c(CLIN_CONT, encoded_result$encoded_cols)
-  cat(sprintf("Added clinical variables: %s\n", 
-              paste(clinvars, collapse = ", ")))
+  cat(sprintf("Combined features: %d CpGs + %d clinical = %d total\n", 
+              ncol(mvals), length(clinvars), ncol(X)))
+  cat(sprintf("Clinical variables: %s\n", paste(clinvars, collapse = ", ")))
+  
 }
 
 # Variables to preserve during filtering (all clinical variables)
-VARS_PRESERVE <- clinvars
-VARS_NO_PENALIZATION <- clinvars # NULL
+VARS_PRESERVE <- if (DATA_MODE == "methylation") NULL else clinvars
+VARS_NO_PENALIZATION <- if (DATA_MODE == "methylation") NULL else clinvars  # Set to NULL to penalize all features
 
 # Validate preserved and non-penalized variables
 if (!is.null(VARS_PRESERVE)) {
@@ -214,7 +319,7 @@ clinical_data$CompRisk_event_coded[clinical_data$DeathNoR_event == 1] <- 2
 # Time to event: minimum of RFI time and death time
 clinical_data$time_to_CompRisk_event <- pmin(
   clinical_data$RFi_years, 
-  clinical_data$OS_years
+  clinical_data$DeathNoR_years
 )
 
 cat(sprintf("Competing risks summary:\n"))
@@ -265,7 +370,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   fold_start_time <- Sys.time()
   
   # --------------------------------------------------------------------------
-  # Split data into outer train and test
+  # Split Data into Outer Train and Test
   # --------------------------------------------------------------------------
   
   test_idx <- outer_folds[[fold_idx]]
@@ -291,41 +396,37 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
               nrow(X_test), 
               sum(clinical_test$RFi_event), 
               sum(clinical_test$DeathNoR_event)))
-  
-  # --------------------------------------------------------------------------
-  # Feature Filtering on Outer Training Data
-  # --------------------------------------------------------------------------
-  # WHY: Reduce dimensionality before elastic net
-  # IMPORTANT: Filtering done ONLY on training data to prevent data leakage
-  
-  cat(sprintf("\n--- Feature Filtering ---\n"))
-  
-  X_train_filtered <- prepare_filtered_features(X_train,vars_preserve=VARS_PRESERVE, variance_quantile = VARIANCE_QUANTILE)
-  
-  X_test_filtered <- X_test[, colnames(X_train_filtered), drop = FALSE]
-  
-  # --------------------------------------------------------------------------
-  
-  # Create penalty factor (0 = not penalized, 1 = penalized)
-  # Unpenalized features can still be shrunk but won't be eliminated
-  penalty_factor <- rep(1, ncol(X_train_filtered))
-  if (!is.null(VARS_NO_PENALIZATION)) {
-    penalty_factor[colnames(X_train_filtered) %in% VARS_NO_PENALIZATION] <- 0
-  }
-  
+
   # --------------------------------------------------------------------------
   # INNER CV LOOP #1: CoxNet for RFI
   # --------------------------------------------------------------------------
+  
+  # Reduce dimensionality before elastic net
+  # Feature Filtering on Outer Training Data
+  cat(sprintf("\n========== COXNET FOR RFI ==========\n"))
+  
+  X_train_filtered_rfi <- prepare_filtered_features(
+    X = X_train,
+    vars_preserve = VARS_PRESERVE,
+    variance_quantile = VARIANCE_QUANTILE)
+  
+  # Create penalty factor (0 = not penalized, 1 = penalized)
+  # Unpenalized features can still be shrunk but won't be eliminated
+  penalty_factor_rfi <- rep(1, ncol(X_train_filtered_rfi))
+  if (!is.null(VARS_NO_PENALIZATION)) {
+    penalty_factor_rfi[colnames(X_train_filtered_rfi) %in% VARS_NO_PENALIZATION] <- 0
+  }
+  
   # PURPOSE: Select features predictive of recurrence
   # Uses Cox proportional hazards with elastic net regularization
   
   rfi_model <- tune_and_fit_coxnet(
-    X_train = X_train_filtered,
+    X_train = X_train_filtered_rfi,
     y_train = y_rfi_train,
     clinical_train = clinical_train,
     event_col = "RFi_event",
     alpha_grid = ALPHA_GRID,
-    penalty_factor = penalty_factor,
+    penalty_factor = penalty_factor_rfi,
     n_inner_folds = N_INNER_FOLDS,
     outcome_name = "RFI"
   )
@@ -347,15 +448,37 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # --------------------------------------------------------------------------
   # INNER CV LOOP #2: CoxNet for Death without Recurrence
   # --------------------------------------------------------------------------
+  
+  # Feature Filtering on Outer Training Data
+  cat(sprintf("\n========== COXNET FOR DEATH w/o RECURRENCE ==========\n"))
+  
+  X_train_filtered_death <- prepare_filtered_features(
+    X = X_train,
+    vars_preserve = VARS_PRESERVE,
+    variance_quantile = VARIANCE_QUANTILE)
+  
+    #apply_cox_filter = TRUE,
+    #y_train = y_death_train,
+    #cox_selection_method = "top_n",
+    #cox_top_n = 5000)
+  
+  # Create penalty factor (0 = not penalized, 1 = penalized)
+  # Unpenalized features can still be shrunk but won't be eliminated
+  penalty_factor_death <- rep(1, ncol(X_train_filtered_death))
+  if (!is.null(VARS_NO_PENALIZATION)) {
+    penalty_factor_death[colnames(X_train_filtered_death) %in% VARS_NO_PENALIZATION] <- 0
+  }
+  
   # PURPOSE: Select features predictive of death (competing risk)
   # This ensures we account for features that predict competing events
+  
   death_model <- tune_and_fit_coxnet(
-    X_train = X_train_filtered,
+    X_train = X_train_filtered_death,
     y_train = y_death_train,
     clinical_train = clinical_train,
     event_col = "DeathNoR_event",
     alpha_grid = ALPHA_GRID,
-    penalty_factor = penalty_factor,
+    penalty_factor = penalty_factor_death,
     n_inner_folds = N_INNER_FOLDS,
     outcome_name = "DeathNoR"
   )
@@ -382,15 +505,21 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   
   features_pooled <- union(features_rfi, features_death)
   
-  # prepare FG input
-  X_pooled_train <- X_train_filtered[, features_pooled, drop = FALSE]
-  X_pooled_test <- X_test_filtered[, features_pooled, drop = FALSE]
-  
   cat(sprintf("\n--- Feature Pooling ---\n"))
   cat(sprintf("RFI features: %d\n", length(features_rfi)))
   cat(sprintf("Death features: %d\n", length(features_death)))
   cat(sprintf("Overlap: %d\n", length(intersect(features_rfi, features_death))))
   cat(sprintf("Pooled total: %d\n", length(features_pooled)))
+  
+  # Check if any features were selected
+  if (length(features_pooled) == 0) {
+    warning(sprintf("Fold %d: No features selected by either model. Skipping fold.", fold_idx))
+    next
+  }
+  
+  # Prepare Fine-Gray input
+  X_pooled_train <- X_train[, features_pooled, drop = FALSE]
+  X_pooled_test <- X_test[, features_pooled, drop = FALSE]
   
   # --------------------------------------------------------------------------
   # Scale Input Data for Fine-Gray Model
@@ -398,10 +527,12 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # WHY: Fine-Gray model is sensitive to feature scales
   # Only scale continuous variables, leave one-hot encoded variables as-is
   
-  cat(sprintf("\n--- Scaling Cont. Features ---\n"))
-  scale_res <- scale_continuous_features(X_train = X_pooled_train, 
-                            X_test = X_pooled_test, 
-                            dont_scale = encoded_result$encoded_cols)
+  cat(sprintf("\n--- Scaling Continuous Features ---\n"))
+  scale_res <- scale_continuous_features(
+    X_train = X_pooled_train, 
+    X_test = X_pooled_test, 
+    dont_scale = if (DATA_MODE == "methylation") NULL else encoded_result$encoded_cols
+  )
   
   X_train_scaled <- scale_res$X_train_scaled
   X_test_scaled <- scale_res$X_test_scaled
@@ -410,19 +541,23 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # Fit Fine-Gray Model on Pooled Features
   # --------------------------------------------------------------------------
   # Fine-Gray model: Models subdistribution hazard for event of interest
-
-  # prepare input data
-  cat(sprintf("\n--- Fitting Fine-Gray Model ---\n"))
   
-  # prepare input data
+  cat(sprintf("\n--- Fitting Fine-Gray Model ---\n"))
   #identical(clinical_train$Sample,rownames(X_train_scaled))
-  fgr_train_data <- cbind(clinical_train[c("time_to_CompRisk_event","CompRisk_event_coded")], X_train_scaled)
   #identical(clinical_test$Sample,rownames(X_test_scaled))
-  fgr_test_data <- cbind(clinical_test[c("time_to_CompRisk_event","CompRisk_event_coded")], X_test_scaled)
+  
+  fgr_train_data <- cbind(
+    clinical_train[c("time_to_CompRisk_event","CompRisk_event_coded")], 
+    X_train_scaled
+  )
+  fgr_test_data <- cbind(
+    clinical_test[c("time_to_CompRisk_event","CompRisk_event_coded")], 
+    X_test_scaled
+  )
   
   feature_cols <- setdiff(colnames(fgr_train_data), 
                           c("time_to_CompRisk_event", "CompRisk_event_coded"))
-
+  
   # Build formula explicitly
   formula_str <- paste("Hist(time_to_CompRisk_event, CompRisk_event_coded) ~", 
                        paste(feature_cols, collapse = " + "))
@@ -437,25 +572,23 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   cat(sprintf("Fine-Gray model fitted with %d features\n", length(feature_cols)))
   
   # --------------------------------------------------------------------------
-  # Fine-Gray Model Performance metrics on Fold Test
+  # Evaluate Fine-Gray Model Performance on Test Set
   # --------------------------------------------------------------------------
   
   score_fgr1 <- Score(
     list("FGR" = fgr1),
     formula = Hist(time_to_CompRisk_event, CompRisk_event_coded) ~ 1,
     data = fgr_test_data,
-    cause = 1,                              # Explicit: RFI is event of interest
-    times = EVAL_TIMES,                # Time points in years
-    metrics = c("auc", "brier"),           # AUC and Brier score
-    summary = c("ibs"),             # R² and integrated Brier
-    #plots = c("ROC", "Calibration"),       # Data for plotting (optional)
-    se.fit = TRUE,                         # Standard errors
-    conf.int = 0.95,                       # 95% CI (default)
-    null.model = TRUE,                     # Compare to null model
-    cens.model = "cox"                     # Cox for censoring weights (default)
+    cause = 1,
+    times = EVAL_TIMES,
+    metrics = c("auc", "brier"),
+    summary = c("ibs"),
+    se.fit = TRUE,
+    conf.int = 0.95,
+    null.model = TRUE,
+    cens.model = "cox"
   )
   
-  # create summary object of performance
   # Extract FGR model results only (exclude null model)
   auc_fgr <- score_fgr1$AUC$score[model == "FGR"]
   brier_fgr <- score_fgr1$Brier$score[model == "FGR"]
@@ -476,10 +609,33 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     as.list(brier_cols)
   )
   
-  # Round all numeric columns to 3 decimal places
+  # Round all numeric columns to 2 decimal places
   fgr_performance[, -1] <- round(fgr_performance[, -1], 2)
   
   print(fgr_performance)
+  
+  # --------------------------------------------------------------------------
+  # Extract Predictions on Test Set
+  # --------------------------------------------------------------------------
+  
+  pred_risks <- predictRisk(
+    fgr1,
+    newdata = X_test_scaled,
+    times = EVAL_TIMES,
+    cause = 1
+  )
+  
+  # Combine with outcomes
+  fold_predictions <- data.frame(
+    fold = fold_idx,
+    sample = rownames(X_test_scaled),
+    time = clinical_test$time_to_CompRisk_event,
+    event_coded = clinical_test$CompRisk_event_coded,
+    rfi_event = clinical_test$RFi_event,
+    pred_risks
+  )
+  
+  colnames(fold_predictions)[6:ncol(fold_predictions)] <- paste0("risk_", EVAL_TIMES, "yr")
   
   # --------------------------------------------------------------------------
   # example predict on new data
@@ -503,7 +659,6 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # coefs <- fgr1$crrFit$coef
   # linear_predictor <- as.matrix(new_patients[, names(coefs)]) %*% coefs
   
-
   # --------------------------------------------------------------------------
   # Extract and Display Coefficients
   # --------------------------------------------------------------------------
@@ -528,17 +683,18 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
                                        "fg_HR")]
   
   # Sort by absolute FG coefficient
-  coef_comparison <- coef_comparison[order(abs(coef_comparison$fg_HR), decreasing = TRUE), ]
+  coef_comparison <- coef_comparison[order(abs(coef_comparison$fg_coef), decreasing = TRUE), ]
   rownames(coef_comparison) <- NULL
   
-
   print(coef_comparison)
   
   # --------------------------------------------------------------------------
-  # SAVE FOLD RESULTS
+  # Store Fold Results
   # --------------------------------------------------------------------------
   
-  # Store comprehensive results for this fold
+  fold_runtime <- as.numeric(difftime(Sys.time(), fold_start_time, units = "mins"))
+  cat(sprintf("\n✓ Fold %d completed in %.1f minutes\n", fold_idx, fold_runtime))
+  
   outer_fold_results[[fold_idx]] <- list(
     
     # Fold information
@@ -547,6 +703,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     test_samples = rownames(X_test),
     n_train = nrow(X_train),
     n_test = nrow(X_test),
+    fold_runtime = fold_runtime,
     
     # Feature selection results
     features_rfi = features_rfi,
@@ -563,131 +720,127 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     finegray_model = fgr1,
     fold_model_coefficients = coef_comparison,
     performance_df = fgr_performance,
+    fold_predictions = fold_predictions,
     
     # Scaling parameters (for future use)
     scale_params = scale_res[c("centers","scales","cont_cols")]
-    
   )
 }
 
 ################################################################################
 # AGGREGATE RESULTS ACROSS FOLDS
 ################################################################################
-
-#source("./src/finegray_functions.R")
+source("./src/finegray_functions.R")
 # Get aggregated performance
 perf_results <- aggregate_cv_performance(outer_fold_results)
 
 # Feature selection stability
-stability_results <- assess_feature_stability(outer_fold_results, min_folds = N_OUTER_FOLDS-1)
+stability_results <- assess_finegray_stability(outer_fold_results, 
+                                 clinical_features = if (
+                                   DATA_MODE == "methylation") NULL else clinvars)
 
+str(stability_results$stability_metrics)
+plotdata <- fg_stability[c()]
+final_fg_input_features <- fg_stability[fg_stability$n_selected >= 4 & fg_stability$direction_consistent == TRUE,]
+
+str(stability_results)
+
+features_to_plot <- fg_stability[fg_stability$n_selected >= 3 & fg_stability$direction_consistent == TRUE,]
+
+features_to_plot <- fg_stability$feature[fg_stability$n_selected >= 3 & fg_stability$direction_consistent == TRUE]
+
+fg_matrix_filtered <- fg_matrix[features_to_plot, , drop = FALSE]
+
+View(stability_results$selection_matrix)
 ################################################################################
-# TRAIN FINAL MODEL USING ALL DATA
+# TRAIN FINAL MODEL ON ALL DATA
 ################################################################################
 
-# same procedure as in outer loop but no performance eval
+cat(sprintf("\n========== TRAINING FINAL MODEL ==========\n"))
+
+# (and comment out APPROACH A above)
+
+cat(sprintf("\n========== TRAINING FINAL MODEL (APPROACH B) ==========\n"))
+cat("Using CV-discovered features (no re-filtering on all data)\n\n")
+
 X_all <- X
 y_rfi_all <- y_rfi
 y_death_all <- y_death_no_r
 clinical_all <- clinical_data
-cat(sprintf("Train: n=%d (RFi=%d, Death=%d)\n",
-            nrow(X_all), 
-            sum(clinical_all$RFi_event), 
+
+cat(sprintf("Training samples: n=%d (RFi=%d, Death=%d)\n",
+            nrow(X_all),
+            sum(clinical_all$RFi_event),
             sum(clinical_all$DeathNoR_event)))
 
-#-------------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# Collect Features Selected During CV
+# --------------------------------------------------------------------------
 
-X_all_filtered <- prepare_filtered_features(X_all,vars_preserve=VARS_PRESERVE, variance_quantile = VARIANCE_QUANTILE)
+cat(sprintf("\n--- Collecting CV-Discovered Features ---\n"))
 
-#-------------------------------------------------------------------------------
+# Get all features selected by RFI models across CV folds
+all_rfi_features_cv <- unique(unlist(lapply(outer_fold_results, function(fold) {
+  if (!is.null(fold)) fold$features_rfi else character(0)
+})))
 
-# Create penalty factor (0 = not penalized, 1 = penalized)
-penalty_factor <- rep(1, ncol(X_all_filtered))
-if (!is.null(VARS_NO_PENALIZATION)) {
-  penalty_factor[colnames(X_all_filtered) %in% VARS_NO_PENALIZATION] <- 0
+# Get all features selected by Death models across CV folds
+all_death_features_cv <- unique(unlist(lapply(outer_fold_results, function(fold) {
+  if (!is.null(fold)) fold$features_death else character(0)
+})))
+
+# Union of both sets (all features selected ≥1 time)
+all_cv_features <- unique(c(all_rfi_features_cv, all_death_features_cv))
+
+cat(sprintf("Features discovered during CV:\n"))
+cat(sprintf("  RFI models selected:       %d unique features\n", length(all_rfi_features_cv)))
+cat(sprintf("  Death models selected:     %d unique features\n", length(all_death_features_cv)))
+cat(sprintf("  Overlap:                   %d features\n",
+            length(intersect(all_rfi_features_cv, all_death_features_cv))))
+cat(sprintf("  TOTAL unique features:     %d features\n\n", length(all_cv_features)))
+
+# Check if we have any features
+if (length(all_cv_features) == 0) {
+  stop("No features were selected during CV. Cannot train final model.")
 }
 
-#-------------------------------------------------------------------------------
-
-# CoxNet for RFI
-rfi_model_all <- tune_and_fit_coxnet(
-  X_train = X_all_filtered,
-  y_train = y_rfi_all,
-  clinical_train = clinical_all,
-  event_col = "RFi_event",
-  alpha_grid = ALPHA_GRID,
-  penalty_factor = penalty_factor,
-  n_inner_folds = N_INNER_FOLDS,
-  outcome_name = "RFI"
-)
-
-# Extract coefficients and features
-rfi_coef_res_all <- extract_nonzero_coefs(rfi_model_all$final_fit)  # FIX: was death_model
-coef_rfi_df_all <- rfi_coef_res_all$coef_df
-features_rfi_all <- rfi_coef_res_all$features
-
-cat(sprintf(
-  "  BEST RFI MODEL: Alpha=%.2f, Lambda=%.6f, Features=%d\n",
-  rfi_model_all$best_alpha, 
-  rfi_model_all$best_lambda, 
-  length(features_rfi_all)
+# Feature Stability Filter
+feature_counts <- table(c(
+  unlist(lapply(outer_fold_results, function(fold) {
+    if (!is.null(fold)) fold$features_rfi else character(0)
+  })),
+  unlist(lapply(outer_fold_results, function(fold) {
+    if (!is.null(fold)) fold$features_death else character(0)
+  }))
 ))
-cat("    Selected:", paste(features_rfi_all, collapse=", "), "\n")
+stable_features <- names(feature_counts[feature_counts >= 2])
+cat(sprintf("Using only stable features (≥2 folds): %d features\n",
+            length(stable_features)))
+all_cv_features <- stable_features
 
-#-------------------------------------------------------------------------------
+# Extract CV-discovered features from full dataset
+X_all_cv_features <- X_all[, all_cv_features, drop = FALSE]
 
-# CoxNet for Death
-death_model_all <- tune_and_fit_coxnet(
-  X_train = X_all_filtered,
-  y_train = y_death_all,
-  clinical_train = clinical_all,
-  event_col = "DeathNoR_event",
-  alpha_grid = ALPHA_GRID,
-  penalty_factor = penalty_factor,
-  n_inner_folds = N_INNER_FOLDS,
-  outcome_name = "DeathNoR"
-)
+cat(sprintf("Using %d CV-discovered features for final CoxNet models\n\n",
+            ncol(X_all_cv_features)))
 
-# Extract coefficients and features
-death_coef_res_all <- extract_nonzero_coefs(death_model_all$final_fit)  # FIX: was death_model
-coef_death_df_all <- death_coef_res_all$coef_df
-features_death_all <- death_coef_res_all$features
+# --------------------------------------------------------------------------
+# Scale Features
+# --------------------------------------------------------------------------
 
-cat(sprintf(
-  "  BEST DEATH MODEL: Alpha=%.2f, Lambda=%.6f, Features=%d\n",
-  death_model_all$best_alpha, 
-  death_model_all$best_lambda, 
-  length(features_death_all)
-))
-cat("    Selected:", paste(features_death_all, collapse=", "), "\n")
-
-#-------------------------------------------------------------------------------
-
-# pool
-features_pooled_all <- union(features_rfi_all, features_death_all)
-
-# prepare FG input
-X_pooled_all <- X_all_filtered[, features_pooled_all, drop = FALSE]
-
-cat(sprintf("\n--- Feature Pooling ---\n"))
-cat(sprintf("RFI features: %d\n", length(features_rfi_all)))  # FIX: was features_rfi
-cat(sprintf("Death features: %d\n", length(features_death_all)))  # FIX: was features_death
-cat(sprintf("Overlap: %d\n", length(intersect(features_rfi_all, features_death_all))))  # FIX
-cat(sprintf("Pooled total: %d\n", length(features_pooled_all)))  # FIX: was features_pooled
-
-# Only scale continuous variables, leave one-hot encoded variables as-is
-cat(sprintf("\n--- Scaling Cont. Features ---\n"))
+cat(sprintf("\n--- Scaling Continuous Features ---\n"))
 scale_res_all <- scale_continuous_features(
   X_train = X_pooled_all, 
   X_test = NULL, 
-  dont_scale = encoded_result$encoded_cols
+  dont_scale = if (DATA_MODE == "methylation") NULL else encoded_result$encoded_cols
 )
 
 X_all_scaled <- scale_res_all$X_train_scaled
 
-#-------------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# Fit Final Fine-Gray Model
+# --------------------------------------------------------------------------
 
-# prepare input data
 cat(sprintf("\n--- Fitting Fine-Gray Model ---\n"))
 
 fgr_all_data <- cbind(
@@ -695,7 +848,6 @@ fgr_all_data <- cbind(
   X_all_scaled
 )
 
-# Build formula explicitly
 feature_cols <- setdiff(colnames(fgr_all_data), 
                         c("time_to_CompRisk_event", "CompRisk_event_coded"))
 formula_str <- paste("Hist(time_to_CompRisk_event, CompRisk_event_coded) ~", 
@@ -710,9 +862,10 @@ fgr_final <- FGR(
 
 cat(sprintf("Fine-Gray model fitted with %d features\n", length(feature_cols)))
 
-#-------------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# Extract Final Model Coefficients
+# --------------------------------------------------------------------------
 
-# Extract FGR coefficients
 fg_final_coef <- fgr_final$crrFit$coef
 coef_fg_final_df <- data.frame(
   feature = names(fg_final_coef),
@@ -730,32 +883,30 @@ coef_comparison_final <- coef_comparison_final[c("feature","cox_rfi_final_coef",
                                                  "cox_death_final_coef","fg_final_coef",
                                                  "fg_final_HR")]
 
-# Sort by absolute FG coefficient
+# Sort by absolute Fine-Gray coefficient
 coef_comparison_final <- coef_comparison_final[order(
-  abs(coef_comparison_final$fg_final_HR), decreasing = TRUE), ]
+  abs(coef_comparison_final$fg_final_coef), decreasing = TRUE), ]
+
 rownames(coef_comparison_final) <- NULL
 
 print(coef_comparison_final)
 
 # --------------------------------------------------------------------------
-# Variable Importance for Fine-Gray Model
+# Calculate Variable Importance
 # --------------------------------------------------------------------------
 
 cat("\n--- Fine-Gray Variable Importance ---\n")
 
-# Full output with summaries
 vimp_fg_final <- calculate_fgr_importance(
   fgr_model = fgr_final,
-  encoded_cols = encoded_result$encoded_cols,
+  encoded_cols = if (DATA_MODE == "methylation") NULL else encoded_result$encoded_cols,
   verbose = TRUE
 )
 
-# Access the dataframe
 print(vimp_fg_final)
 
-
 ################################################################################
-# SAVE ALL RESULTS
+# SAVE RESULTS
 ################################################################################
 
 cat("\n========== SAVING RESULTS ==========\n")
@@ -764,62 +915,23 @@ cat("\n========== SAVING RESULTS ==========\n")
 results_dir <- file.path(current_output_dir, "final_results")
 dir.create(results_dir, recursive = TRUE, showWarnings = FALSE)
 
-#-------------------------------------------------------------------------------
-# Extract CV predictions for ROC/calibration plots
-#-------------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# Combine CV Predictions from All Folds
+# --------------------------------------------------------------------------
 
-cat("Extracting CV predictions...\n")
+cat("Combining CV predictions from all folds...\n")
 
-cv_predictions <- do.call(rbind, lapply(1:N_OUTER_FOLDS, function(i) {
-  fold <- outer_fold_results[[i]]
-  
-  # Get test samples for this fold
-  test_samples <- fold$test_samples
-  clinical_test_fold <- clinical_data[test_samples, ]
-  
-  # Get scaled test data from fold
-  X_test_fold <- X[test_samples, fold$features_pooled, drop = FALSE]
-  cont_cols <- fold$scale_params$cont_cols
-  
-  X_test_scaled <- X_test_fold
-  X_test_scaled[, cont_cols] <- scale(
-    X_test_fold[, cont_cols, drop = FALSE],
-    center = fold$scale_params$centers,
-    scale = fold$scale_params$scales
-  )
-  
-  # Predict risks
-  pred_risks <- predictRisk(
-    fold$finegray_model,
-    newdata = X_test_scaled,
-    times = EVAL_TIMES,
-    cause = 1
-  )
-  
-  # Combine with outcomes
-  pred_df <- data.frame(
-    fold = i,
-    sample = test_samples,
-    time = clinical_test_fold$time_to_CompRisk_event,
-    event_coded = clinical_test_fold$CompRisk_event_coded,
-    rfi_event = clinical_test_fold$RFi_event,
-    pred_risks
-  )
-  
-  colnames(pred_df)[6:ncol(pred_df)] <- paste0("risk_", EVAL_TIMES, "yr")
-  
-  return(pred_df)
+cv_predictions <- do.call(rbind, lapply(outer_fold_results, function(fold) {
+  fold$fold_predictions
 }))
 
-#-------------------------------------------------------------------------------
-# Save everything in one .RData file
-#-------------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# Save All Results in .RData File
+# --------------------------------------------------------------------------
 
 save(
   # Performance
   perf_results,
-  
-  # Predictions (NEW!)
   cv_predictions,
   
   # Stability
@@ -839,7 +951,7 @@ save(
   features_death_all,
   features_pooled_all,
   
-  # Scaling parameters (CRITICAL for new data)
+  # Scaling parameters (critical for applying model to new data)
   scale_res_all,
   encoded_result,
   
@@ -857,9 +969,9 @@ save(
   file = file.path(results_dir, "all_results.RData")
 )
 
-#-------------------------------------------------------------------------------
-# Also save key CSVs for easy viewing
-#-------------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# Save Key CSVs for Easy Viewing
+# --------------------------------------------------------------------------
 
 write.csv(perf_results$summary, 
           file.path(results_dir, "performance_summary.csv"), 
@@ -885,13 +997,173 @@ write.csv(stability_results$finegray_stability,
           file.path(results_dir, "stability_finegray.csv"), 
           row.names = FALSE)
 
-#-------------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# Print Summary
+# --------------------------------------------------------------------------
 
 cat(sprintf("\n✓ Results saved to: %s\n", results_dir))
-cat("  - all_results.RData (everything)\n")
+cat("  - all_results.RData (complete workspace)\n")
 cat("  - performance_summary.csv\n")
 cat("  - performance_all_folds.csv\n")
-cat("  - cv_predictions.csv (for ROC/calibration)\n")
+cat("  - cv_predictions.csv (for ROC/calibration plots)\n")
 cat("  - variable_importance.csv\n")
 cat("  - final_coefficients.csv\n")
 cat("  - stability_finegray.csv\n")
+
+################################################################################
+# GENERATE PUBLICATION FIGURES
+################################################################################
+
+cat(sprintf("\n%s\n", paste(rep("=", 80), collapse = "")))
+cat("GENERATING PUBLICATION FIGURES\n")
+cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))
+
+# Create figures directory
+plot_dir <- file.path(results_dir, "figures")
+dir.create(plot_dir, showWarnings = FALSE)
+
+# Determine if clinical variables are present
+has_clinical_vars <- !is.null(clinvars) && length(clinvars) > 0
+
+# --------------------------------------------------------------------------
+# Figure 1: Feature Selection Stability Heatmap
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_stability_heatmap(
+    plot_dir = plot_dir,
+    features_pooled_all = features_pooled_all,
+    outer_fold_results = outer_fold_results,
+    N_OUTER_FOLDS = N_OUTER_FOLDS
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate stability heatmap: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 2: Variable Importance Forest Plot
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_variable_importance(
+    plot_dir = plot_dir,
+    vimp_fg_final = vimp_fg_final,
+    features_rfi_all = features_rfi_all,
+    features_death_all = features_death_all,
+    has_clinical = has_clinical_vars
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate variable importance plot: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 3: Feature Selection Comparison
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_feature_selection_comparison(
+    plot_dir = plot_dir,
+    features_pooled_all = features_pooled_all,
+    features_rfi_all = features_rfi_all,
+    features_death_all = features_death_all
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate feature selection comparison: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 4: CoxNet Coefficient Comparison
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_coxnet_coefficient_comparison(
+    plot_dir = plot_dir,
+    coef_comparison_final = coef_comparison_final
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate coefficient comparison: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 5: Performance Over Time
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_performance_over_time(
+    plot_dir = plot_dir,
+    perf_results = perf_results
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate performance over time plot: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 6: Performance Variability
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_performance_variability(
+    plot_dir = plot_dir,
+    perf_results = perf_results
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate performance variability plot: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 7: ROC Curves
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_roc_curves(
+    plot_dir = plot_dir,
+    cv_predictions = cv_predictions,
+    EVAL_TIMES = EVAL_TIMES
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate ROC curves: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Figure 8: Calibration Plots
+# --------------------------------------------------------------------------
+tryCatch({
+  plot_calibration(
+    plot_dir = plot_dir,
+    cv_predictions = cv_predictions,
+    EVAL_TIMES = EVAL_TIMES
+  )
+}, error = function(e) {
+  cat(sprintf("  WARNING: Failed to generate calibration plots: %s\n", e$message))
+})
+
+# --------------------------------------------------------------------------
+# Summary
+# --------------------------------------------------------------------------
+cat(sprintf("\n%s\n", paste(rep("=", 80), collapse = "")))
+cat("FIGURES SAVED TO:\n")
+cat(sprintf("%s\n", plot_dir))
+cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))
+cat(">> Publication figures generation complete!\n\n")
+
+cat(sprintf("\nTotal runtime: %.1f minutes\n", 
+            as.numeric(difftime(Sys.time(), start_time, units = "mins"))))
+
+################################################################################
+# SESSION INFO
+################################################################################
+
+cat(sprintf("\n%s\n", paste(rep("=", 80), collapse = "")))
+cat("SESSION INFO\n")
+cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))
+print(sessionInfo())
+
+################################################################################
+# CLOSE LOG FILE
+################################################################################
+
+cat(sprintf("\n%s\n", paste(rep("=", 80), collapse = "")))
+cat(sprintf("Completed: %s\n", Sys.time()))
+cat(sprintf("Log saved to: %s\n", log_path))
+cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))
+
+# Close log connections
+sink(type = "message")
+sink(type = "output")
+close(log_con)
+
+cat(sprintf("\n✓ Pipeline completed successfully!\n"))
+cat(sprintf("✓ Log file: %s\n", log_path))
