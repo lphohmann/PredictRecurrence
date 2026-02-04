@@ -1,275 +1,143 @@
 #!/usr/bin/env Rscript
 
 ################################################################################
-# Stability Analysis: Feature Selection Across Nested CV
+# Fine-Gray Results Visualization
 # Author: Lennart Hohmann
-
+#
+# DESCRIPTION:
+# ============
+# Comprehensive visualization script for Fine-Gray competing risks pipeline.
+# Creates publication-quality figures for:
+# - Feature selection stability across CV folds
+# - Model performance (AUC, Brier scores over time)
+# - Variable importance (hazard ratios)
+# - Feature selection patterns
+# - Inner fold stability analysis (if available)
+#
+# USAGE:
+# ======
+# 1. Set COHORT, DATA_MODE, and RESULTS_FILE below
+# 2. Run: Rscript FineGray_visualize_results.R
+#
+# OUTPUT:
+# =======
+# Creates a 'figures/' subdirectory with PDF and PNG plots
 ################################################################################
 
 ################################################################################
-# LOAD LIBRARIES
+# LIBRARIES
 ################################################################################
 
 library(ggplot2)
 library(reshape2)
-library(pheatmap)
-library(RColorBrewer)
 library(dplyr)
+library(gridExtra)
+library(RColorBrewer)
+
+# Optional: for ROC curves (install if needed)
+if (require("pROC", quietly = TRUE)) {
+  library(pROC)
+  HAS_PROC <- TRUE
+} else {
+  HAS_PROC <- FALSE
+  message("Note: pROC package not installed. ROC curves will be skipped.")
+}
 
 ################################################################################
-# PARAMETER SETTINGS - CHANGE THESE TO SWITCH BETWEEN ANALYSES
+# SETTINGS - MODIFY THESE
 ################################################################################
 
-# Set your cohort and data type here
-COHORT <- "ERpHER2n"           # Options: "TNBC", "ERpHER2n", "All"
-DATA_TYPE <- "Methylation"     # Options: "Methylation", "Combined"
-
-# Construct the path to results based on parameters
 setwd("~/PhD_Workspace/PredictRecurrence/")
+"./output/FineGray/ERpHER2n/Combined/Unadjusted/finegray_pipeline_stability_20260130_111403.log"
+# Analysis parameters
+COHORT <- "ERpHER2n"           # Options: "TNBC", "ERpHER2n", "All"
+DATA_MODE <- "combined"     # Options: "methylation", "combined"
 
-results_path <- file.path(
+# File to load (specify the timestamp from your pipeline run)
+# Example: "outer_fold_results_20260130_092851.RData"
+RESULTS_FILE <- "outer_fold_results_20260130_111403.RData"  # CHANGE THIS
+
+# Construct paths
+results_dir <- file.path(
   "./output/FineGray",
   COHORT,
-  DATA_TYPE,
-  "Unadjusted/outer_fold_results.RData"
+  tools::toTitleCase(DATA_MODE),
+  "Unadjusted"
 )
 
-# Print settings
-cat(sprintf("\n========================================\n"))
-cat(sprintf("STABILITY ANALYSIS PARAMETERS\n"))
-cat(sprintf("========================================\n"))
+results_path <- file.path(results_dir, RESULTS_FILE)
+
+# Print configuration
+cat(sprintf("\n%s\n", paste(rep("=", 80), collapse = "")))
+cat(sprintf("FINE-GRAY RESULTS VISUALIZATION\n"))
+cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))
 cat(sprintf("Cohort:      %s\n", COHORT))
-cat(sprintf("Data type:   %s\n", DATA_TYPE))
+cat(sprintf("Data mode:   %s\n", DATA_MODE))
 cat(sprintf("Results:     %s\n", results_path))
-cat(sprintf("========================================\n\n"))
+cat(sprintf("%s\n\n", paste(rep("=", 80), collapse = "")))
+
+# Check file exists
+if (!file.exists(results_path)) {
+  stop(sprintf("Results file not found: %s", results_path))
+}
 
 ################################################################################
 # LOAD DATA
 ################################################################################
 
-# Check if file exists
-if (!file.exists(results_path)) {
-  stop(sprintf("Results file not found: %s\n", results_path))
-}
-
-cat("Loading data from:", results_path, "\n")
-
-# Load the outer fold results
+cat("Loading results...\n")
 load(results_path)
 
-# Check what's loaded
-if (!exists("outer_fold_results")) {
-  stop("outer_fold_results not found in the loaded file")
+# Extract components
+if (exists("cv_results")) {
+  # New structure (nested list)
+  outer_fold_results <- cv_results$outer_fold_results
+  perf_results <- cv_results$perf_results
+  stability_results <- cv_results$stability_results
+  metadata <- cv_results$metadata
+  
+  N_OUTER_FOLDS <- metadata$N_OUTER_FOLDS
+  EVAL_TIMES <- metadata$EVAL_TIMES
+  clinvars <- metadata$clinvars
+  
+} else if (exists("outer_fold_results")) {
+  # Old structure (individual objects)
+  # perf_results and stability_results should also exist
+  if (!exists("perf_results") || !exists("stability_results")) {
+    stop("Expected perf_results and stability_results not found in loaded file")
+  }
+  # Metadata might not be saved separately
+  N_OUTER_FOLDS <- length(outer_fold_results)
+  EVAL_TIMES <- seq(1, 10)  # Default assumption
+  clinvars <- NULL
+} else {
+  stop("Could not find expected data structures in loaded file")
 }
 
-# Check fold completion status
+# Check for completed folds
 completed_fold_indices <- which(!sapply(outer_fold_results, is.null))
 n_completed_folds <- length(completed_fold_indices)
-N_OUTER_FOLDS <- length(outer_fold_results)
 
-cat(sprintf("CV Folds: %d/%d completed successfully\n", 
-            n_completed_folds, N_OUTER_FOLDS))
+cat(sprintf("Found %d/%d completed folds\n", n_completed_folds, N_OUTER_FOLDS))
 
 if (n_completed_folds == 0) {
-  stop("No completed folds found in results")
+  stop("No completed folds found. Cannot create visualizations.")
 }
 
-if (n_completed_folds < N_OUTER_FOLDS) {
-  skipped_folds <- setdiff(1:N_OUTER_FOLDS, completed_fold_indices)
-  cat(sprintf("  WARNING: Folds %s were skipped\n",
-              paste(skipped_folds, collapse = ", ")))
-}
-cat("\n")
+# Determine if clinical variables present
+HAS_CLINICAL <- !is.null(clinvars) && length(clinvars) > 0
 
-################################################################################
-# EXTRACT STABILITY INFORMATION
-################################################################################
+cat(sprintf("Mode: %s\n", ifelse(HAS_CLINICAL, "Combined (Methylation + Clinical)", 
+                                 "Methylation only")))
 
-cat("Extracting stability information from nested CV results...\n")
-
-# Initialize storage for stability data
-stability_data_rfi <- list()
-stability_data_death <- list()
-
-for (fold_idx in completed_fold_indices) {
-  fold_result <- outer_fold_results[[fold_idx]]
-  
-  # Extract RFI stability info (if it exists)
-  if (!is.null(fold_result$coxnet_rfi_complete_results$best_result$stability_info)) {
-    stability_data_rfi[[fold_idx]] <- list(
-      fold = fold_idx,
-      stability_info = fold_result$coxnet_rfi_complete_results$best_result$stability_info,
-      stability_matrix = fold_result$coxnet_rfi_complete_results$best_result$stability_matrix,
-      sign_matrix = fold_result$coxnet_rfi_complete_results$best_result$sign_matrix,
-      features_selected = fold_result$features_rfi,
-      best_alpha = fold_result$coxnet_rfi_complete_results$best_alpha,
-      best_lambda = fold_result$coxnet_rfi_complete_results$best_lambda
-    )
-  }
-  
-  # Extract Death stability info (if it exists)
-  if (!is.null(fold_result$coxnet_death_complete_results$best_result$stability_info)) {
-    stability_data_death[[fold_idx]] <- list(
-      fold = fold_idx,
-      stability_info = fold_result$coxnet_death_complete_results$best_result$stability_info,
-      stability_matrix = fold_result$coxnet_death_complete_results$best_result$stability_matrix,
-      sign_matrix = fold_result$coxnet_death_complete_results$best_result$sign_matrix,
-      features_selected = fold_result$features_death,
-      best_alpha = fold_result$coxnet_death_complete_results$best_alpha,
-      best_lambda = fold_result$coxnet_death_complete_results$best_lambda
-    )
-  }
-}
-
-# Remove NULL entries
-stability_data_rfi <- stability_data_rfi[!sapply(stability_data_rfi, is.null)]
-stability_data_death <- stability_data_death[!sapply(stability_data_death, is.null)]
-
-cat(sprintf("  RFI stability data: %d outer folds\n", length(stability_data_rfi)))
-cat(sprintf("  Death stability data: %d outer folds\n", length(stability_data_death)))
-
-if (length(stability_data_rfi) == 0 && length(stability_data_death) == 0) {
-  stop("No stability information found. Was compute_stability=TRUE in your analysis?")
-}
-
-cat("\n")
-
-################################################################################
-# AGGREGATE STABILITY ACROSS OUTER FOLDS
-################################################################################
-
-cat("Aggregating feature selection across outer folds...\n")
-
-# Function to aggregate features across outer folds
-aggregate_feature_selection <- function(stability_data, model_name) {
-  
-  all_features <- unique(unlist(lapply(stability_data, function(x) x$features_selected)))
-  
-  if (length(all_features) == 0) {
-    cat(sprintf("  WARNING: No features selected in %s model\n", model_name))
-    return(NULL)
-  }
-  
-  # Create matrix: rows = features, columns = outer folds
-  n_outer_folds <- length(stability_data)
-  outer_selection_matrix <- matrix(
-    0, 
-    nrow = length(all_features), 
-    ncol = n_outer_folds,
-    dimnames = list(all_features, paste0("OuterFold", sapply(stability_data, `[[`, "fold")))
-  )
-  
-  # Fill in which features were selected in each outer fold
-  for (i in 1:n_outer_folds) {
-    selected <- stability_data[[i]]$features_selected
-    outer_selection_matrix[selected, i] <- 1
-  }
-  
-  # Calculate outer fold selection frequency
-  outer_freq <- rowSums(outer_selection_matrix) / n_outer_folds
-  
-  # Get average inner fold stability for each feature
-  inner_stability <- sapply(all_features, function(feat) {
-    # Get stability scores for this feature across outer folds where it appears
-    stabilities <- sapply(stability_data, function(fold_data) {
-      info <- fold_data$stability_info
-      if (feat %in% info$feature) {
-        return(info$selection_freq[info$feature == feat])
-      } else {
-        return(NA)
-      }
-    })
-    return(mean(stabilities, na.rm = TRUE))
-  })
-  
-  # Combine into dataframe
-  feature_summary <- data.frame(
-    feature = all_features,
-    outer_fold_freq = outer_freq,
-    mean_inner_stability = inner_stability,
-    n_outer_folds_selected = rowSums(outer_selection_matrix),
-    stringsAsFactors = FALSE
-  )
-  
-  feature_summary <- feature_summary[order(feature_summary$outer_fold_freq, decreasing = TRUE), ]
-  rownames(feature_summary) <- NULL
-  
-  return(list(
-    summary = feature_summary,
-    outer_selection_matrix = outer_selection_matrix
-  ))
-}
-
-# Aggregate for both models
-if (length(stability_data_rfi) > 0) {
-  rfi_aggregated <- aggregate_feature_selection(stability_data_rfi, "RFI")
-  cat(sprintf("  RFI: %d unique features across %d outer folds\n", 
-              nrow(rfi_aggregated$summary), 
-              ncol(rfi_aggregated$outer_selection_matrix)))
-}
-
-if (length(stability_data_death) > 0) {
-  death_aggregated <- aggregate_feature_selection(stability_data_death, "Death")
-  cat(sprintf("  Death: %d unique features across %d outer folds\n", 
-              nrow(death_aggregated$summary), 
-              ncol(death_aggregated$outer_selection_matrix)))
-}
-
-cat("\n")
-
-################################################################################
-# SUMMARY STATISTICS
-################################################################################
-
-cat("========================================\n")
-cat("STABILITY SUMMARY STATISTICS\n")
-cat("========================================\n\n")
-
-# Helper function to print summary for one model
-print_model_summary <- function(aggregated_data, model_name) {
-  if (is.null(aggregated_data)) return()
-  
-  summary_df <- aggregated_data$summary
-  
-  cat(sprintf("--- %s MODEL ---\n", model_name))
-  cat(sprintf("Total features: %d\n", nrow(summary_df)))
-  cat(sprintf("Features selected in all outer folds: %d\n", 
-              sum(summary_df$outer_fold_freq == 1)))
-  cat(sprintf("Features selected in ≥80%% outer folds: %d\n", 
-              sum(summary_df$outer_fold_freq >= 0.8)))
-  cat(sprintf("Features selected in ≥60%% outer folds: %d\n", 
-              sum(summary_df$outer_fold_freq >= 0.6)))
-  cat(sprintf("Mean outer fold frequency: %.2f\n", 
-              mean(summary_df$outer_fold_freq)))
-  cat(sprintf("Mean inner fold stability: %.2f\n", 
-              mean(summary_df$mean_inner_stability, na.rm = TRUE)))
-  cat("\n")
-  
-  # Show top 10 most stable features
-  cat("Top 10 most consistently selected features:\n")
-  print(head(summary_df[, c("feature", "outer_fold_freq", "mean_inner_stability")], 10))
-  cat("\n")
-}
-
-if (length(stability_data_rfi) > 0) {
-  print_model_summary(rfi_aggregated, "RFI")
-}
-
-if (length(stability_data_death) > 0) {
-  print_model_summary(death_aggregated, "DEATH")
-}
-
-################################################################################
-# CREATE OUTPUT DIRECTORY FOR PLOTS
-################################################################################
-
-plot_dir <- file.path(dirname(results_path), "stability_figures")
+# Create output directory
+plot_dir <- file.path(results_dir, "figures")
 dir.create(plot_dir, showWarnings = FALSE, recursive = TRUE)
 
-cat(sprintf("Plots will be saved to: %s\n\n", plot_dir))
+cat(sprintf("Output directory: %s\n\n", plot_dir))
 
 ################################################################################
-# SET PLOTTING THEME
+# PLOTTING THEME
 ################################################################################
 
 theme_pub <- theme_bw(base_size = 12) +
@@ -280,71 +148,649 @@ theme_pub <- theme_bw(base_size = 12) +
   )
 
 ################################################################################
-# READY FOR PLOTTING
+# FIGURE 1: OUTER FOLD FEATURE SELECTION STABILITY
 ################################################################################
 
-cat("========================================\n")
-cat("Data loaded and processed successfully!\n")
-cat("You can now create stability plots.\n")
-cat("========================================\n\n")
+cat("Creating Figure 1: Outer fold feature selection stability...\n")
 
-# Available objects for plotting:
-# - stability_data_rfi: List with stability info for each outer fold (RFI)
-# - stability_data_death: List with stability info for each outer fold (Death)
-# - rfi_aggregated: Aggregated feature selection across outer folds (RFI)
-# - death_aggregated: Aggregated feature selection across outer folds (Death)
-# - outer_fold_results: Original results with all models and predictions
+# Collect all features selected across folds
+all_features_outer <- unique(unlist(lapply(completed_fold_indices, function(i) {
+  outer_fold_results[[i]]$features_pooled
+})))
 
+if (length(all_features_outer) == 0) {
+  cat("  WARNING: No features selected in any fold. Skipping.\n\n")
+} else {
+  # Create selection matrix
+  selection_matrix <- sapply(completed_fold_indices, function(i) {
+    fold_features <- outer_fold_results[[i]]$features_pooled
+    as.integer(all_features_outer %in% fold_features)
+  })
+  
+  rownames(selection_matrix) <- all_features_outer
+  colnames(selection_matrix) <- paste0("Fold ", completed_fold_indices)
+  
+  # Calculate selection frequency
+  selection_freq <- rowSums(selection_matrix) / ncol(selection_matrix)
+  ordered_features <- names(sort(selection_freq, decreasing = TRUE))
+  
+  # Reshape for ggplot
+  sel_melted <- reshape2::melt(selection_matrix)
+  colnames(sel_melted) <- c("Feature", "Fold", "Selected")
+  sel_melted$Feature <- factor(sel_melted$Feature, levels = rev(ordered_features))
+  
+  # Add selection frequency annotation
+  freq_df <- data.frame(
+    Feature = factor(names(selection_freq), levels = rev(ordered_features)),
+    Frequency = selection_freq
+  )
+  
+  # Create heatmap
+  p1 <- ggplot(sel_melted, aes(x = Fold, y = Feature, fill = factor(Selected))) +
+    geom_tile(color = "white", size = 0.5) +
+    scale_fill_manual(
+      values = c("0" = "grey90", "1" = "steelblue"),
+      labels = c("Not selected", "Selected"),
+      name = ""
+    ) +
+    labs(
+      title = "Feature Selection Stability Across Outer CV Folds",
+      subtitle = sprintf("%d unique features selected across %d folds", 
+                         length(all_features_outer), n_completed_folds),
+      x = "Outer CV Fold",
+      y = ""
+    ) +
+    theme_pub +
+    theme(
+      axis.text.y = element_text(size = 8),
+      panel.grid = element_blank(),
+      legend.position = "bottom"
+    )
+  
+  # Save
+  ggsave(
+    file.path(plot_dir, "1_outer_fold_stability.pdf"),
+    p1, width = 8, height = max(6, length(all_features_outer) * 0.2)
+  )
+  ggsave(
+    file.path(plot_dir, "1_outer_fold_stability.png"),
+    p1, width = 8, height = max(6, length(all_features_outer) * 0.2), dpi = 300
+  )
+  
+  cat("  Saved: 1_outer_fold_stability.pdf/.png\n\n")
+}
 
+################################################################################
+# FIGURE 2: FEATURE SELECTION SOURCE (RFI vs DEATH)
+################################################################################
 
+cat("Creating Figure 2: Feature selection by outcome...\n")
 
+# Collect features by source
+all_features_rfi <- unique(unlist(lapply(completed_fold_indices, function(i) {
+  outer_fold_results[[i]]$features_rfi
+})))
 
+all_features_death <- unique(unlist(lapply(completed_fold_indices, function(i) {
+  outer_fold_results[[i]]$features_death
+})))
 
+if (length(all_features_rfi) == 0 && length(all_features_death) == 0) {
+  cat("  WARNING: No features selected. Skipping.\n\n")
+} else {
+  # Classify features
+  all_features_pooled <- union(all_features_rfi, all_features_death)
+  
+  feature_source <- data.frame(
+    feature = all_features_pooled,
+    selected_rfi = all_features_pooled %in% all_features_rfi,
+    selected_death = all_features_pooled %in% all_features_death,
+    stringsAsFactors = FALSE
+  )
+  
+  feature_source$category <- ifelse(
+    feature_source$selected_rfi & feature_source$selected_death, "Both",
+    ifelse(feature_source$selected_rfi, "RFI only", "Death only")
+  )
+  
+  # Count by category
+  category_counts <- table(feature_source$category)
+  category_df <- data.frame(
+    category = names(category_counts),
+    count = as.vector(category_counts)
+  )
+  
+  category_df$category <- factor(
+    category_df$category,
+    levels = c("RFI only", "Both", "Death only")
+  )
+  
+  # Create plot
+  p2 <- ggplot(category_df, aes(x = category, y = count, fill = category)) +
+    geom_bar(stat = "identity", width = 0.7) +
+    geom_text(aes(label = count), vjust = -0.5, size = 5) +
+    scale_fill_manual(
+      values = c("RFI only" = "#E41A1C", "Both" = "#984EA3", "Death only" = "#377EB8")
+    ) +
+    labs(
+      title = "Feature Selection by CoxNet Endpoint",
+      subtitle = sprintf("Total unique features: %d", length(all_features_pooled)),
+      x = "Selected by",
+      y = "Number of Features"
+    ) +
+    theme_pub +
+    theme(legend.position = "none") +
+    ylim(0, max(category_counts) * 1.15)
+  
+  # Save
+  ggsave(
+    file.path(plot_dir, "2_feature_selection_by_endpoint.pdf"),
+    p2, width = 8, height = 6
+  )
+  ggsave(
+    file.path(plot_dir, "2_feature_selection_by_endpoint.png"),
+    p2, width = 8, height = 6, dpi = 300
+  )
+  
+  cat("  Saved: 2_feature_selection_by_endpoint.pdf/.png\n\n")
+}
 
-stability_results$selection_matrix
-str(stability_results$stability_metrics)
-plotdata <- fg_stability[c()]
-final_fg_input_features <- fg_stability[fg_stability$n_selected >= 4 & fg_stability$direction_consistent == TRUE,]
+################################################################################
+# FIGURE 3: PERFORMANCE OVER TIME
+################################################################################
 
-str(stability_results)
+cat("Creating Figure 3: Performance over time...\n")
 
-features_to_plot <- fg_stability[fg_stability$n_selected >= 3 & fg_stability$direction_consistent == TRUE,]
+perf_summary <- perf_results$summary
 
-features_to_plot <- fg_stability$feature[fg_stability$n_selected >= 3 & fg_stability$direction_consistent == TRUE]
+# Separate AUC and Brier metrics
+auc_metrics <- perf_summary[grep("^auc_", perf_summary$metric), ]
+brier_metrics <- perf_summary[grep("^brier_", perf_summary$metric), ]
 
-fg_matrix_filtered <- fg_matrix[features_to_plot, , drop = FALSE]
+if (nrow(auc_metrics) > 0 && nrow(brier_metrics) > 0) {
+  # Extract time points
+  auc_metrics$time <- as.numeric(gsub("auc_(\\d+)yr", "\\1", auc_metrics$metric))
+  brier_metrics$time <- as.numeric(gsub("brier_(\\d+)yr", "\\1", brier_metrics$metric))
+  
+  # AUC plot
+  p3a <- ggplot(auc_metrics, aes(x = time, y = mean)) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), 
+                alpha = 0.2, fill = "steelblue") +
+    geom_line(color = "steelblue", size = 1) +
+    geom_point(color = "steelblue", size = 3) +
+    geom_hline(yintercept = 0.5, linetype = "dashed", color = "red", alpha = 0.5) +
+    scale_x_continuous(breaks = unique(auc_metrics$time)) +
+    ylim(0, 1) +
+    labs(
+      title = "Time-Dependent AUC",
+      subtitle = "Mean ± 95% CI across CV folds",
+      x = "Time (years)",
+      y = "AUC"
+    ) +
+    theme_pub
+  
+  # Brier plot
+  p3b <- ggplot(brier_metrics, aes(x = time, y = mean)) +
+    geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), 
+                alpha = 0.2, fill = "darkgreen") +
+    geom_line(color = "darkgreen", size = 1) +
+    geom_point(color = "darkgreen", size = 3) +
+    scale_x_continuous(breaks = unique(brier_metrics$time)) +
+    ylim(0, max(0.25, max(brier_metrics$ci_upper) * 1.1)) +
+    labs(
+      title = "Time-Dependent Brier Score",
+      subtitle = "Mean ± 95% CI across CV folds (lower is better)",
+      x = "Time (years)",
+      y = "Brier Score"
+    ) +
+    theme_pub
+  
+  # Combine
+  p3 <- grid.arrange(p3a, p3b, ncol = 1)
+  
+  # Save
+  ggsave(
+    file.path(plot_dir, "3_performance_over_time.pdf"),
+    p3, width = 10, height = 10
+  )
+  ggsave(
+    file.path(plot_dir, "3_performance_over_time.png"),
+    p3, width = 10, height = 10, dpi = 300
+  )
+  
+  cat("  Saved: 3_performance_over_time.pdf/.png\n\n")
+} else {
+  cat("  WARNING: Performance metrics not found. Skipping.\n\n")
+}
 
-View(stability_results$selection_matrix)
+################################################################################
+# FIGURE 4: PERFORMANCE VARIABILITY ACROSS FOLDS
+################################################################################
 
-# plot
-# Load required library
-library(pheatmap)
+cat("Creating Figure 4: Performance variability...\n")
 
-# Extract and prepare the selection matrix
-selection_data <- stability_results$selection_matrix
-rownames(selection_data) <- selection_data$feature
-selection_data <- selection_data[, -1]  # Remove the 'feature' column
-selection_matrix <- as.matrix(selection_data)
+all_folds <- perf_results$all_folds
 
-# Create the output filepath
-output_file <- file.path(current_output_dir, "feature_selection_heatmap.png")
+# Select key time points
+key_times <- c(1, 3, 5, 10)
+auc_cols <- paste0("auc_", key_times, "yr")
+brier_cols <- paste0("brier_", key_times, "yr")
 
-# Save the heatmap to file
-png(filename = output_file,
-    width = 800,      # Width in pixels
-    height = 1000,    # Height in pixels (adjust based on number of features)
-    res = 150)        # Resolution (higher = better quality)
+# Check which exist
+auc_cols <- auc_cols[auc_cols %in% names(all_folds)]
+brier_cols <- brier_cols[brier_cols %in% names(all_folds)]
 
-pheatmap(selection_matrix,
-         cluster_rows = FALSE,
-         cluster_cols = FALSE,
-         color = c("white", "darkblue"),
-         legend = TRUE,
-         main = "Feature Selection Across CV Folds",
-         fontsize = 10,
-         border_color = "grey60")
+if (length(auc_cols) > 0 && length(brier_cols) > 0) {
+  # Reshape for AUC
+  auc_key <- all_folds[, c("model", auc_cols)]
+  auc_long <- reshape2::melt(auc_key, id.vars = "model",
+                             variable.name = "time", value.name = "AUC")
+  auc_long$time <- gsub("auc_(\\d+)yr", "\\1 yr", auc_long$time)
+  
+  # Reshape for Brier
+  brier_key <- all_folds[, c("model", brier_cols)]
+  brier_long <- reshape2::melt(brier_key, id.vars = "model",
+                               variable.name = "time", value.name = "Brier")
+  brier_long$time <- gsub("brier_(\\d+)yr", "\\1 yr", brier_long$time)
+  
+  # AUC boxplot
+  p4a <- ggplot(auc_long, aes(x = time, y = AUC)) +
+    geom_boxplot(fill = "steelblue", alpha = 0.7, outlier.shape = NA) +
+    geom_jitter(width = 0.1, alpha = 0.5, size = 2) +
+    geom_hline(yintercept = 0.5, linetype = "dashed", color = "red") +
+    ylim(0, 1) +
+    labs(
+      title = "AUC Variability Across CV Folds",
+      x = "Time Point",
+      y = "AUC"
+    ) +
+    theme_pub
+  
+  # Brier boxplot
+  p4b <- ggplot(brier_long, aes(x = time, y = Brier)) +
+    geom_boxplot(fill = "darkgreen", alpha = 0.7, outlier.shape = NA) +
+    geom_jitter(width = 0.1, alpha = 0.5, size = 2) +
+    labs(
+      title = "Brier Score Variability Across CV Folds",
+      x = "Time Point",
+      y = "Brier Score"
+    ) +
+    theme_pub
+  
+  # Combine
+  p4 <- grid.arrange(p4a, p4b, ncol = 2)
+  
+  # Save
+  ggsave(
+    file.path(plot_dir, "4_performance_variability.pdf"),
+    p4, width = 12, height = 6
+  )
+  ggsave(
+    file.path(plot_dir, "4_performance_variability.png"),
+    p4, width = 12, height = 6, dpi = 300
+  )
+  
+  cat("  Saved: 4_performance_variability.pdf/.png\n\n")
+} else {
+  cat("  WARNING: Performance metrics at key times not found. Skipping.\n\n")
+}
 
-dev.off()  # Close the graphics device to finalize the file
+################################################################################
+# FIGURE 5: COMPREHENSIVE INNER FOLD STABILITY HEATMAP
+################################################################################
 
-# Print confirmation
-cat("Heatmap saved to:", output_file, "\n")
+cat("Creating Figure 5: Comprehensive inner fold stability heatmap...\n")
+
+# Check if stability matrices available
+has_stability_matrices <- any(sapply(completed_fold_indices, function(i) {
+  !is.null(outer_fold_results[[i]]$coxnet_rfi_complete_results$best_result$stability_matrix)
+}))
+
+if (!has_stability_matrices) {
+  cat("  WARNING: No inner fold stability matrices found. Skipping.\n\n")
+} else {
+  
+  # Function to create comprehensive heatmap for one endpoint
+  create_nested_cv_heatmap <- function(endpoint_name, plot_suffix) {
+    
+    cat(sprintf("  Creating %s endpoint heatmap...\n", endpoint_name))
+    
+    # Collect all features across all outer folds for this endpoint
+    all_features_endpoint <- unique(unlist(lapply(completed_fold_indices, function(outer_idx) {
+      if (endpoint_name == "RFI") {
+        mat <- outer_fold_results[[outer_idx]]$coxnet_rfi_complete_results$best_result$stability_matrix
+      } else {
+        mat <- outer_fold_results[[outer_idx]]$coxnet_death_complete_results$best_result$stability_matrix
+      }
+      if (!is.null(mat)) rownames(mat) else NULL
+    })))
+    
+    if (length(all_features_endpoint) == 0) {
+      cat(sprintf("    No features found for %s endpoint\n", endpoint_name))
+      return(invisible(NULL))
+    }
+    
+    # Initialize combined matrix
+    combined_matrices <- list()
+    outer_fold_labels <- c()
+    
+    for (outer_idx in completed_fold_indices) {
+      # Get stability matrix for this outer fold
+      if (endpoint_name == "RFI") {
+        stab_mat <- outer_fold_results[[outer_idx]]$coxnet_rfi_complete_results$best_result$stability_matrix
+      } else {
+        stab_mat <- outer_fold_results[[outer_idx]]$coxnet_death_complete_results$best_result$stability_matrix
+      }
+      
+      if (is.null(stab_mat)) next
+      
+      # Get number of inner folds
+      n_inner <- ncol(stab_mat)
+      
+      # Create full matrix with all features (fill missing with 0)
+      full_mat <- matrix(0, nrow = length(all_features_endpoint), ncol = n_inner)
+      rownames(full_mat) <- all_features_endpoint
+      colnames(full_mat) <- paste0("O", outer_idx, "_I", 1:n_inner)
+      
+      # Fill in available data
+      common_features <- intersect(rownames(stab_mat), all_features_endpoint)
+      full_mat[common_features, ] <- stab_mat[common_features, ]
+      
+      combined_matrices[[as.character(outer_idx)]] <- full_mat
+      outer_fold_labels <- c(outer_fold_labels, rep(paste("Outer", outer_idx), n_inner))
+    }
+    
+    if (length(combined_matrices) == 0) {
+      cat(sprintf("    No data available for %s endpoint\n", endpoint_name))
+      return(invisible(NULL))
+    }
+    
+    # Combine all matrices horizontally
+    full_matrix <- do.call(cbind, combined_matrices)
+    
+    # Calculate selection frequency across all inner folds for ordering
+    selection_freq <- rowMeans(full_matrix)
+    ordered_features <- names(sort(selection_freq, decreasing = TRUE))
+    full_matrix <- full_matrix[ordered_features, ]
+    
+    # Prepare annotation
+    annotation_col <- data.frame(
+      OuterFold = outer_fold_labels,
+      row.names = colnames(full_matrix)
+    )
+    
+    # Color scheme
+    ann_colors <- list(
+      OuterFold = setNames(
+        brewer.pal(min(length(completed_fold_indices), 9), "Set1"),
+        paste("Outer", completed_fold_indices)
+      )
+    )
+    
+    # Create heatmap using pheatmap
+    p <- pheatmap::pheatmap(
+      full_matrix,
+      color = c("grey90", "steelblue"),
+      breaks = c(-0.1, 0.5, 1.1),
+      cluster_rows = FALSE,
+      cluster_cols = FALSE,
+      annotation_col = annotation_col,
+      annotation_colors = ann_colors,
+      show_rownames = ifelse(nrow(full_matrix) <= 50, TRUE, FALSE),
+      show_colnames = FALSE,
+      fontsize_row = 6,
+      main = sprintf("Inner Fold Selection Stability - %s Endpoint", endpoint_name),
+      legend = TRUE,
+      annotation_legend = TRUE,
+      border_color = "white",
+      cellwidth = 10,
+      cellheight = ifelse(nrow(full_matrix) <= 100, 8, 
+                          ifelse(nrow(full_matrix) <= 200, 4, 2)),
+      filename = file.path(plot_dir, sprintf("5_%s_nested_cv_heatmap.pdf", plot_suffix)),
+      width = max(10, ncol(full_matrix) * 0.15),
+      height = max(8, nrow(full_matrix) * 0.08)
+    )
+    
+    # Also save as PNG
+    pheatmap::pheatmap(
+      full_matrix,
+      color = c("grey90", "steelblue"),
+      breaks = c(-0.1, 0.5, 1.1),
+      cluster_rows = FALSE,
+      cluster_cols = FALSE,
+      annotation_col = annotation_col,
+      annotation_colors = ann_colors,
+      show_rownames = ifelse(nrow(full_matrix) <= 50, TRUE, FALSE),
+      show_colnames = FALSE,
+      fontsize_row = 6,
+      main = sprintf("Inner Fold Selection Stability - %s Endpoint", endpoint_name),
+      legend = TRUE,
+      annotation_legend = TRUE,
+      border_color = "white",
+      cellwidth = 10,
+      cellheight = ifelse(nrow(full_matrix) <= 100, 8, 
+                          ifelse(nrow(full_matrix) <= 200, 4, 2)),
+      filename = file.path(plot_dir, sprintf("5_%s_nested_cv_heatmap.png", plot_suffix)),
+      width = max(10, ncol(full_matrix) * 0.15),
+      height = max(8, nrow(full_matrix) * 0.08)
+    )
+    
+    cat(sprintf("    Saved: 5_%s_nested_cv_heatmap.pdf/.png\n", plot_suffix))
+    cat(sprintf("    Features: %d, Inner folds: %d\n", 
+                nrow(full_matrix), ncol(full_matrix)))
+  }
+  
+  # Create heatmaps for both endpoints
+  create_nested_cv_heatmap("RFI", "rfi")
+  create_nested_cv_heatmap("Death", "death")
+  
+  # Additional plot: Overall selection frequency distribution
+  cat("  Creating overall selection frequency distribution...\n")
+  
+  # Collect stability info from all outer folds
+  all_stability_rfi <- list()
+  all_stability_death <- list()
+  
+  for (outer_idx in completed_fold_indices) {
+    rfi_info <- outer_fold_results[[outer_idx]]$coxnet_rfi_complete_results$best_result$stability_info
+    death_info <- outer_fold_results[[outer_idx]]$coxnet_death_complete_results$best_result$stability_info
+    
+    if (!is.null(rfi_info) && nrow(rfi_info) > 0) {
+      rfi_info$outer_fold <- outer_idx
+      all_stability_rfi[[as.character(outer_idx)]] <- rfi_info
+    }
+    
+    if (!is.null(death_info) && nrow(death_info) > 0) {
+      death_info$outer_fold <- outer_idx
+      all_stability_death[[as.character(outer_idx)]] <- death_info
+    }
+  }
+  
+  if (length(all_stability_rfi) > 0 || length(all_stability_death) > 0) {
+    combined_list <- list()
+    
+    if (length(all_stability_rfi) > 0) {
+      rfi_combined <- do.call(rbind, all_stability_rfi)
+      rfi_combined$endpoint <- "RFI"
+      combined_list[[1]] <- rfi_combined
+    }
+    
+    if (length(all_stability_death) > 0) {
+      death_combined <- do.call(rbind, all_stability_death)
+      death_combined$endpoint <- "Death"
+      combined_list[[2]] <- death_combined
+    }
+    
+    all_stability <- do.call(rbind, combined_list)
+    
+    # Create distribution plot
+    p5_dist <- ggplot(all_stability, aes(x = selection_freq, fill = endpoint)) +
+      geom_histogram(binwidth = 0.1, alpha = 0.7, position = "dodge") +
+      geom_vline(xintercept = 0.6, linetype = "dashed", color = "red", alpha = 0.7) +
+      geom_vline(xintercept = 0.8, linetype = "dashed", color = "darkred", alpha = 0.7) +
+      facet_wrap(~ outer_fold, ncol = 2, 
+                 labeller = labeller(outer_fold = function(x) paste("Outer Fold", x))) +
+      scale_fill_manual(
+        values = c("RFI" = "#E41A1C", "Death" = "#377EB8"),
+        name = "Endpoint"
+      ) +
+      labs(
+        title = "Inner Fold Selection Frequency Distribution",
+        subtitle = "Across all outer folds (dashed lines: 60% and 80% thresholds)",
+        x = "Selection Frequency (proportion of inner folds)",
+        y = "Count"
+      ) +
+      theme_pub +
+      theme(strip.text = element_text(size = 10, face = "bold"))
+    
+    # Save
+    ggsave(
+      file.path(plot_dir, "5_selection_frequency_distribution.pdf"),
+      p5_dist, width = 12, height = 8
+    )
+    ggsave(
+      file.path(plot_dir, "5_selection_frequency_distribution.png"),
+      p5_dist, width = 12, height = 8, dpi = 300
+    )
+    
+    cat("    Saved: 5_selection_frequency_distribution.pdf/.png\n")
+  }
+  
+  cat("\n")
+}
+
+################################################################################
+# FIGURE 6: COEFFICIENT DIRECTION CONSISTENCY
+################################################################################
+
+cat("Creating Figure 6: Coefficient direction consistency...\n")
+
+if (has_stability) {
+  fold_with_stability <- completed_fold_indices[1]
+  rfi_stability <- outer_fold_results[[fold_with_stability]]$coxnet_rfi_complete_results$best_result$stability_info
+  death_stability <- outer_fold_results[[fold_with_stability]]$coxnet_death_complete_results$best_result$stability_info
+  
+  if (!is.null(rfi_stability) && !is.null(death_stability) &&
+      nrow(rfi_stability) > 0 && nrow(death_stability) > 0) {
+    
+    rfi_stability$endpoint <- "RFI"
+    death_stability$endpoint <- "Death"
+    combined_stability <- rbind(rfi_stability, death_stability)
+    
+    # Create grouped bar plot
+    consistency_summary <- combined_stability %>%
+      group_by(endpoint, sign_consistent) %>%
+      summarise(count = n(), .groups = "drop")
+    
+    p6 <- ggplot(consistency_summary, aes(x = endpoint, y = count, fill = sign_consistent)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      geom_text(aes(label = count), position = position_dodge(width = 0.9), vjust = -0.5) +
+      scale_fill_manual(
+        values = c("TRUE" = "darkgreen", "FALSE" = "orange"),
+        labels = c("Inconsistent", "Consistent"),
+        name = "Coefficient\nDirection"
+      ) +
+      labs(
+        title = "Coefficient Direction Consistency Across Inner Folds",
+        subtitle = sprintf("Example from Outer Fold %d", fold_with_stability),
+        x = "Endpoint",
+        y = "Number of Features"
+      ) +
+      theme_pub
+    
+    # Save
+    ggsave(
+      file.path(plot_dir, "6_coefficient_consistency.pdf"),
+      p6, width = 8, height = 6
+    )
+    ggsave(
+      file.path(plot_dir, "6_coefficient_consistency.png"),
+      p6, width = 8, height = 6, dpi = 300
+    )
+    
+    cat("  Saved: 6_coefficient_consistency.pdf/.png\n\n")
+  } else {
+    cat("  WARNING: Stability info incomplete. Skipping.\n\n")
+  }
+} else {
+  cat("  WARNING: No stability info available. Skipping.\n\n")
+}
+
+################################################################################
+# FIGURE 7: NUMBER OF FEATURES PER FOLD
+################################################################################
+
+cat("Creating Figure 7: Feature counts per fold...\n")
+
+# Extract feature counts
+fold_feature_counts <- data.frame(
+  fold = completed_fold_indices,
+  n_rfi = sapply(completed_fold_indices, function(i) {
+    length(outer_fold_results[[i]]$features_rfi)
+  }),
+  n_death = sapply(completed_fold_indices, function(i) {
+    length(outer_fold_results[[i]]$features_death)
+  }),
+  n_pooled = sapply(completed_fold_indices, function(i) {
+    length(outer_fold_results[[i]]$features_pooled)
+  })
+)
+
+# Reshape for plotting
+feature_counts_long <- reshape2::melt(
+  fold_feature_counts,
+  id.vars = "fold",
+  variable.name = "type",
+  value.name = "count"
+)
+
+feature_counts_long$type <- factor(
+  feature_counts_long$type,
+  levels = c("n_rfi", "n_death", "n_pooled"),
+  labels = c("RFI", "Death", "Pooled")
+)
+
+p7 <- ggplot(feature_counts_long, aes(x = factor(fold), y = count, fill = type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(
+    values = c("RFI" = "#E41A1C", "Death" = "#377EB8", "Pooled" = "#984EA3"),
+    name = "Feature Set"
+  ) +
+  labs(
+    title = "Number of Features Selected Per Fold",
+    x = "Outer CV Fold",
+    y = "Number of Features"
+  ) +
+  theme_pub
+
+# Save
+ggsave(
+  file.path(plot_dir, "7_feature_counts_per_fold.pdf"),
+  p7, width = 10, height = 6
+)
+ggsave(
+  file.path(plot_dir, "7_feature_counts_per_fold.png"),
+  p7, width = 10, height = 6, dpi = 300
+)
+
+cat("  Saved: 7_feature_counts_per_fold.pdf/.png\n\n")
+
+################################################################################
+# SUMMARY
+################################################################################
+
+cat(sprintf("\n%s\n", paste(rep("=", 80), collapse = "")))
+cat(sprintf("VISUALIZATION COMPLETE\n"))
+cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))
+cat(sprintf("Output directory: %s\n", plot_dir))
+cat(sprintf("Files created:\n"))
+cat(sprintf("  - 1_outer_fold_stability.pdf/.png\n"))
+cat(sprintf("  - 2_feature_selection_by_endpoint.pdf/.png\n"))
+cat(sprintf("  - 3_performance_over_time.pdf/.png\n"))
+cat(sprintf("  - 4_performance_variability.pdf/.png\n"))
+cat(sprintf("  - 5_rfi_nested_cv_heatmap.pdf/.png (if available)\n"))
+cat(sprintf("  - 5_death_nested_cv_heatmap.pdf/.png (if available)\n"))
+cat(sprintf("  - 5_selection_frequency_distribution.pdf/.png (if available)\n"))
+cat(sprintf("  - 6_coefficient_consistency.pdf/.png (if available)\n"))
+cat(sprintf("  - 7_feature_counts_per_fold.pdf/.png\n"))
+cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))

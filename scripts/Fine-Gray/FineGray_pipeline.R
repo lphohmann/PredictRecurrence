@@ -3,51 +3,6 @@
 ################################################################################
 # Fine-Gray Competing Risks with Nested Cross-Validation
 # Author: Lennart Hohmann
-#
-## PIPELINE OVERVIEW:
-# ==================
-# This pipeline implements nested cross-validation for competing risks analysis
-# of breast cancer recurrence using DNA methylation features (with or without
-# clinical variables). For clinical-only analysis, use finegray_clinical.R.
-
-# 1. DATA PREPARATION
-#    - Load methylation beta values (CpG sites) and clinical data
-#    - Convert beta → M-values: log2(beta/(1-beta)) for better normal distribution
-#    - Apply administrative censoring if specified (e.g., 5 years for TNBC)
-#    - One-hot encode categorical clinical variables (NHG, lymph nodes)
-#
-# 2. COMPETING RISKS DEFINITION
-#    - Event 1: Recurrence-free interval (RFI) event - outcome of interest
-#    - Event 2: Death without recurrence - competing risk
-#    - Event 0: Censored
-#
-# 3. NESTED CROSS-VALIDATION STRATEGY
-#    OUTER LOOP (Performance estimation):
-#      - 5-fold stratified CV on RFI events
-#      - For each fold:
-#        a) Variance filtering on training data (top 75% by variance)
-#        b) INNER CV: Tune CoxNet for RFI events
-#        c) INNER CV: Tune CoxNet for death without recurrence
-#        d) Pool selected features from both models
-#        e) Scale continuous features (mean=0, sd=1)
-#        f) Fit Fine-Gray subdistribution hazard model
-#        g) Predict cumulative incidence functions (CIF) on test set
-#        h) Evaluate time-dependent AUC, Brier score, C-index
-#
-# 4. WHY THIS APPROACH?
-#    - CoxNet feature selection: Handles high-dimensional data (many CpGs)
-#    - Separate models for RFI and death: Captures features relevant to each outcome
-#    - Feature pooling: Ensures Fine-Gray model accounts for both outcomes
-#    - Fine-Gray model: Properly models subdistribution hazard for competing risks
-#    - Nested CV: Unbiased performance estimates (no data leakage)
-#
-# KEY STATISTICAL CONCEPTS:
-# =========================
-# - M-values: Logit-transformed beta values, more suitable for linear models
-# - Subdistribution hazard: Hazard of event of interest accounting for competing risks
-# - Cumulative Incidence Function (CIF): P(event by time t | baseline covariates)
-# - IPCW: Inverse probability of censoring weighting for time-dependent metrics
-################################################################################
 
 ################################################################################
 # LIBRARIES
@@ -62,26 +17,26 @@ library(caret)        # Cross-validation fold creation
 library(data.table)   # Fast data reading with fread
 library(riskRegression) # Score() function for competing risks metrics
 library(prodlim) #prodlim::Hist()
+library(devtools)
+library(fastcmprsk)
 
 setwd("~/PhD_Workspace/PredictRecurrence/")
 source("./src/finegray_functions.R") # match real name
 
 ################################################################################
-# SETTINGS - Command Line Arguments
+# COMMAND LINE ARGUMENTS
 ################################################################################
 
-# Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
 
-# Set defaults
+# Defaults
 DEFAULT_COHORT <- "ERpHER2n"
-DEFAULT_DATA_MODE <- "combined" #combined
+DEFAULT_DATA_MODE <- "combined"
 DEFAULT_TRAIN_CPGS <- "./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt"
 DEFAULT_OUTPUT_DIR <- "./output/FineGray"
 
-# Parse arguments or use defaults
+# Parse arguments
 if (length(args) == 0) {
-  # No arguments - use defaults
   cat("No command line arguments provided. Using defaults.\n")
   COHORT_NAME <- DEFAULT_COHORT
   DATA_MODE <- DEFAULT_DATA_MODE
@@ -89,51 +44,38 @@ if (length(args) == 0) {
   OUTPUT_BASE_DIR <- DEFAULT_OUTPUT_DIR
   
 } else if (length(args) == 2) {
-  # Two arguments - cohort and data mode
   COHORT_NAME <- args[1]
   DATA_MODE <- args[2]
-  TRAIN_CPGS <- DEFAULT_TRAIN_CPGS      # Use default
-  OUTPUT_BASE_DIR <- DEFAULT_OUTPUT_DIR  # Use default
-  
-#} else if (length(args) == 4) {
-#  # All four arguments provided (for backward compatibility)
-#  COHORT_NAME <- args[1]
-#  DATA_MODE <- args[2]
-#  TRAIN_CPGS <- args[3]
-#  OUTPUT_BASE_DIR <- args[4]
+  TRAIN_CPGS <- DEFAULT_TRAIN_CPGS
+  OUTPUT_BASE_DIR <- DEFAULT_OUTPUT_DIR
   
 } else {
-  # Wrong number of arguments - show usage and exit
   cat("\n=== USAGE ===\n")
-  cat("Rscript finegray_pipeline.R <COHORT> <DATA_MODE> <TRAIN_CPGS> <OUTPUT_DIR>\n\n")
+  cat("Rscript finegray_pipeline.R <COHORT> <DATA_MODE>\n\n")
   cat("Arguments:\n")
   cat("  COHORT      : 'TNBC', 'ERpHER2n', or 'All'\n")
-  cat("  DATA_MODE   : 'methylation' or 'combined'\n")
-  cat("  TRAIN_CPGS  : Path to CpG IDs file (or 'NULL' to use all)\n")
-  cat("  OUTPUT_DIR  : Base output directory\n\n")
+  cat("  DATA_MODE   : 'methylation' or 'combined'\n\n")
   cat("Example:\n")
-  cat("  Rscript finegray_pipeline.R ERpHER2n methylation ./data/cpg_ids.txt ./output/FineGray\n\n")
+  cat("  Rscript finegray_pipeline.R ERpHER2n combined\n\n")
   cat("Or run without arguments to use defaults:\n")
   cat("  Rscript finegray_pipeline.R\n\n")
   stop("Incorrect number of arguments provided.")
 }
 
-# Validate COHORT_NAME
+# Validate inputs
 if (!COHORT_NAME %in% c("TNBC", "ERpHER2n", "All")) {
   stop(sprintf("Invalid COHORT_NAME: '%s'. Must be 'TNBC', 'ERpHER2n', or 'All'", COHORT_NAME))
 }
 
-# Validate DATA_MODE
 if (!DATA_MODE %in% c("methylation", "combined")) {
-  stop(sprintf("Invalid DATA_MODE: '%s'. Must be 'methylation' or 'combined'. For clinical-only, use finegray_clinical.R", DATA_MODE))
+  stop(sprintf("Invalid DATA_MODE: '%s'. Must be 'methylation' or 'combined'", DATA_MODE))
 }
 
-# Handle NULL for TRAIN_CPGS
 if (TRAIN_CPGS == "NULL") {
   TRAIN_CPGS <- NULL
 }
 
-# Print settings
+# Print configuration
 cat(sprintf("\n=== PIPELINE SETTINGS ===\n"))
 cat(sprintf("Cohort:      %s\n", COHORT_NAME))
 cat(sprintf("Data mode:   %s\n", DATA_MODE))
@@ -220,20 +162,24 @@ ALPHA_GRID <- c(0.5,0.7,0.9)  # Elastic net mixing: 0=ridge, 1=lasso, 0.9=mostly
 EVAL_TIMES <- seq(1, 10)
 
 ################################################################################
-# LOAD AND PREPARE DATA
+# DATA LOADING AND PREPROCESSING
 ################################################################################
 
 start_time <- Sys.time()
 cat(sprintf("\n========== LOADING DATA ==========\n"))
 
-# Load data
-train_ids <- read_csv(COHORT_TRAIN_IDS_PATHS[[COHORT_NAME]], col_names = FALSE, show_col_types = FALSE)[[1]]
+# Load sample IDs and data
+train_ids <- read_csv(
+  COHORT_TRAIN_IDS_PATHS[[COHORT_NAME]], 
+  col_names = FALSE, 
+  show_col_types = FALSE
+)[[1]]
 
 data_list <- load_training_data(train_ids, INFILE_METHYLATION, INFILE_CLINICAL)
 beta_matrix <- data_list$beta_matrix
 clinical_data <- data_list$clinical_data
 
-# Convert to M-values for better statistical properties
+# Convert beta values to M-values
 mvals <- beta_to_m(beta_matrix, beta_threshold = 0.001)
 
 # Apply administrative censoring if needed
@@ -243,21 +189,24 @@ if (!is.null(ADMIN_CENSORING_CUTOFF)) {
   )
 }
 
-# Subset to predefined CpGs
+# Subset to predefined CpGs (if specified)
 if (!is.null(TRAIN_CPGS)) {
   mvals <- subset_methylation(mvals, TRAIN_CPGS)
 }
 
-# Combine methylation with clinical variables based on DATA_MODE
+################################################################################
+# FEATURE MATRIX CONSTRUCTION
+################################################################################
+
 if (DATA_MODE == "methylation") {
-  # Methylation only - no clinical variables
+  # Methylation-only mode
   X <- mvals
   clinvars <- NULL
-  encoded_result <- list(encoded_cols = NULL)  # Create empty for compatibility
+  encoded_result <- list(encoded_cols = NULL)
   cat(sprintf("Using methylation features only: %d CpGs\n", ncol(X)))
   
 } else if (DATA_MODE == "combined") {
-  # Combined - methylation + clinical
+  # Combined mode: methylation + clinical
   X <- mvals
   clinical_data$LN <- gsub("N\\+", "Np", clinical_data$LN)
   clin <- clinical_data[c(CLIN_CONT, CLIN_CATEGORICAL)]
@@ -265,17 +214,18 @@ if (DATA_MODE == "methylation") {
   encoded_result <- onehot_encode_clinical(clin, CLIN_CATEGORICAL)
   X <- cbind(X, encoded_result$encoded_df)
   clinvars <- c(CLIN_CONT, encoded_result$encoded_cols)
+  
   cat(sprintf("Combined features: %d CpGs + %d clinical = %d total\n", 
               ncol(mvals), length(clinvars), ncol(X)))
   cat(sprintf("Clinical variables: %s\n", paste(clinvars, collapse = ", ")))
-  
 }
 
-# Variables to preserve during filtering (all clinical variables)
-VARS_PRESERVE <- if (DATA_MODE == "methylation") NULL else clinvars
-VARS_NO_PENALIZATION <- if (DATA_MODE == "methylation") NULL else clinvars  # Set to NULL to penalize all features
+# Set feature handling parameters
+included_clinvars <- if (DATA_MODE == "methylation") NULL else clinvars
+VARS_PRESERVE <- included_clinvars
+VARS_NO_PENALIZATION <- included_clinvars
 
-# Validate preserved and non-penalized variables
+# Validate variables
 if (!is.null(VARS_PRESERVE)) {
   missing <- setdiff(VARS_PRESERVE, colnames(X))
   if (length(missing) > 0) {
@@ -298,29 +248,31 @@ if (!is.null(VARS_NO_PENALIZATION)) {
 }
 
 ################################################################################
-# CREATE COMPETING RISKS OUTCOMES
+# COMPETING RISKS OUTCOME DEFINITION
 ################################################################################
 
 cat(sprintf("\n========== DEFINING OUTCOMES ==========\n"))
 
-# Create outcomes for competing risks framework
+# Create competing risks coding
+# Event = 0: Censored
 # Event = 1: Recurrence (outcome of interest)
 # Event = 2: Death without recurrence (competing risk)
-# Event = 0: Censored
 
-clinical_data$DeathNoR_event <- as.integer(clinical_data$OS_event == 1 & clinical_data$RFi_event == 0)
+clinical_data$DeathNoR_event <- as.integer(
+  clinical_data$OS_event == 1 & clinical_data$RFi_event == 0
+)
 clinical_data$DeathNoR_years <- clinical_data$OS_years
 
 clinical_data$CompRisk_event_coded <- 0
 clinical_data$CompRisk_event_coded[clinical_data$RFi_event == 1] <- 1
 clinical_data$CompRisk_event_coded[clinical_data$DeathNoR_event == 1] <- 2
 
-# Time to event: minimum of RFI time and death time
 clinical_data$time_to_CompRisk_event <- pmin(
   clinical_data$RFi_years, 
   clinical_data$DeathNoR_years
 )
 
+# Print outcome summary
 cat(sprintf("Competing risks summary:\n"))
 cat(sprintf("  Censored: %d (%.1f%%)\n", 
             sum(clinical_data$CompRisk_event_coded == 0),
@@ -332,7 +284,7 @@ cat(sprintf("  Death without Recurrence: %d (%.1f%%)\n",
             sum(clinical_data$CompRisk_event_coded == 2),
             100 * mean(clinical_data$CompRisk_event_coded == 2)))
 
-# Create survival objects for CoxNet models
+# Create survival objects for CoxNet
 y_rfi <- Surv(clinical_data$RFi_years, clinical_data$RFi_event)
 y_death_no_r <- Surv(clinical_data$DeathNoR_years, clinical_data$DeathNoR_event)
 
@@ -375,17 +327,18 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   test_idx <- outer_folds[[fold_idx]]
   train_idx <- setdiff(1:nrow(X), test_idx)
   
-  X_train <- X[train_idx, , drop = FALSE]
-  X_test <- X[test_idx, , drop = FALSE]
+  outer_data <- cv_data_prep(X,clinical_data,train_idx,test_idx)
+  
+  X_train <- outer_data$X_train
+  X_test <- outer_data$X_test
+  clinical_train <- outer_data$clinical_train
+  clinical_test <- outer_data$clinical_test
   
   y_rfi_train <- y_rfi[train_idx]
   y_rfi_test <- y_rfi[test_idx]
   
   y_death_train <- y_death_no_r[train_idx]
   y_death_test <- y_death_no_r[test_idx]
-  
-  clinical_train <- clinical_data[train_idx, ]
-  clinical_test <- clinical_data[test_idx, ]
   
   cat(sprintf("Train: n=%d (RFi=%d, Death=%d)\n",
               nrow(X_train), 
@@ -415,15 +368,13 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   #)
   
   # Create penalty factor (0 = not penalized, 1 = penalized)
-  # Unpenalized features can still be shrunk but won't be eliminated
   penalty_factor_rfi <- rep(1, ncol(X_train_filtered_rfi))
   if (!is.null(VARS_NO_PENALIZATION)) {
     penalty_factor_rfi[colnames(X_train_filtered_rfi) %in% VARS_NO_PENALIZATION] <- 0
   }
   
   # PURPOSE: Select features predictive of recurrence
-  # Uses Cox proportional hazards with elastic net regularization
-  
+  # Cox proportional hazards with elastic net regularization
   rfi_model <- tune_and_fit_coxnet(
     X_train = X_train_filtered_rfi,
     y_train = y_rfi_train,
@@ -432,13 +383,23 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     alpha_grid = ALPHA_GRID,
     penalty_factor = penalty_factor_rfi,
     n_inner_folds = N_INNER_FOLDS,
-    outcome_name = "RFI"
+    outcome_name = "RFI",
+    compute_stability = FALSE
   )
   
   # Extract coefficients and features
   rfi_coef_res <- extract_nonzero_coefs(rfi_model$final_fit)
   coef_rfi_df <- rfi_coef_res$coef_df
   features_rfi <- rfi_coef_res$features
+  
+  # in case of stablity filter
+  # stability_info_rfi <- rfi_model$best_result$stability_info
+  # stable_nonclinical_rfi <- stability_info_rfi$feature[
+  #   !(stability_info_rfi$feature %in% VARS_NO_PENALIZATION) &
+  #     stability_info_rfi$selection_freq >= STABILITY_THRESHOLD &
+  #     stability_info_rfi$sign_consistent == TRUE
+  # ]
+  # features_rfi <- c(VARS_NO_PENALIZATION, stable_nonclinical_rfi)
   
   cat(sprintf(
     "  BEST RFI MODEL: Alpha=%.2f, Lambda=%.6f, Features=%d\n",
@@ -484,7 +445,8 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     alpha_grid = ALPHA_GRID,
     penalty_factor = penalty_factor_death,
     n_inner_folds = N_INNER_FOLDS,
-    outcome_name = "DeathNoR"
+    outcome_name = "DeathNoR",
+    compute_stability = FALSE
   )
   
   # Extract coefficients and features
@@ -504,9 +466,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # --------------------------------------------------------------------------
   # Pool Features from Both Models
   # --------------------------------------------------------------------------
-  # WHY: Fine-Gray model should include features predictive of EITHER outcome
-  # This ensures we model the subdistribution hazard properly
-  
+
   features_pooled <- union(features_rfi, features_death)
   
   cat(sprintf("\n--- Feature Pooling ---\n"))
@@ -526,11 +486,240 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   X_pooled_test <- X_test[, features_pooled, drop = FALSE]
   
   # --------------------------------------------------------------------------
-  # Scale Input Data for Fine-Gray Model
+  # Fit Penalized Fine-Gray Model on Pooled Features to calc. Risk score, 
+  # dont include clinical vars in this calculation
   # --------------------------------------------------------------------------
-  # WHY: Fine-Gray model is sensitive to feature scales
-  # Only scale continuous variables, leave one-hot encoded variables as-is
+  # Fine-Gray model: Models subdistribution hazard for event of interest
   
+  selected_cpgs <- setdiff(colnames(X_pooled_train), included_clinvars)
+  X_input = X_pooled_train[, selected_cpgs, drop = FALSE]
+  
+  clinical_input = clinical_train
+  
+  fit_penalized_finegray_cv <- function(X_input, clinical_input, 
+                                        cr_time = "time_to_CompRisk_event",
+                                        cr_event = "CompRisk_event_coded",
+                                        cause = 1,
+                                        penalty = "ENET",
+                                        alpha = 0.5,
+                                        lambda_seq = NULL,
+                                        n_inner_folds = 3,
+                                        performance_metric = "cindex") {
+    
+    cat(sprintf("\n=== Penalized Fine-Gray with Inner CV (%s) ===\n", penalty))
+    
+    # Generate lambda sequence if not provided
+    if (is.null(lambda_seq)) {
+      lambda_seq <- 10^seq(log10(0.2), log10(0.001), length.out = 25)
+    }
+    
+    # Create inner folds (stratified by event type)
+    inner_folds <- caret::createFolds(
+      y = clinical_input[[cr_event]],
+      k = n_inner_folds,
+      list = TRUE,
+      returnTrain = FALSE
+    )
+    
+    # Matrix to store performance: rows = folds, cols = lambdas
+    perf_mat <- matrix(
+      NA_real_,
+      nrow = n_inner_folds,
+      ncol = length(lambda_seq),
+      dimnames = list(
+        paste0("fold_", seq_len(n_inner_folds)),
+        paste0("lambda_", signif(lambda_seq, 3))
+      )
+    )
+    
+    cat(sprintf("Running %d-fold CV across %d lambda values...\n", 
+                n_inner_folds, length(lambda_seq)))
+    
+    # Inner CV loop
+    for (inner_k in seq_len(n_inner_folds)) {
+      
+      cat(sprintf("  Fold %d/%d... ", inner_k, n_inner_folds))
+      # Split data
+      inner_val_idx   <- inner_folds[[inner_k]]
+      inner_train_idx <- setdiff(seq_len(nrow(X_input)), inner_val_idx)
+      
+      # Prepare inner train/val splits
+      inner_data <- cv_data_prep(
+        X = X_input,
+        clinical = clinical_input,
+        train_idx = inner_train_idx,
+        test_idx = inner_val_idx
+      )
+      
+      # Scale features within this fold
+      scale_res <- scale_continuous_features(
+        X_train = inner_data$X_train,
+        X_test = inner_data$X_test,
+        dont_scale = NULL
+      )
+      
+      # Prepare Fine-Gray data
+      fgr_inner_train <- cbind(
+        inner_data$clinical_train[c(cr_time, cr_event)],
+        scale_res$X_train_scaled
+      )
+      fgr_inner_val <- cbind(
+        inner_data$clinical_test[c(cr_time, cr_event)],
+        scale_res$X_test_scaled
+      )
+      
+      # Feature columns
+      feature_cols <- setdiff(colnames(fgr_inner_train), c(cr_time, cr_event))
+      feature_matrix_train <- as.matrix(fgr_inner_train[, feature_cols])
+      feature_matrix_val <- as.matrix(fgr_inner_val[, feature_cols])
+
+      # Fit penalized model on inner training set
+      fit_inner <- fastcmprsk::fastCrrp(
+        Crisk(fgr_inner_train[[cr_time]], 
+              fgr_inner_train[[cr_event]]) ~ feature_matrix_train,
+        lambda = lambda_seq,
+        penalty = penalty,
+        alpha = alpha,
+        standardize = FALSE  # scaled before to apply also to validation set
+      )
+      #plot(fit_inner)
+      
+      # Evaluate on validation set for each lambda
+      for (lam_idx in seq_along(lambda_seq)) {
+        
+        # Skip if model didn't converge at this lambda
+        if (is.nan(fit_inner$coef[1, lam_idx]) || !fit_inner$converged[lam_idx]) {
+          perf_mat[inner_k, lam_idx] <- NA_real_
+          next
+        }
+        
+        # Get coefficients at this lambda
+        coefs_lambda <- fit_inner$coef[, lam_idx]
+        
+        # Count non-zero features
+        n_nonzero <- sum(abs(coefs_lambda) > 1e-8)
+        
+        # Calculate linear predictor for validation set
+        eta_val <- as.vector(feature_matrix_val %*% coefs_lambda)
+        
+        # Calculate performance metric
+        # Make a data frame with the linear predictor
+        score_data <- fgr_inner_val[, c("time_to_CompRisk_event", "CompRisk_event_coded")]
+        score_data$risk_score <- eta_val  # risk score from penalized FG
+
+        # Compute metric
+        score_res <- Score(
+          list("risk_score" = score_data$risk_score),
+          formula = Hist(time_to_CompRisk_event, CompRisk_event_coded) ~ 1,
+          data = score_data,
+          cause = 1,
+          times = EVAL_TIMES,
+          metrics = "auc",
+          cens.model = "cox"
+        )
+        
+        auc_t <- score_res$AUC$score$AUC
+        mean_auc <- mean(auc_t, na.rm = TRUE)
+        perf_mat[inner_k, lam_idx] <- mean_auc
+        
+        # Print a compact summary (one row per lambda)
+        cat(sprintf(
+          "Inner fold %d | lambda=%.4g | mean AUC(t): %.3f | nonzero features: %d\n",
+          inner_k,
+          lambda_seq[lam_idx],
+          mean_auc,
+          n_nonzero
+        ))
+        
+      }
+      
+      cat("Done\n")
+    }
+    
+    
+    # Calculate mean performance across folds for each lambda
+    mean_perf <- colMeans(perf_mat, na.rm = TRUE)
+    se_perf <- apply(perf_mat, 2, sd, na.rm = TRUE) / sqrt(n_inner_folds)
+    
+    # Find optimal lambda (maximize C-index)
+    best_lambda_idx <- which.max(mean_perf)
+    best_lambda <- lambda_seq[best_lambda_idx]
+    
+    cat(sprintf("\nOptimal lambda: %.4f (mean AUC(t): %.3f ± %.3f)\n",
+                best_lambda, mean_perf[best_lambda_idx], se_perf[best_lambda_idx]))
+    
+    # Refit on full training data with optimal lambda
+    cat("\nRefitting on full training set...\n")
+    
+    # Scale full training data
+    scale_res_full <- scale_continuous_features(
+      X_train = X_input,
+      X_test = NULL,
+      dont_scale = NULL
+    )
+    
+    # Prepare final training data
+    fgr_train_final <- cbind(
+      clinical_input[c(cr_time, cr_event)],
+      scale_res_full$X_train_scaled
+    )
+    
+    feature_cols <- setdiff(colnames(fgr_train_final), c(cr_time, cr_event))
+    feature_matrix_final <- as.matrix(fgr_train_final[, feature_cols])
+    
+    # Penalty factors for final model
+    penalty_factor_final <- rep(1, ncol(feature_matrix_final))
+    if (!is.null(vars_no_penalization)) {
+      no_pen_idx <- which(colnames(feature_matrix_final) %in% vars_no_penalization)
+      if (length(no_pen_idx) > 0) {
+        penalty_factor_final[no_pen_idx] <- 0
+      }
+    }
+    
+    # Fit final model
+    final_model <- fastcmprsk::fastCrrp(
+      Crisk(fgr_train_final[[cr_time]], 
+            fgr_train_final[[cr_event]]) ~ feature_matrix_final,
+      lambda = best_lambda,  # Only fit at optimal lambda
+      penalty = penalty,
+      alpha = alpha,
+      penalty.factor = penalty_factor_final,
+      getBreslowJumps = TRUE,
+      standardize = FALSE
+    )
+
+    # Extract selected features
+    final_coefs <- final_model$coef[, 1]  # Only one lambda
+    selected_idx <- abs(final_coefs) > 1e-8
+    selected_features <- colnames(feature_matrix_final)[selected_idx]
+    
+    cat(sprintf("Selected %d/%d features\n", 
+                length(selected_features), ncol(feature_matrix_final)))
+    
+    # Return comprehensive results
+    list(
+      model = final_model,
+      lambda_optimal = best_lambda,
+      lambda_seq = lambda_seq,
+      cv_performance = mean_perf,
+      cv_performance_se = se_perf,
+      cv_performance_mat = perf_mat,
+      optimal_cindex = mean_perf[best_lambda_idx],
+      optimal_cindex_se = se_perf[best_lambda_idx],
+      selected_features = selected_features,
+      coefficients = final_coefs[selected_idx],
+      n_features_selected = length(selected_features),
+      penalty = penalty,
+      alpha = alpha,
+      scaling_params = scale_res_full$scaling_params
+    )
+  }
+  
+  # --------------------------------------------------------------------------
+  # Fit Fine-Gray Model on Methlyation Risk Score (+ clinical features)
+  # --------------------------------------------------------------------------
+  
+  # Scale Input Data for Fine-Gray Model? Only Clin vars? Not MRS?
   cat(sprintf("\n--- Scaling Continuous Features ---\n"))
   scale_res <- scale_continuous_features(
     X_train = X_pooled_train, 
@@ -540,10 +729,6 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   
   X_train_scaled <- scale_res$X_train_scaled
   X_test_scaled <- scale_res$X_test_scaled
-  
-  # --------------------------------------------------------------------------
-  # Fit Fine-Gray Model on Pooled Features
-  # --------------------------------------------------------------------------
   # Fine-Gray model: Models subdistribution hazard for event of interest
   
   cat(sprintf("\n--- Fitting Fine-Gray Model ---\n"))
@@ -559,21 +744,16 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     X_test_scaled
   )
   
-  feature_cols <- setdiff(colnames(fgr_train_data), 
-                          c("time_to_CompRisk_event", "CompRisk_event_coded"))
-  
-  # Build formula explicitly
-  formula_str <- paste("Hist(time_to_CompRisk_event, CompRisk_event_coded) ~", 
-                       paste(feature_cols, collapse = " + "))
-  formula_fg <- as.formula(formula_str)
-  
-  fgr1 <- FGR(
-    formula = formula_fg,
-    data    = fgr_train_data,
-    cause   = 1
+  results <- fit_fine_gray_model(
+    fgr_data = fgr_train_data,
+    cr_time = "time_to_CompRisk_event",
+    cr_event = "CompRisk_event_coded",
+    cause = 1
   )
   
-  cat(sprintf("Fine-Gray model fitted with %d features\n", length(feature_cols)))
+  results$model
+  
+  
   
   # --------------------------------------------------------------------------
   # Evaluate Fine-Gray Model Performance on Test Set

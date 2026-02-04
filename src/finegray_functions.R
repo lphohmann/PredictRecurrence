@@ -478,11 +478,42 @@ prepare_filtered_features <- function(X,
   return(X_final)
 }
 
-################################################################################
+
+
+
+##########################################
+##########################################
+##########################################
+##########################################
+
+
 
 ################################################################################
 
-scale_continuous_features <- function(X_train, X_test = NULL, dont_scale) {
+
+# Function to get train/validation splits for a given inner fold
+
+
+cv_data_prep <- function(X, clinical, train_idx, test_idx) {
+  # Subset features
+  X_train <- X[train_idx, , drop = FALSE]
+  X_test   <- X[test_idx, , drop = FALSE]
+  # Subset clinical data
+  clinical_train <- clinical[train_idx, , drop = FALSE]
+  clinical_test   <- clinical[test_idx, , drop = FALSE]
+  # Return as list
+  list(
+    X_train = X_train,
+    X_test   = X_test,
+    clinical_train = clinical_train,
+    clinical_test   = clinical_test
+  )
+}
+
+
+################################################################################
+
+scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL) {
   # Standardize continuous features using training set parameters
   #
   # One-hot encoded categorical variables are left unscaled.
@@ -1175,7 +1206,7 @@ assess_finegray_stability <- function(outer_fold_results,
       mean_coef <- mean(nonzero_coefs)
       sd_coef <- sd(nonzero_coefs)
     } else {
-      direction_consistent <- NA
+      direction_consistent <- FALSE
       mean_coef <- 0
       sd_coef <- 0
     }
@@ -1184,7 +1215,7 @@ assess_finegray_stability <- function(outer_fold_results,
     is_clinical <- if (!is.null(clinical_features)) {
       feat %in% clinical_features
     } else {
-      NA
+      FALSE
     }
     
     # Build complete row
@@ -1258,6 +1289,106 @@ assess_finegray_stability <- function(outer_fold_results,
   return(list(
     stability_metrics = stability_metrics,
     selection_matrix = selection_matrix
+  ))
+}
+
+
+################################################################################
+# FINE-GRAY fitting
+################################################################################
+
+fit_fine_gray_model <- function(fgr_data, cr_time, cr_event, cause = 1) {
+
+  cat(sprintf("\n--- Fitting Fine-Gray Model ---\n"))
+  
+  # Identify feature columns by excluding the outcome columns
+  feature_cols <- setdiff(
+    colnames(fgr_data), 
+    c(cr_time, cr_event)
+  )
+  
+  # Build the model formula
+  formula_str <- sprintf(
+    "Hist(%s, %s) ~ %s",
+    cr_time,                              # First %s gets the time column name
+    cr_event,                             # Second %s gets the event column name
+    paste(feature_cols, collapse = " + ") # Third %s gets all features joined
+  )
+  
+  # Convert string to formula object for modeling
+  formula_fg <- as.formula(formula_str)
+  
+  # Fit the Fine-Gray model
+  fgr_model <- FGR(
+    formula = formula_fg,
+    data    = fgr_data,
+    cause   = cause
+  )
+  
+  cat(sprintf("Fine-Gray model fitted with %d features\n", length(feature_cols)))
+  
+  # Return model and metadata
+  return(list(
+    model = fgr_model,
+    formula = formula_fg
+  ))
+}
+
+################################################################################
+# PENALIZED FINE-GRAY fitting
+################################################################################
+
+fit_penalized_fine_gray <- function(fgr_data, cr_time, cr_event, 
+                                    cause = 1, penalty = "LASSO",
+                                    n_lambda = 25) {
+  
+  cat(sprintf("\n--- Fitting Penalized Fine-Gray Model (%s) ---\n", penalty))
+  
+  # Load required package
+  if (!requireNamespace("fastcmprsk", quietly = TRUE)) {
+    stop("Package 'fastcmprsk' is required. Install with: install.packages('fastcmprsk')")
+  }
+  
+  # Identify feature columns by excluding the outcome columns
+  # These will be the predictors in our model
+  feature_cols <- setdiff(
+    colnames(fgr_data), 
+    c(cr_time, cr_event)
+  )
+  
+  # Build the model formula programmatically
+  # Crisk() creates the competing risks outcome object
+  # The right side includes all features joined with ' + '
+  formula_str <- sprintf(
+    "Crisk(%s, %s) ~ %s",
+    cr_time,                              # Time column name
+    cr_event,                             # Event type column name
+    paste(feature_cols, collapse = " + ") # All features joined
+  )
+  
+  # Convert string to formula object
+  formula_fg <- as.formula(formula_str)
+  
+  # Fit the penalized Fine-Gray model
+  penalized_model <- fastcmprsk::fastCrrp(
+    formula = formula_fg,
+    data    = fgr_data,
+    penalty = "LASSO",      # "LASSO", "SCAD", "MCP", or "ridge"
+    lambda  = NULL # Sequence of tuning parameters
+  )
+  
+  cat(sprintf("Penalized Fine-Gray model fitted with %d features\n", 
+              length(feature_cols)))
+  cat(sprintf("Solution path contains %d lambda values\n", 
+              length(penalized_model$lambda)))
+  
+  # Return model and metadata
+  return(list(
+    model = penalized_model,
+    formula = formula_fg,
+    lambda_path = lambda_path,
+    penalty = penalty,
+    n_features = length(feature_cols)
   ))
 }
 

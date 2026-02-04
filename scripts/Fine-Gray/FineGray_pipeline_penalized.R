@@ -399,7 +399,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     penalty_factor = penalty_factor_rfi,
     n_inner_folds = N_INNER_FOLDS,
     outcome_name = "RFI",
-    compute_stability = TRUE
+    compute_stability = FALSE
   )
   
   # Extract coefficients from final model
