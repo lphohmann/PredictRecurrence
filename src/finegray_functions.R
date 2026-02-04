@@ -513,7 +513,7 @@ cv_data_prep <- function(X, clinical, train_idx, test_idx) {
 
 ################################################################################
 
-scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL) {
+scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL, verbose = FALSE) {
   # Standardize continuous features using training set parameters
   #
   # One-hot encoded categorical variables are left unscaled.
@@ -556,7 +556,9 @@ scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL) {
     X_test_scaled <- NULL
   }
   
-  cat(sprintf("Scaled %d continuous features\n", length(cont_cols)))
+  if (verbose == TRUE) {
+    cat(sprintf("Scaled %d continuous features\n", length(cont_cols)))  
+  }
   
   return(list(
     X_train_scaled = X_train_scaled,
@@ -1338,59 +1340,436 @@ fit_fine_gray_model <- function(fgr_data, cr_time, cr_event, cause = 1) {
 # PENALIZED FINE-GRAY fitting
 ################################################################################
 
-fit_penalized_fine_gray <- function(fgr_data, cr_time, cr_event, 
-                                    cause = 1, penalty = "LASSO",
-                                    n_lambda = 25) {
+# fit_penalized_finegray_cv <- function(X_input, clinical_input, 
+#                                       cr_time = "time_to_CompRisk_event",
+#                                       cr_event = "CompRisk_event_coded",
+#                                       cause = 1,
+#                                       penalty = "ENET",
+#                                       alpha = 0.5,
+#                                       lambda_seq = NULL,
+#                                       n_inner_folds = 3) {
+#   
+#   cat(sprintf("\n=== Penalized Fine-Gray with Inner CV (%s) ===\n", penalty))
+#   
+#   # Generate lambda sequence if not provided
+#   if (is.null(lambda_seq)) {
+#     lambda_seq <- 10^seq(log10(0.2), log10(0.001), length.out = 25)
+#   }
+#   
+#   # Create inner folds (stratified by event type)
+#   set.seed(123)
+#   inner_folds <- caret::createFolds(
+#     y = clinical_input[[cr_event]],
+#     k = n_inner_folds,
+#     list = TRUE,
+#     returnTrain = FALSE
+#   )
+#   
+#   # Matrix to store performance: rows = folds, cols = lambdas
+#   perf_mat <- matrix(
+#     NA_real_,
+#     nrow = n_inner_folds,
+#     ncol = length(lambda_seq),
+#     dimnames = list(
+#       paste0("fold_", seq_len(n_inner_folds)),
+#       paste0("lambda_", signif(lambda_seq, 3))
+#     )
+#   )
+#   
+#   cat(sprintf("Running %d-fold CV across %d lambda values...\n", 
+#               n_inner_folds, length(lambda_seq)))
+#   
+#   # Inner CV loop
+#   for (inner_k in seq_len(n_inner_folds)) {
+#     
+#     cat(sprintf("  Fold %d/%d... ", inner_k, n_inner_folds))
+#     # Split data
+#     inner_val_idx   <- inner_folds[[inner_k]]
+#     inner_train_idx <- setdiff(seq_len(nrow(X_input)), inner_val_idx)
+#     
+#     # Prepare inner train/val splits
+#     inner_data <- cv_data_prep(
+#       X = X_input,
+#       clinical = clinical_input,
+#       train_idx = inner_train_idx,
+#       test_idx = inner_val_idx
+#     )
+#     
+#     # Scale features within this fold
+#     scale_res <- scale_continuous_features(
+#       X_train = inner_data$X_train,
+#       X_test = inner_data$X_test,
+#       dont_scale = NULL
+#     )
+#     
+#     # Prepare Fine-Gray data
+#     fgr_inner_train <- cbind(
+#       inner_data$clinical_train[c(cr_time, cr_event)],
+#       scale_res$X_train_scaled
+#     )
+#     fgr_inner_val <- cbind(
+#       inner_data$clinical_test[c(cr_time, cr_event)],
+#       scale_res$X_test_scaled
+#     )
+#     
+#     # Feature columns
+#     feature_cols <- setdiff(colnames(fgr_inner_train), c(cr_time, cr_event))
+#     feature_matrix_train <- as.matrix(fgr_inner_train[, feature_cols])
+#     feature_matrix_val <- as.matrix(fgr_inner_val[, feature_cols])
+#     
+#     # Fit penalized model on inner training set
+#     fit_inner <- fastcmprsk::fastCrrp(
+#       Crisk(fgr_inner_train[[cr_time]], 
+#             fgr_inner_train[[cr_event]]) ~ feature_matrix_train,
+#       lambda = lambda_seq,
+#       penalty = penalty,
+#       alpha = alpha,
+#       standardize = FALSE  # scaled before to apply also to validation set
+#     )
+#     #plot(fit_inner)
+#     
+#     # Evaluate on validation set for each lambda
+#     for (lam_idx in seq_along(lambda_seq)) {
+#       
+#       # Skip if model didn't converge at this lambda
+#       if (is.nan(fit_inner$coef[1, lam_idx]) || !fit_inner$converged[lam_idx]) {
+#         perf_mat[inner_k, lam_idx] <- NA_real_
+#         next
+#       }
+#       
+#       # Get coefficients at this lambda
+#       coefs_lambda <- fit_inner$coef[, lam_idx]
+#       
+#       # Count non-zero features
+#       n_nonzero <- sum(abs(coefs_lambda) > 1e-8)
+#       
+#       # Calculate linear predictor for validation set
+#       eta_val <- as.vector(feature_matrix_val %*% coefs_lambda)
+#       
+#       # Calculate performance metric
+#       # Make a data frame with the linear predictor
+#       score_data <- fgr_inner_val[, c("time_to_CompRisk_event", "CompRisk_event_coded")]
+#       score_data$risk_score <- eta_val  # risk score from penalized FG
+#       
+#       # Compute metric
+#       score_res <- Score(
+#         list("risk_score" = score_data$risk_score),
+#         formula = Hist(time_to_CompRisk_event, CompRisk_event_coded) ~ 1,
+#         data = score_data,
+#         cause = 1,
+#         times = EVAL_TIMES,
+#         metrics = "auc",
+#         cens.model = "cox"
+#       )
+#       
+#       auc_t <- score_res$AUC$score$AUC
+#       mean_auc <- mean(auc_t, na.rm = TRUE)
+#       perf_mat[inner_k, lam_idx] <- mean_auc
+#       
+#       # Print a compact summary (one row per lambda)
+#       # cat(sprintf(
+#       #   "Inner fold %d | lambda=%.4g | mean AUC(t): %.3f | nonzero features: %d\n",
+#       #   inner_k,
+#       #   lambda_seq[lam_idx],
+#       #   mean_auc,
+#       #   n_nonzero
+#       # ))
+#       
+#     }
+#     
+#     cat("Done\n")
+#   }
+#   
+#   # Calculate mean performance across folds for each lambda
+#   mean_perf <- colMeans(perf_mat, na.rm = TRUE)
+#   se_perf <- apply(perf_mat, 2, sd, na.rm = TRUE) / sqrt(n_inner_folds)
+#   
+#   # Find optimal lambda
+#   best_lambda_idx <- which.max(mean_perf)
+#   best_lambda <- lambda_seq[best_lambda_idx]
+#   
+#   cat(sprintf("\nOptimal lambda: %.6f (mean AUC(t): %.3f ± %.3f)\n",
+#               best_lambda, mean_perf[best_lambda_idx], se_perf[best_lambda_idx]))
+#   
+#   # Refit on full training data with optimal lambda
+#   cat("\nRefitting on full training set...\n")
+#   
+#   # Scale full training data
+#   scale_res_full <- scale_continuous_features(
+#     X_train = X_input,
+#     X_test = NULL,
+#     dont_scale = NULL
+#   )
+#   
+#   # Prepare final training data
+#   fgr_train_final <- cbind(
+#     clinical_input[c(cr_time, cr_event)],
+#     scale_res_full$X_train_scaled
+#   )
+#   feature_cols <- setdiff(colnames(fgr_train_final), c(cr_time, cr_event))
+#   feature_matrix_final <- as.matrix(fgr_train_final[, feature_cols])
+#   
+#   # Fit final model
+#   final_model <- fastcmprsk::fastCrrp(
+#     Crisk(fgr_train_final[[cr_time]], 
+#           fgr_train_final[[cr_event]]) ~ feature_matrix_final,
+#     lambda = best_lambda,  # Only fit at optimal lambda
+#     penalty = penalty,
+#     alpha = alpha,
+#     standardize = FALSE
+#   )
+#   
+#   # Extract all coefficients
+#   final_coefs <- final_model$coef[, 1]  # Only one lambda
+#   all_features <- colnames(feature_matrix_final)
+#   selected_idx <- abs(final_coefs) > 1e-8
+#   
+#   cat(sprintf("Selected %d/%d features\n", sum(selected_idx), length(all_features)))
+#   
+#   # Build results table for all features
+#   results_df <- data.frame(
+#     feature = all_features,
+#     pFG_coefficient = final_coefs,
+#     selected = selected_idx,
+#     scale_center = scale_res_full$centers[all_features],
+#     scale_scale  = scale_res_full$scales[all_features],
+#     stringsAsFactors = FALSE
+#   )
+#   
+#   list(
+#     model = final_model,
+#     results_table = results_df
+#   )
+# }
+
+################################################################################
+# PENALIZED FINE-GRAY FUNCTIONS
+################################################################################
+
+evaluate_alpha_lambda_cv <- function(X_input, clinical_input,
+                                     alpha, lambda_seq,
+                                     cr_time = "time_to_CompRisk_event",
+                                     cr_event = "CompRisk_event_coded",
+                                     penalty = "ENET",
+                                     n_inner_folds = 3) {
   
-  cat(sprintf("\n--- Fitting Penalized Fine-Gray Model (%s) ---\n", penalty))
-  
-  # Load required package
-  if (!requireNamespace("fastcmprsk", quietly = TRUE)) {
-    stop("Package 'fastcmprsk' is required. Install with: install.packages('fastcmprsk')")
+  # Generate lambda sequence if not provided
+  if (is.null(lambda_seq)) {
+    lambda_seq <- 10^seq(log10(0.2), log10(0.001), length.out = 25)
   }
   
-  # Identify feature columns by excluding the outcome columns
-  # These will be the predictors in our model
-  feature_cols <- setdiff(
-    colnames(fgr_data), 
-    c(cr_time, cr_event)
+  # Create inner folds
+  set.seed(123)
+  inner_folds <- caret::createFolds(
+    y = clinical_input[[cr_event]],
+    k = n_inner_folds,
+    list = TRUE,
+    returnTrain = FALSE
   )
   
-  # Build the model formula programmatically
-  # Crisk() creates the competing risks outcome object
-  # The right side includes all features joined with ' + '
-  formula_str <- sprintf(
-    "Crisk(%s, %s) ~ %s",
-    cr_time,                              # Time column name
-    cr_event,                             # Event type column name
-    paste(feature_cols, collapse = " + ") # All features joined
-  )
+  # Matrix to store performance
+  perf_mat <- matrix(NA_real_, nrow = n_inner_folds, ncol = length(lambda_seq))
   
-  # Convert string to formula object
-  formula_fg <- as.formula(formula_str)
+  # Inner CV loop (same as your original)
+  for (inner_k in seq_len(n_inner_folds)) {
+    
+    inner_val_idx <- inner_folds[[inner_k]]
+    inner_train_idx <- setdiff(seq_len(nrow(X_input)), inner_val_idx)
+    
+    inner_data <- cv_data_prep(
+      X = X_input,
+      clinical = clinical_input,
+      train_idx = inner_train_idx,
+      test_idx = inner_val_idx
+    )
+    
+    scale_res <- scale_continuous_features(
+      X_train = inner_data$X_train,
+      X_test = inner_data$X_test,
+      dont_scale = NULL
+    )
+    
+    fgr_inner_train <- cbind(
+      inner_data$clinical_train[c(cr_time, cr_event)],
+      scale_res$X_train_scaled
+    )
+    fgr_inner_val <- cbind(
+      inner_data$clinical_test[c(cr_time, cr_event)],
+      scale_res$X_test_scaled
+    )
+    
+    feature_cols <- setdiff(colnames(fgr_inner_train), c(cr_time, cr_event))
+    feature_matrix_train <- as.matrix(fgr_inner_train[, feature_cols])
+    feature_matrix_val <- as.matrix(fgr_inner_val[, feature_cols])
+    
+    # Fit for this alpha across all lambdas
+    fit_inner <- fastcmprsk::fastCrrp(
+      Crisk(fgr_inner_train[[cr_time]], 
+            fgr_inner_train[[cr_event]]) ~ feature_matrix_train,
+      lambda = lambda_seq,
+      penalty = penalty,
+      alpha = alpha,  # The key difference - this is now a parameter
+      standardize = FALSE
+    )
+    
+    # Evaluate each lambda
+    for (lam_idx in seq_along(lambda_seq)) {
+      
+      if (is.nan(fit_inner$coef[1, lam_idx]) || !fit_inner$converged[lam_idx]) {
+        next
+      }
+      
+      coefs_lambda <- fit_inner$coef[, lam_idx]
+      eta_val <- as.vector(feature_matrix_val %*% coefs_lambda)
+      
+      score_data <- fgr_inner_val[, c(cr_time, cr_event)]
+      score_data$risk_score <- eta_val
+      
+      score_res <- Score(
+        list("risk_score" = score_data$risk_score),
+        formula = Hist(time_to_CompRisk_event, CompRisk_event_coded) ~ 1,
+        data = score_data,
+        cause = 1,
+        times = EVAL_TIMES,
+        metrics = "auc",
+        cens.model = "cox"
+      )
+      
+      perf_mat[inner_k, lam_idx] <- mean(score_res$AUC$score$AUC, na.rm = TRUE)
+    }
+  }
   
-  # Fit the penalized Fine-Gray model
-  penalized_model <- fastcmprsk::fastCrrp(
-    formula = formula_fg,
-    data    = fgr_data,
-    penalty = "LASSO",      # "LASSO", "SCAD", "MCP", or "ridge"
-    lambda  = NULL # Sequence of tuning parameters
-  )
+  # Find best lambda for this alpha
+  mean_perf <- colMeans(perf_mat, na.rm = TRUE)
+  best_lambda_idx <- which.max(mean_perf)
+  best_lambda = lambda_seq[best_lambda_idx]
+  best_auc = mean_perf[best_lambda_idx]
   
-  cat(sprintf("Penalized Fine-Gray model fitted with %d features\n", 
-              length(feature_cols)))
-  cat(sprintf("Solution path contains %d lambda values\n", 
-              length(penalized_model$lambda)))
+  # Count number of selected (non-zero) features at best lambda
+  coefs_best <- fit_inner$coef[, best_lambda_idx]
+  n_selected <- sum(abs(coefs_best) > 1e-8)
   
-  # Return model and metadata
+  # Print a compact summary for this alpha
+  cat(sprintf(
+    "Alpha = %.2f | Best lambda = %.5g | Mean AUC = %.3f | N Selected = %d\n",
+    alpha,
+    best_lambda,
+    best_auc,
+    n_selected
+  ))
+  
   return(list(
-    model = penalized_model,
-    formula = formula_fg,
-    lambda_path = lambda_path,
-    penalty = penalty,
-    n_features = length(feature_cols)
+    alpha = alpha,
+    best_lambda = best_lambda,
+    best_auc = best_auc
   ))
 }
+
+# ------------------------------------------------------------------------------
+# Main Function: Search alpha and lambda, then fit final model
+# ------------------------------------------------------------------------------
+# This is your updated version of the original function
+
+fit_penalized_finegray_cv <- function(X_input, clinical_input,
+                                      cr_time = "time_to_CompRisk_event",
+                                      cr_event = "CompRisk_event_coded",
+                                      penalty = "ENET",
+                                      alpha_seq = 0.5,  # Can be single value or vector
+                                      lambda_seq = NULL,
+                                      n_inner_folds = 3) {
+  
+  cat(sprintf("\n=== Penalized Fine-Gray with CV (%s) ===\n", penalty))
+  
+  # If only one alpha, just use it
+  if (length(alpha_seq) == 1) {
+    cat(sprintf("Using alpha = %.2f\n", alpha_seq))
+    best_alpha <- alpha_seq
+    cv_result <- evaluate_alpha_lambda_cv(
+      X_input, clinical_input, 
+      alpha = best_alpha,
+      lambda_seq = lambda_seq,
+      cr_time = cr_time,
+      cr_event = cr_event,
+      penalty = penalty,
+      n_inner_folds = n_inner_folds
+    )
+    best_lambda <- cv_result$best_lambda
+    
+    # If multiple alphas, search over them
+  } else {
+    cat(sprintf("Searching over %d alpha values...\n", length(alpha_seq)))
+    
+    # Test each alpha
+    results <- lapply(alpha_seq, function(a) {
+      cat(sprintf("  Testing alpha = %.2f... ", a))
+      res <- evaluate_alpha_lambda_cv(
+        X_input, clinical_input,
+        alpha = a,
+        lambda_seq = lambda_seq,
+        cr_time = cr_time,
+        cr_event = cr_event,
+        penalty = penalty,
+        n_inner_folds = n_inner_folds
+      )
+      cat(sprintf("best lambda = %.4f, AUC = %.3f\n", res$best_lambda, res$best_auc))
+      return(res)
+    })
+    
+    # Pick best alpha
+    aucs <- sapply(results, `[[`, "best_auc")
+    best_idx <- which.max(aucs)
+    best_alpha <- results[[best_idx]]$alpha
+    best_lambda <- results[[best_idx]]$best_lambda
+    
+    cat(sprintf("\nBest: alpha = %.2f, lambda = %.4f, AUC = %.3f\n",
+                best_alpha, best_lambda, aucs[best_idx]))
+  }
+  
+  # Refit on full data (same as before)
+  cat("\nRefitting on full training set...\n")
+  
+  scale_res_full <- scale_continuous_features(X_train = X_input, X_test = NULL, dont_scale = NULL)
+  
+  fgr_train_final <- cbind(
+    clinical_input[c(cr_time, cr_event)],
+    scale_res_full$X_train_scaled
+  )
+  
+  feature_cols <- setdiff(colnames(fgr_train_final), c(cr_time, cr_event))
+  feature_matrix_final <- as.matrix(fgr_train_final[, feature_cols])
+  
+  final_model <- fastcmprsk::fastCrrp(
+    Crisk(fgr_train_final[[cr_time]], 
+          fgr_train_final[[cr_event]]) ~ feature_matrix_final,
+    lambda = best_lambda,
+    penalty = penalty,
+    alpha = best_alpha,
+    standardize = FALSE
+  )
+  
+  final_coefs <- final_model$coef[, 1]
+  all_features <- colnames(feature_matrix_final)
+  selected_idx <- abs(final_coefs) > 1e-8
+  
+  cat(sprintf("Selected %d/%d features\n", sum(selected_idx), length(all_features)))
+  
+  results_df <- data.frame(
+    feature = all_features,
+    pFG_coefficient = final_coefs,
+    selected = selected_idx,
+    scale_center = scale_res_full$centers[all_features],
+    scale_scale = scale_res_full$scales[all_features],
+    stringsAsFactors = FALSE
+  )
+  
+  list(
+    model = final_model,
+    results_table = results_df,
+    best_alpha = best_alpha,
+    best_lambda = best_lambda
+  )
+}
+
 
 ################################################################################
 # FINE-GRAY VARIABLE IMPORTANCE
