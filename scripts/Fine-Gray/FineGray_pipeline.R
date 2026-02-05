@@ -508,7 +508,13 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   
   # Extract selected features and coefficients
   selected_cpgs_for_mrs <- pFG_res$results_table$feature[pFG_res$results_table$selected]
-  selected_cpg_coefs <- pFG_res$results_table$pFG_coefficient[pFG_res$results_table$selected]
+  selected_cpgs_coefs <- setNames(
+    pFG_res$results_table$pFG_coefficient[pFG_res$results_table$selected],
+    selected_cpgs_for_mrs
+  )
+  # scaling parsm for meRS calculation
+  selected_cpgs_scaleparams <- list ("centers"=pFG_res$results_table$scale_center,
+                                    "scale"=pFG_res$results_table$scale_scale)
   
   cat(sprintf("  BEST PENALIZED FG: Alpha=%.2f, Lambda=%.6f, CpGs=%d\n",
               pFG_res$best_alpha,
@@ -523,31 +529,35 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   
   cat(sprintf("\n--- Calculating Methylation Risk Score ---\n"))
   
-  # Scale methylation features using training data parameters
-  meth_scale <- scale_continuous_features(
-    X_train = X_pooled_train[, selected_cpgs_for_mrs, drop = FALSE],
-    X_test  = X_pooled_test[, selected_cpgs_for_mrs, drop = FALSE]
+  # Calculate MRS for Training Data
+  mrs_train_result <- calculate_methylation_risk_score(
+    X_data = X_pooled_train,
+    cpg_coefficients = selected_cpgs_coefs,
+    scaling_params = selected_cpgs_scaleparams,
+    verbose = TRUE
   )
+  MRS_train <- mrs_train_result$mrs
+
+  # Calculate MRS for Test Data (using training scaling)
+  mrs_test_result <- calculate_methylation_risk_score(
+    X_data = X_pooled_test,
+    cpg_coefficients = selected_cpgs_coefs,
+    scaling_params = selected_cpgs_scaleparams,
+    verbose = TRUE
+  )
+  MRS_test <- mrs_test_result$mrs
   
-  # Calculate risk score = linear predictor
-  MRS_train <- as.vector(as.matrix(meth_scale$X_train_scaled) %*% selected_cpg_coefs)
-  MRS_test  <- as.vector(as.matrix(meth_scale$X_test_scaled) %*% selected_cpg_coefs)
-  
-  cat(sprintf("  MRS range (train): [%.3f, %.3f]\n", min(MRS_train), max(MRS_train)))
-  cat(sprintf("  MRS range (test):  [%.3f, %.3f]\n", min(MRS_test), max(MRS_test)))
-  
-  # Optionally scale the MRS itself
+  # Scale the MRS itself
   scale_mrs <- TRUE
-  
   if (scale_mrs) {
-    mrs_scale <- scale_continuous_features(
-      X_train = data.frame(methylation_risk_score = MRS_train),
-      X_test  = data.frame(methylation_risk_score = MRS_test)
-    )
-    
-    MRS_train <- mrs_scale$X_train_scaled[, 1]
-    MRS_test  <- mrs_scale$X_test_scaled[, 1]
-    
+    # Fit scaling on training MRS
+    mrs_train_scaled <- scale(MRS_train)
+    # Extract parameters
+    mrs_center <- attr(mrs_train_scaled, "scaled:center")
+    mrs_scale  <- attr(mrs_train_scaled, "scaled:scale")
+    # Apply the same scaling to test MRS
+    MRS_train <- as.numeric(mrs_train_scaled)
+    MRS_test  <- as.numeric((MRS_test - mrs_center) / mrs_scale)
     cat("  MRS scaled to mean=0, sd=1\n")
   }
   
@@ -557,6 +567,8 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # Combine: clinical variables + MRS
   
   cat(sprintf("\n--- Preparing Final Model Data ---\n"))
+  
+  identical(clinical_train$Sample,row.names(X_pooled_train)) #true
   
   fgr_train_data <- cbind(
     clinical_train[, c("time_to_CompRisk_event", "CompRisk_event_coded")],
@@ -583,6 +595,27 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
               paste(setdiff(colnames(fgr_train_data), 
                             c("time_to_CompRisk_event", "CompRisk_event_coded")), 
                     collapse=", ")))
+  
+  # preprocessing params
+  fg_scaling_params <- list(
+    
+    # need scaling aprams from final pFG model input
+    #pFG_res$results_table
+    # CpGs scaling pre MRS calculation
+    scaleparams_meRS_cpgs = list(cpg_coefs = mrs_train_result$input_cpg_coefs,
+                                  center = mrs_train_result$scaling_params$center,
+                                 scale = mrs_train_result$scaling_params$scale),
+    
+    # MRS scaling
+    scaleparams_fg_meRS = list(center = mrs_center,scale = mrs_scale),
+    
+    # Clinical continuous variables scaling
+    scaleparams_fg_clincont = list(
+      variables = CLIN_CONT,
+      center = clin_scale$center,
+      scale  = clin_scale$scale
+    )
+  )
   
   # --------------------------------------------------------------------------
   # Fit Unpenalized Fine-Gray Model (FINAL MODEL)
@@ -806,8 +839,7 @@ cat("Outer fold results saved (backup)\n")
 perf_results <- aggregate_cv_performance(outer_fold_results)
 
 stability_results <- assess_finegray_stability(
-  outer_fold_results, 
-  clinical_features = if (DATA_MODE == "methylation") NULL else clinvars
+  outer_fold_results
 )
 
 ################################################################################
@@ -833,7 +865,7 @@ cat("Outer fold results saved (complete with aggregations)\n")
 
 
 #
-#load("~/PhD_Workspace/PredictRecurrence/output/FineGray/ERpHER2n/Methylation/Unadjusted/outer_fold_results_20260130_092851.RData")
+#load("~/PhD_Workspace/PredictRecurrence/output/FineGray/ERpHER2n/Methylation/Unadjusted/outer_fold_results.RData")
 ################################################################################
 # TRAIN FINAL MODEL ON ALL DATA
 ################################################################################
@@ -851,14 +883,13 @@ cat(sprintf("Training samples: n=%d (RFi=%d, Death=%d)\n",
 # ----------------------------------------------------------------------------
 # Collect CV-Discovered Features
 # ----------------------------------------------------------------------------
-
+STABILITY_THRESHOLD_FG = 0.6
 cat(sprintf("\n--- Collecting CV-Discovered Features ---\n"))
 
 stability_metrics <- stability_results$stability_metrics
 
 # Select stable non-clinical features
 stable_features <- stability_metrics$feature[
-  stability_metrics$is_clinical != TRUE &
     stability_metrics$selection_freq >= STABILITY_THRESHOLD_FG &
     stability_metrics$direction_consistent == TRUE
 ]
@@ -947,7 +978,7 @@ final_results <- list(
 )
 
 save(final_results, file = file.path(current_output_dir, 
-                                     paste0("final_fg_results_", run_timestamp, ".RData")))
+                                     "final_fg_results.RData"))
 cat("Final model results saved\n")
 
 

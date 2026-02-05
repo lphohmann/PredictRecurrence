@@ -1153,135 +1153,149 @@ aggregate_cv_performance <- function(outer_fold_results,
 # FEATURE SELECTION STABILITY
 ################################################################################
 assess_finegray_stability <- function(outer_fold_results, 
-                                      clinical_features = NULL,
-                                      verbose = TRUE) {
-  # Assess Fine-Gray feature selection stability across CV folds
+                                                verbose = TRUE) {
+  # Assess Penalized Fine-Gray CpG selection stability across CV folds
+  # This function specifically looks at which CpGs were selected for MRS construction
   #
   # Args:
   #   outer_fold_results: List of fold results from nested CV
-  #   clinical_features: Character vector of clinical feature names (optional)
   #   verbose: Whether to print summary statistics
   #
   # Returns:
   #   List with:
-  #     - stability_metrics: Dataframe with feature statistics
-  #     - selection_matrix: Dataframe with feature column + binary fold indicators
+  #     - stability_metrics: Dataframe with CpG statistics
+  #     - selection_matrix: Dataframe with CpG column + binary fold indicators
+  #     - coefficient_matrix: Dataframe with CpG column + actual coefficients per fold
   
   # ============================================================================
   # Setup
   # ============================================================================
   n_folds <- length(outer_fold_results)
   
-  # Extract coefficient tables from all folds
+  # Extract penalized FG coefficient tables from all folds
   coef_list <- lapply(outer_fold_results, function(fold) {
-    fold$fold_model_coefficients
+    fold$penalized_fg_coefficients  # Changed from fold_model_coefficients
   })
   
-  # Get all unique features selected across any fold
-  all_features <- unique(unlist(lapply(coef_list, function(df) df$feature)))
+  # Get all unique CpGs selected across any fold
+  all_cpgs <- unique(unlist(lapply(coef_list, function(df) df$feature)))
   
   # ============================================================================
-  # Build combined table (one row per feature)
+  # Build combined table (one row per CpG)
   # ============================================================================
-  combined_table <- do.call(rbind, lapply(all_features, function(feat) {
+  combined_table <- do.call(rbind, lapply(all_cpgs, function(cpg) {
     
-    # Extract FG coefficients for this feature from each fold
-    fg_coefs <- sapply(coef_list, function(df) {
-      feature_idx <- which(df$feature == feat)
-      if (length(feature_idx) == 0) return(0)
-      df$fg_coef[feature_idx]
+    # Extract penalized FG coefficients for this CpG from each fold
+    pen_fg_coefs <- sapply(coef_list, function(df) {
+      cpg_idx <- which(df$feature == cpg)
+      if (length(cpg_idx) == 0) return(NA)  # NA if not selected
+      df$pen_fg_coef[cpg_idx]
     })
     
-    # Binary selection indicators
-    is_selected <- as.numeric(fg_coefs != 0)
+    # Binary selection indicators (NA means not selected)
+    is_selected <- as.numeric(!is.na(pen_fg_coefs))
     
     # Selection statistics
     n_selected <- sum(is_selected)
     selection_freq <- n_selected / n_folds
-    n_positive <- sum(fg_coefs > 0)
-    n_negative <- sum(fg_coefs < 0)
+    
+    # Count positive/negative coefficients (only for selected folds)
+    selected_coefs <- pen_fg_coefs[!is.na(pen_fg_coefs)]
+    n_positive <- sum(selected_coefs > 0)
+    n_negative <- sum(selected_coefs < 0)
     
     # Coefficient statistics (only for folds where selected)
-    nonzero_coefs <- fg_coefs[fg_coefs != 0]
-    if (length(nonzero_coefs) > 0) {
-      direction_consistent <- all(nonzero_coefs > 0) | all(nonzero_coefs < 0)
-      mean_coef <- mean(nonzero_coefs)
-      sd_coef <- sd(nonzero_coefs)
+    if (length(selected_coefs) > 0) {
+      direction_consistent <- all(selected_coefs > 0) | all(selected_coefs < 0)
+      mean_coef <- mean(selected_coefs)
+      sd_coef <- sd(selected_coefs)
+      median_coef <- median(selected_coefs)
     } else {
       direction_consistent <- FALSE
-      mean_coef <- 0
-      sd_coef <- 0
-    }
-    
-    # Clinical feature flag
-    is_clinical <- if (!is.null(clinical_features)) {
-      feat %in% clinical_features
-    } else {
-      FALSE
+      mean_coef <- NA
+      sd_coef <- NA
+      median_coef <- NA
     }
     
     # Build complete row
     row_df <- data.frame(
-      feature = feat,
-      is_clinical = is_clinical,
+      feature = cpg,
       n_selected = n_selected,
       selection_freq = round(selection_freq, 3),
       direction_consistent = direction_consistent,
       n_positive = n_positive,
       n_negative = n_negative,
-      mean_coef = round(mean_coef, 3),
-      sd_coef = round(sd_coef, 3),
+      mean_coef = round(mean_coef, 4),
+      median_coef = round(median_coef, 4),
+      sd_coef = round(sd_coef, 4),
       stringsAsFactors = FALSE
     )
     
-    # Add fold columns
-    fold_df <- as.data.frame(t(is_selected))
-    colnames(fold_df) <- paste0("Fold", 1:n_folds)
+    # Add fold selection indicators (0/1)
+    fold_selection_df <- as.data.frame(t(is_selected))
+    colnames(fold_selection_df) <- paste0("Fold", 1:n_folds, "_selected")
     
-    cbind(row_df, fold_df)
+    # Add fold coefficients (actual values or NA)
+    fold_coef_df <- as.data.frame(t(pen_fg_coefs))
+    colnames(fold_coef_df) <- paste0("Fold", 1:n_folds, "_coef")
+    
+    cbind(row_df, fold_selection_df, fold_coef_df)
   }))
   
-  # Sort by selection frequency
-  combined_table <- combined_table[order(combined_table$selection_freq, 
-                                         decreasing = TRUE), ]
+  # Sort by selection frequency, then by absolute mean coefficient
+  combined_table <- combined_table[order(
+    combined_table$selection_freq,
+    abs(combined_table$mean_coef),
+    decreasing = TRUE,
+    na.last = TRUE
+  ), ]
   rownames(combined_table) <- NULL
   
   # ============================================================================
-  # Split into two outputs
+  # Split into three outputs
   # ============================================================================
   
-  # Metrics table: feature + statistics (no fold columns)
-  metric_cols <- c("feature", "is_clinical", "n_selected", "selection_freq",
+  # 1. Metrics table: CpG + statistics (no fold columns)
+  metric_cols <- c("feature", "n_selected", "selection_freq",
                    "direction_consistent", "n_positive", "n_negative", 
-                   "mean_coef", "sd_coef")
+                   "mean_coef", "median_coef", "sd_coef")
   stability_metrics <- combined_table[, metric_cols]
   
-  # Selection matrix: feature + fold selections
-  fold_cols <- grep("^Fold", names(combined_table), value = TRUE)
-  selection_matrix <- combined_table[, c("feature", fold_cols)]
+  # 2. Selection matrix: CpG + fold selections (0/1)
+  fold_selection_cols <- grep("_selected$", names(combined_table), value = TRUE)
+  selection_matrix <- combined_table[, c("feature", fold_selection_cols)]
+  
+  # 3. Coefficient matrix: CpG + fold coefficients (actual values)
+  fold_coef_cols <- grep("_coef$", names(combined_table), value = TRUE)
+  coefficient_matrix <- combined_table[, c("feature", fold_coef_cols)]
   
   # ============================================================================
   # Print summary (if requested)
   # ============================================================================
   if (verbose) {
-    cat("\n========== FINE-GRAY FEATURE STABILITY ==========\n")
+    cat("\n========== PENALIZED FINE-GRAY CpG STABILITY ==========\n")
     cat(sprintf("Total folds: %d\n\n", n_folds))
-    cat(sprintf("Features ever selected: %d\n", 
+    cat(sprintf("CpGs ever selected: %d\n", 
                 sum(stability_metrics$n_selected > 0)))
-    
-    if (!is.null(clinical_features)) {
-      cat(sprintf("Clinical features: %d\n", 
-                  sum(stability_metrics$is_clinical, na.rm = TRUE)))
-    }
-    
-    cat(sprintf("Direction-consistent features: %d\n\n", 
+    cat(sprintf("Direction-consistent CpGs: %d\n", 
                 sum(stability_metrics$direction_consistent, na.rm = TRUE)))
+    cat(sprintf("CpGs selected in all folds: %d\n", 
+                sum(stability_metrics$selection_freq == 1)))
+    cat(sprintf("CpGs selected in ≥80%% folds: %d\n", 
+                sum(stability_metrics$selection_freq >= 0.8)))
+    cat(sprintf("CpGs selected in ≥50%% folds: %d\n\n", 
+                sum(stability_metrics$selection_freq >= 0.5)))
     
-    # Show top 10 most frequently selected features
-    if (nrow(stability_metrics[stability_metrics$n_selected > 0, ]) > 0) {
-      cat("Selected features:\n")
-      print(stability_metrics[stability_metrics$n_selected > 0, ])
+    # Show most stable CpGs (selected in at least 50% of folds)
+    stable_cpgs <- stability_metrics[stability_metrics$selection_freq >= 0.5, ]
+    
+    if (nrow(stable_cpgs) > 0) {
+      cat("Most stable CpGs (≥50% selection frequency):\n")
+      print(stable_cpgs)
+    } else {
+      cat("No CpGs selected in ≥50% of folds\n")
     }
+    
     cat("\n")
   }
   
@@ -1290,10 +1304,10 @@ assess_finegray_stability <- function(outer_fold_results,
   # ============================================================================
   return(list(
     stability_metrics = stability_metrics,
-    selection_matrix = selection_matrix
+    selection_matrix = selection_matrix,
+    coefficient_matrix = coefficient_matrix
   ))
 }
-
 
 ################################################################################
 # FINE-GRAY fitting
@@ -1770,6 +1784,109 @@ fit_penalized_finegray_cv <- function(X_input, clinical_input,
   )
 }
 
+# ------------------------------------------------------------------------------
+# Calc risk score
+# ------------------------------------------------------------------------------
+calculate_methylation_risk_score <- function(X_data,
+                                             cpg_coefficients,
+                                             scaling_params,
+                                             verbose = TRUE) {
+  # Calculate methylation risk score from CpG data and coefficients
+  #
+  # Args:
+  #   X_data: Data frame or matrix with CpG columns (samples x CpGs)
+  #   cpg_coefficients: Named numeric vector of coefficients 
+  #                     (names = CpG IDs, values = coefficients)
+  #   scaling_params: List with 'centers' and 'scales' for CpG scaling
+  #                   If NULL (training data), calculates from X_data
+  #                   If provided (test data), uses these parameters
+  #   verbose: Print diagnostic information
+  #
+  # Returns:
+  #   List with:
+  #     - mrs: Numeric vector of methylation risk scores
+  #     - scaling_params: Scaling parameters used (for applying to test data)
+  #     - cpg_names: Names of CpGs used
+  
+  # ==========================================================================
+  # Input validation
+  # ==========================================================================
+  
+  if (!is.vector(cpg_coefficients) || is.null(names(cpg_coefficients))) {
+    stop("cpg_coefficients must be a named numeric vector")
+  }
+  
+  cpg_names <- names(cpg_coefficients)
+  n_cpgs <- length(cpg_names)
+  
+  # Check that all required CpGs are in the data
+  missing_cpgs <- setdiff(cpg_names, colnames(X_data))
+  if (length(missing_cpgs) > 0) {
+    stop(sprintf("Missing CpGs in X_data: %s", 
+                 paste(missing_cpgs, collapse=", ")))
+  }
+  
+  # Extract relevant CpGs (in correct order matching coefficients)
+  X_cpgs <- X_data[, cpg_names, drop = FALSE]
+  
+  if (verbose) {
+    cat(sprintf("\n--- Calculating Methylation Risk Score ---\n"))
+    cat(sprintf("  Number of CpGs: %d\n", n_cpgs))
+    cat(sprintf("  Number of samples: %d\n", nrow(X_cpgs)))
+  }
+  
+  # ==========================================================================
+  # Scale CpGs
+  # ==========================================================================
+  
+  # Use provided centering and scaling parameters
+  if (is.null(scaling_params$center) || is.null(scaling_params$scale)) {
+    stop("scaling_params must contain 'center' and 'scale' vectors")
+  }
+  
+  # Verify CpG names match
+  if (!all(cpg_names %in% names(scaling_params$center))) {
+    stop("CpG names in coefficients don't match scaling parameters")
+  }
+  
+  # Apply scaling with provided parameters
+  X_cpgs_scaled <- scale(
+    X_cpgs, 
+    center = scaling_params$center[cpg_names],
+    scale = scaling_params$scale[cpg_names]
+  )
+  
+  if (verbose) {
+    cat("  Scaling: Using provided parameters\n")
+  }
+  
+  
+  # ==========================================================================
+  # Calculate MRS (weighted sum of scaled CpGs)
+  # ==========================================================================
+  
+  # Ensure coefficients are in same order as columns
+  coefs_ordered <- cpg_coefficients[colnames(X_cpgs_scaled)]
+  
+  # Calculate weighted sum (linear predictor)
+  mrs <- as.vector(as.matrix(X_cpgs_scaled) %*% coefs_ordered)
+  
+  if (verbose) {
+    cat(sprintf("  MRS range: [%.3f, %.3f]\n", 
+                min(mrs, na.rm = TRUE), 
+                max(mrs, na.rm = TRUE)))
+  }
+  
+  # ==========================================================================
+  # Return results
+  # ==========================================================================
+  
+  return(list(
+    mrs = mrs,
+    scaling_params = scaling_params,
+    input_cpg_coefs = cpg_coefficients
+  ))
+}
 
 ################################################################################
 # FINE-GRAY VARIABLE IMPORTANCE
