@@ -531,19 +531,19 @@ scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL, v
   #     - centers: Mean values from training data
   #     - scales: SD values from training data
   #     - cont_cols: Names of scaled columns
-  
+
   # Identify continuous columns
   cont_cols <- setdiff(colnames(X_train), dont_scale)
-  
+
   # Scale continuous variables and extract parameters
   train_cont_scaled <- scale(X_train[, cont_cols, drop = FALSE])
   centers <- attr(train_cont_scaled, "scaled:center")
   scales  <- attr(train_cont_scaled, "scaled:scale")
-  
+
   # Apply to training set
   X_train_scaled <- X_train
   X_train_scaled[, cont_cols] <- train_cont_scaled
-  
+
   # Apply to test set using TRAINING parameters (prevents data leakage)
   if (!is.null(X_test)) {
     X_test_scaled <- X_test
@@ -555,11 +555,11 @@ scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL, v
   } else {
     X_test_scaled <- NULL
   }
-  
+
   if (verbose == TRUE) {
-    cat(sprintf("Scaled %d continuous features\n", length(cont_cols)))  
+    cat(sprintf("Scaled %d continuous features\n", length(cont_cols)))
   }
-  
+
   return(list(
     X_train_scaled = X_train_scaled,
     X_test_scaled = X_test_scaled,
@@ -572,9 +572,221 @@ scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL, v
 ################################################################################
 # ELASTIC NET COX REGRESSION
 ################################################################################
+
+cv_glmnet_alpha_grid <- function(X_train, y_train, alpha_grid, penalty_factor = NULL,
+                                 foldid = NULL, family = "cox", seed = 123) {
+  # Cross-validate glmnet across multiple alpha values
+  #
+  # Alpha controls elastic net mixing:
+  #   - alpha = 0: Ridge regression (L2 penalty)
+  #   - alpha = 1: LASSO (L1 penalty)
+  #   - 0 < alpha < 1: Elastic net (combined L1/L2)
+  #
+  # Args:
+  #   X_train: Training feature matrix
+  #   y_train: Survival object (from Surv())
+  #   alpha_grid: Vector of alpha values to test
+  #   penalty_factor: Feature-specific penalties (0 = no penalty)
+  #   foldid: CV fold assignments
+  #   family: "cox" for survival analysis
+  #   seed: Random seed for reproducibility
+  #
+  # Returns:
+  #   List of CV results for each alpha value
+
+  cv_results <- list()
+
+  for (alpha_val in alpha_grid) {
+    set.seed(seed)
+    cv_fit <- cv.glmnet(
+      x = as.matrix(X_train),
+      y = y_train,
+      family = family,
+      alpha = alpha_val,
+      penalty.factor = penalty_factor,
+      foldid = foldid,
+      standardize = TRUE
+    )
+
+    # Extract performance at optimal lambda
+    perf_min <- cv_fit$cvm[cv_fit$lambda == cv_fit$lambda.min]
+    perf_se <- cv_fit$cvsd[cv_fit$lambda == cv_fit$lambda.min]
+
+    # Get selected features
+    beta <- coef(cv_fit, s = "lambda.min")
+    selected_features <- rownames(beta)[as.vector(beta != 0)]
+
+    cv_results[[as.character(alpha_val)]] <- list(
+      alpha = alpha_val,
+      lambda = cv_fit$lambda.min,
+      cvm_min = perf_min,
+      cvm_se = perf_se,
+      n_features = length(selected_features),
+      features = selected_features,
+      fit = cv_fit
+    )
+
+    cat(sprintf(
+      "  Alpha=%.2f: CV-deviance=%.4f (SE=%.4f), Lambda=%.6f, Features=%d\n",
+      alpha_val, perf_min, perf_se, cv_fit$lambda.min, length(selected_features)
+    ))
+  }
+
+  return(cv_results)
+}
+
+################################################################################
+
+tune_and_fit_coxnet <- function(X_train, y_train, clinical_train, event_col,
+                                alpha_grid, penalty_factor = NULL,
+                                n_inner_folds = 5, seed = 123,
+                                outcome_name = "outcome") {
+  # Tune CoxNet hyperparameters via inner CV, then fit final model
+  #
+  # Performs stratified cross-validation on event occurrence to find
+  # optimal alpha and lambda values, then fits model on full training set.
+  #
+  # Args:
+  #   X_train: Training feature matrix
+  #   y_train: Survival object
+  #   clinical_train: Clinical data for stratification
+  #   event_col: Column name for event indicator
+  #   alpha_grid: Vector of alpha values to test
+  #   penalty_factor: Feature-specific penalties
+  #   n_inner_folds: Number of CV folds
+  #   seed: Random seed
+  #   outcome_name: Name for logging
+  #
+  # Returns:
+  #   List with CV results, best hyperparameters, and fitted model
+
+  cat(sprintf("\n--- Inner CV: Tuning CoxNet for %s ---\n", outcome_name))
+
+  # Create stratified inner folds based on event occurrence
+  set.seed(seed)
+  inner_folds <- createFolds(
+    y = clinical_train[[event_col]],
+    k = n_inner_folds,
+    list = TRUE,
+    returnTrain = FALSE
+  )
+
+  # Convert to foldid vector for cv.glmnet
+  foldid <- rep(NA, nrow(X_train))
+  for (i in 1:n_inner_folds) {
+    foldid[inner_folds[[i]]] <- i
+  }
+
+  # Test each alpha value
+  cv_results <- cv_glmnet_alpha_grid(
+    X_train = X_train,
+    y_train = y_train,
+    alpha_grid = alpha_grid,
+    penalty_factor = penalty_factor,
+    foldid = foldid
+  )
+
+  # Select best hyperparameters based on CV deviance
+  best_idx <- which.min(sapply(cv_results, function(x) x$cvm_min))
+  best_result <- cv_results[[best_idx]]
+  best_alpha <- best_result$alpha
+  best_lambda <- best_result$lambda
+
+  cat(sprintf("Best hyperparameters: alpha=%.2f, lambda=%.6f\n",
+              best_alpha, best_lambda))
+
+  # Fit final model on whole training set with best hyperparameters
+  final_fit <- glmnet(
+    x = as.matrix(X_train),
+    y = y_train,
+    family = "cox",
+    alpha = best_alpha,
+    lambda = best_lambda,
+    penalty.factor = penalty_factor
+  )
+
+  return(list(
+    cv_results = cv_results,
+    best_result = best_result,
+    best_alpha = best_alpha,
+    best_lambda = best_lambda,
+    final_fit = final_fit
+  ))
+}
+
+# 
+# # NEW HELPER FUNCTION: Extract feature selections AND coefficient signs from each CV fold
+# get_fold_selections <- function(X_train, y_train, foldid, alpha, lambda_target, 
+#                                 penalty_factor = NULL, family = "cox") {
+#   # For each fold, train model on k-1 folds and extract selected features + coefficient signs
+#   #
+#   # Args:
+#   #   X_train: Training feature matrix
+#   #   y_train: Survival object
+#   #   foldid: Fold assignments (vector of fold numbers)
+#   #   alpha: Alpha value for this CV run
+#   #   lambda_target: The lambda value to use for feature extraction (typically lambda.min)
+#   #   penalty_factor: Feature-specific penalties
+#   #   family: Model family
+#   #
+#   # Returns:
+#   #   List with:
+#   #     - selection_matrix: Binary matrix (rows = features, columns = folds, 1 = selected)
+#   #     - sign_matrix: Sign of coefficients (1 = positive, -1 = negative, 0 = not selected)
+#   
+#   n_folds <- max(foldid, na.rm = TRUE)
+#   feature_names <- colnames(X_train)
+#   n_features <- length(feature_names)
+#   
+#   # Initialize binary selection matrix
+#   selection_matrix <- matrix(0, nrow = n_features, ncol = n_folds,
+#                              dimnames = list(feature_names, paste0("fold", 1:n_folds)))
+#   
+#   # Initialize coefficient sign matrix (NEW)
+#   sign_matrix <- matrix(0, nrow = n_features, ncol = n_folds,
+#                         dimnames = list(feature_names, paste0("fold", 1:n_folds)))
+#   
+#   # For each fold, train on other folds and extract selections at lambda_target
+#   for (fold in 1:n_folds) {
+#     # Identify samples in this fold
+#     train_idx <- which(foldid != fold)
+#     
+#     # Train model on k-1 folds
+#     fold_fit <- glmnet(
+#       x = as.matrix(X_train[train_idx, , drop = FALSE]),
+#       y = y_train[train_idx],
+#       family = family,
+#       alpha = alpha,
+#       lambda = lambda_target,
+#       penalty.factor = penalty_factor,
+#       standardize = TRUE
+#     )
+#     
+#     # Extract coefficients at target lambda
+#     fold_coef <- as.vector(coef(fold_fit, s = lambda_target))
+#     
+#     # Mark selected features (non-zero coefficients)
+#     selected_idx <- which(fold_coef != 0)
+#     
+#     if (length(selected_idx) > 0) {
+#       selection_matrix[selected_idx, fold] <- 1
+#       # Store coefficient sign: +1 for positive, -1 for negative
+#       sign_matrix[selected_idx, fold] <- sign(fold_coef[selected_idx])
+#     }
+#   }
+#   
+#   return(list(
+#     selection_matrix = selection_matrix,
+#     sign_matrix = sign_matrix
+#   ))
+# }
+# 
+# 
+# ################################################################################
 # 
 # cv_glmnet_alpha_grid <- function(X_train, y_train, alpha_grid, penalty_factor = NULL, 
-#                                  foldid = NULL, family = "cox", seed = 123) {
+#                                  foldid = NULL, family = "cox", seed = 123,
+#                                  compute_stability = FALSE) {
 #   # Cross-validate glmnet across multiple alpha values
 #   #
 #   # Alpha controls elastic net mixing:
@@ -590,9 +802,11 @@ scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL, v
 #   #   foldid: CV fold assignments
 #   #   family: "cox" for survival analysis
 #   #   seed: Random seed for reproducibility
+#   #   compute_stability: Whether to compute fold-level stability (default FALSE)
 #   #
 #   # Returns:
 #   #   List of CV results for each alpha value
+#   #   If compute_stability=TRUE, includes stability_matrix, sign_matrix, stability_scores
 #   
 #   cv_results <- list()
 #   
@@ -610,13 +824,14 @@ scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL, v
 #     
 #     # Extract performance at optimal lambda
 #     perf_min <- cv_fit$cvm[cv_fit$lambda == cv_fit$lambda.min]
-#     perf_se <- cv_fit$cvsd[cv_fit$lambda == cv_fit$lambda.min]
+#     perf_se <- cv_fit$cvsd[cv_fit$lambda == cv_fit$lambda.1se]
 #     
-#     # Get selected features
+#     # Get selected features from full CV model
 #     beta <- coef(cv_fit, s = "lambda.min")
 #     selected_features <- rownames(beta)[as.vector(beta != 0)]
 #     
-#     cv_results[[as.character(alpha_val)]] <- list(
+#     # Initialize result list with original fields
+#     result <- list(
 #       alpha = alpha_val,
 #       lambda = cv_fit$lambda.min,
 #       cvm_min = perf_min,
@@ -625,6 +840,74 @@ scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL, v
 #       features = selected_features,
 #       fit = cv_fit
 #     )
+#     
+#     # OPTIONAL: Compute fold-level feature selections for stability analysis
+#     # this is done for the best labda for this alpha, same 3splti resampling used
+#     if (compute_stability && !is.null(foldid)) {
+#       fold_results <- get_fold_selections(
+#         X_train = X_train,
+#         y_train = y_train,
+#         foldid = foldid,
+#         alpha = alpha_val, # that alpha
+#         lambda_target = cv_fit$lambda.min, # prev selected lambda
+#         penalty_factor = penalty_factor,
+#         family = family
+#       )
+#       
+#       selection_matrix <- fold_results$selection_matrix
+#       sign_matrix <- fold_results$sign_matrix
+#       
+#       # Calculate per-feature stability scores (proportion of folds where selected)
+#       n_folds <- ncol(selection_matrix)
+#       selected_any <- rowSums(selection_matrix) > 0
+#       
+#       stability_scores <- rowSums(selection_matrix) / n_folds
+#       stability_scores <- stability_scores[selected_any]
+#       
+#       # Calculate sign consistency for each feature
+#       # For each feature: check if all non-zero coefficients have same sign
+#       sign_consistency <- apply(sign_matrix, 1, function(signs) {
+#         nonzero_signs <- signs[signs != 0]
+#         if (length(nonzero_signs) == 0) return(NA)
+#         # All same sign = consistent (all positive OR all negative)
+#         all(nonzero_signs > 0) || all(nonzero_signs < 0)
+#       })
+#       
+#       # Create combined dataframe with stability info
+#       stability_info <- data.frame(
+#         feature = names(stability_scores),
+#         selection_freq = stability_scores,
+#         sign_consistent = sign_consistency[names(stability_scores)],
+#         stringsAsFactors = FALSE
+#       )
+#       stability_info <- stability_info[order(stability_info$selection_freq, decreasing = TRUE), ]
+#       rownames(stability_info) <- NULL
+#       
+#       # Add to result
+#       result$stability_matrix <- selection_matrix
+#       result$sign_matrix <- sign_matrix
+#       result$stability_scores <- stability_scores
+#       result$stability_info <- stability_info
+#       
+#       # Print stability summary
+#       if (nrow(stability_info) > 0) {
+#         high_stability <- sum(stability_info$selection_freq >= 0.8)
+#         med_stability <- sum(stability_info$selection_freq >= 0.6 & 
+#                                stability_info$selection_freq < 0.8)
+#         sign_consistent_count <- sum(stability_info$sign_consistent, na.rm = TRUE)
+#         
+#         cat(sprintf(
+#           "    Stability: %d features ≥80%%, %d features 60-80%%, mean=%.2f\n",
+#           high_stability, med_stability, mean(stability_info$selection_freq)
+#         ))
+#         cat(sprintf(
+#           "    Sign consistency: %d/%d features have consistent coefficient direction\n",
+#           sign_consistent_count, nrow(stability_info)
+#         ))
+#       }
+#     }
+#     
+#     cv_results[[as.character(alpha_val)]] <- result
 #     
 #     cat(sprintf(
 #       "  Alpha=%.2f: CV-deviance=%.4f (SE=%.4f), Lambda=%.6f, Features=%d\n",
@@ -640,7 +923,8 @@ scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL, v
 # tune_and_fit_coxnet <- function(X_train, y_train, clinical_train, event_col,
 #                                 alpha_grid, penalty_factor = NULL, 
 #                                 n_inner_folds = 5, seed = 123,
-#                                 outcome_name = "outcome") {
+#                                 outcome_name = "outcome",
+#                                 compute_stability = FALSE) {
 #   # Tune CoxNet hyperparameters via inner CV, then fit final model
 #   #
 #   # Performs stratified cross-validation on event occurrence to find
@@ -656,9 +940,11 @@ scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL, v
 #   #   n_inner_folds: Number of CV folds
 #   #   seed: Random seed
 #   #   outcome_name: Name for logging
+#   #   compute_stability: Whether to compute feature selection stability (default FALSE)
 #   #
 #   # Returns:
 #   #   List with CV results, best hyperparameters, and fitted model
+#   #   If compute_stability=TRUE, cv_results includes stability_matrix, sign_matrix, stability_info
 #   
 #   cat(sprintf("\n--- Inner CV: Tuning CoxNet for %s ---\n", outcome_name))
 #   
@@ -683,7 +969,8 @@ scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL, v
 #     y_train = y_train,
 #     alpha_grid = alpha_grid,
 #     penalty_factor = penalty_factor,
-#     foldid = foldid
+#     foldid = foldid,
+#     compute_stability = compute_stability
 #   )
 #   
 #   # Select best hyperparameters based on CV deviance
@@ -713,293 +1000,6 @@ scale_continuous_features <- function(X_train, X_test = NULL, dont_scale=NULL, v
 #     final_fit = final_fit
 #   ))
 # }
-# 
-
-# NEW HELPER FUNCTION: Extract feature selections AND coefficient signs from each CV fold
-get_fold_selections <- function(X_train, y_train, foldid, alpha, lambda_target, 
-                                penalty_factor = NULL, family = "cox") {
-  # For each fold, train model on k-1 folds and extract selected features + coefficient signs
-  #
-  # Args:
-  #   X_train: Training feature matrix
-  #   y_train: Survival object
-  #   foldid: Fold assignments (vector of fold numbers)
-  #   alpha: Alpha value for this CV run
-  #   lambda_target: The lambda value to use for feature extraction (typically lambda.min)
-  #   penalty_factor: Feature-specific penalties
-  #   family: Model family
-  #
-  # Returns:
-  #   List with:
-  #     - selection_matrix: Binary matrix (rows = features, columns = folds, 1 = selected)
-  #     - sign_matrix: Sign of coefficients (1 = positive, -1 = negative, 0 = not selected)
-  
-  n_folds <- max(foldid, na.rm = TRUE)
-  feature_names <- colnames(X_train)
-  n_features <- length(feature_names)
-  
-  # Initialize binary selection matrix
-  selection_matrix <- matrix(0, nrow = n_features, ncol = n_folds,
-                             dimnames = list(feature_names, paste0("fold", 1:n_folds)))
-  
-  # Initialize coefficient sign matrix (NEW)
-  sign_matrix <- matrix(0, nrow = n_features, ncol = n_folds,
-                        dimnames = list(feature_names, paste0("fold", 1:n_folds)))
-  
-  # For each fold, train on other folds and extract selections at lambda_target
-  for (fold in 1:n_folds) {
-    # Identify samples in this fold
-    train_idx <- which(foldid != fold)
-    
-    # Train model on k-1 folds
-    fold_fit <- glmnet(
-      x = as.matrix(X_train[train_idx, , drop = FALSE]),
-      y = y_train[train_idx],
-      family = family,
-      alpha = alpha,
-      lambda = lambda_target,
-      penalty.factor = penalty_factor,
-      standardize = TRUE
-    )
-    
-    # Extract coefficients at target lambda
-    fold_coef <- as.vector(coef(fold_fit, s = lambda_target))
-    
-    # Mark selected features (non-zero coefficients)
-    selected_idx <- which(fold_coef != 0)
-    
-    if (length(selected_idx) > 0) {
-      selection_matrix[selected_idx, fold] <- 1
-      # Store coefficient sign: +1 for positive, -1 for negative
-      sign_matrix[selected_idx, fold] <- sign(fold_coef[selected_idx])
-    }
-  }
-  
-  return(list(
-    selection_matrix = selection_matrix,
-    sign_matrix = sign_matrix
-  ))
-}
-
-
-################################################################################
-
-cv_glmnet_alpha_grid <- function(X_train, y_train, alpha_grid, penalty_factor = NULL, 
-                                 foldid = NULL, family = "cox", seed = 123,
-                                 compute_stability = FALSE) {
-  # Cross-validate glmnet across multiple alpha values
-  #
-  # Alpha controls elastic net mixing:
-  #   - alpha = 0: Ridge regression (L2 penalty)
-  #   - alpha = 1: LASSO (L1 penalty)
-  #   - 0 < alpha < 1: Elastic net (combined L1/L2)
-  #
-  # Args:
-  #   X_train: Training feature matrix
-  #   y_train: Survival object (from Surv())
-  #   alpha_grid: Vector of alpha values to test
-  #   penalty_factor: Feature-specific penalties (0 = no penalty)
-  #   foldid: CV fold assignments
-  #   family: "cox" for survival analysis
-  #   seed: Random seed for reproducibility
-  #   compute_stability: Whether to compute fold-level stability (default FALSE)
-  #
-  # Returns:
-  #   List of CV results for each alpha value
-  #   If compute_stability=TRUE, includes stability_matrix, sign_matrix, stability_scores
-  
-  cv_results <- list()
-  
-  for (alpha_val in alpha_grid) {
-    set.seed(seed)
-    cv_fit <- cv.glmnet(
-      x = as.matrix(X_train),
-      y = y_train,
-      family = family,
-      alpha = alpha_val,
-      penalty.factor = penalty_factor,
-      foldid = foldid,
-      standardize = TRUE
-    )
-    
-    # Extract performance at optimal lambda
-    perf_min <- cv_fit$cvm[cv_fit$lambda == cv_fit$lambda.min]
-    perf_se <- cv_fit$cvsd[cv_fit$lambda == cv_fit$lambda.1se]
-    
-    # Get selected features from full CV model
-    beta <- coef(cv_fit, s = "lambda.min")
-    selected_features <- rownames(beta)[as.vector(beta != 0)]
-    
-    # Initialize result list with original fields
-    result <- list(
-      alpha = alpha_val,
-      lambda = cv_fit$lambda.min,
-      cvm_min = perf_min,
-      cvm_se = perf_se,
-      n_features = length(selected_features),
-      features = selected_features,
-      fit = cv_fit
-    )
-    
-    # OPTIONAL: Compute fold-level feature selections for stability analysis
-    # this is done for the best labda for this alpha, same 3splti resampling used
-    if (compute_stability && !is.null(foldid)) {
-      fold_results <- get_fold_selections(
-        X_train = X_train,
-        y_train = y_train,
-        foldid = foldid,
-        alpha = alpha_val, # that alpha
-        lambda_target = cv_fit$lambda.min, # prev selected lambda
-        penalty_factor = penalty_factor,
-        family = family
-      )
-      
-      selection_matrix <- fold_results$selection_matrix
-      sign_matrix <- fold_results$sign_matrix
-      
-      # Calculate per-feature stability scores (proportion of folds where selected)
-      n_folds <- ncol(selection_matrix)
-      selected_any <- rowSums(selection_matrix) > 0
-      
-      stability_scores <- rowSums(selection_matrix) / n_folds
-      stability_scores <- stability_scores[selected_any]
-      
-      # Calculate sign consistency for each feature
-      # For each feature: check if all non-zero coefficients have same sign
-      sign_consistency <- apply(sign_matrix, 1, function(signs) {
-        nonzero_signs <- signs[signs != 0]
-        if (length(nonzero_signs) == 0) return(NA)
-        # All same sign = consistent (all positive OR all negative)
-        all(nonzero_signs > 0) || all(nonzero_signs < 0)
-      })
-      
-      # Create combined dataframe with stability info
-      stability_info <- data.frame(
-        feature = names(stability_scores),
-        selection_freq = stability_scores,
-        sign_consistent = sign_consistency[names(stability_scores)],
-        stringsAsFactors = FALSE
-      )
-      stability_info <- stability_info[order(stability_info$selection_freq, decreasing = TRUE), ]
-      rownames(stability_info) <- NULL
-      
-      # Add to result
-      result$stability_matrix <- selection_matrix
-      result$sign_matrix <- sign_matrix
-      result$stability_scores <- stability_scores
-      result$stability_info <- stability_info
-      
-      # Print stability summary
-      if (nrow(stability_info) > 0) {
-        high_stability <- sum(stability_info$selection_freq >= 0.8)
-        med_stability <- sum(stability_info$selection_freq >= 0.6 & 
-                               stability_info$selection_freq < 0.8)
-        sign_consistent_count <- sum(stability_info$sign_consistent, na.rm = TRUE)
-        
-        cat(sprintf(
-          "    Stability: %d features ≥80%%, %d features 60-80%%, mean=%.2f\n",
-          high_stability, med_stability, mean(stability_info$selection_freq)
-        ))
-        cat(sprintf(
-          "    Sign consistency: %d/%d features have consistent coefficient direction\n",
-          sign_consistent_count, nrow(stability_info)
-        ))
-      }
-    }
-    
-    cv_results[[as.character(alpha_val)]] <- result
-    
-    cat(sprintf(
-      "  Alpha=%.2f: CV-deviance=%.4f (SE=%.4f), Lambda=%.6f, Features=%d\n",
-      alpha_val, perf_min, perf_se, cv_fit$lambda.min, length(selected_features)
-    ))
-  }
-  
-  return(cv_results)
-}
-
-################################################################################
-
-tune_and_fit_coxnet <- function(X_train, y_train, clinical_train, event_col,
-                                alpha_grid, penalty_factor = NULL, 
-                                n_inner_folds = 5, seed = 123,
-                                outcome_name = "outcome",
-                                compute_stability = FALSE) {
-  # Tune CoxNet hyperparameters via inner CV, then fit final model
-  #
-  # Performs stratified cross-validation on event occurrence to find
-  # optimal alpha and lambda values, then fits model on full training set.
-  #
-  # Args:
-  #   X_train: Training feature matrix
-  #   y_train: Survival object
-  #   clinical_train: Clinical data for stratification
-  #   event_col: Column name for event indicator
-  #   alpha_grid: Vector of alpha values to test
-  #   penalty_factor: Feature-specific penalties
-  #   n_inner_folds: Number of CV folds
-  #   seed: Random seed
-  #   outcome_name: Name for logging
-  #   compute_stability: Whether to compute feature selection stability (default FALSE)
-  #
-  # Returns:
-  #   List with CV results, best hyperparameters, and fitted model
-  #   If compute_stability=TRUE, cv_results includes stability_matrix, sign_matrix, stability_info
-  
-  cat(sprintf("\n--- Inner CV: Tuning CoxNet for %s ---\n", outcome_name))
-  
-  # Create stratified inner folds based on event occurrence
-  set.seed(seed)
-  inner_folds <- createFolds(
-    y = clinical_train[[event_col]],
-    k = n_inner_folds,
-    list = TRUE,
-    returnTrain = FALSE
-  )
-  
-  # Convert to foldid vector for cv.glmnet
-  foldid <- rep(NA, nrow(X_train))
-  for (i in 1:n_inner_folds) {
-    foldid[inner_folds[[i]]] <- i
-  }
-  
-  # Test each alpha value
-  cv_results <- cv_glmnet_alpha_grid(
-    X_train = X_train,
-    y_train = y_train,
-    alpha_grid = alpha_grid,
-    penalty_factor = penalty_factor,
-    foldid = foldid,
-    compute_stability = compute_stability
-  )
-  
-  # Select best hyperparameters based on CV deviance
-  best_idx <- which.min(sapply(cv_results, function(x) x$cvm_min))
-  best_result <- cv_results[[best_idx]]
-  best_alpha <- best_result$alpha
-  best_lambda <- best_result$lambda
-  
-  cat(sprintf("Best hyperparameters: alpha=%.2f, lambda=%.6f\n", 
-              best_alpha, best_lambda))
-  
-  # Fit final model on whole training set with best hyperparameters
-  final_fit <- glmnet( 
-    x = as.matrix(X_train),
-    y = y_train,
-    family = "cox",
-    alpha = best_alpha,
-    lambda = best_lambda,
-    penalty.factor = penalty_factor
-  )
-  
-  return(list(
-    cv_results = cv_results,
-    best_result = best_result,
-    best_alpha = best_alpha,
-    best_lambda = best_lambda,
-    final_fit = final_fit
-  ))
-}
 ################################################################################
 
 extract_nonzero_coefs <- function(model_fit, sort_by_abs = TRUE) {
@@ -1063,13 +1063,13 @@ aggregate_cv_performance <- function(outer_fold_results,
   if (verbose) cat("\n========== AGGREGATED PERFORMANCE ==========\n")
   
   # Extract performance dataframes from all folds
-  performance_list <- lapply(outer_fold_results, function(fold) fold$performance_df)
+  performance_list <- lapply(outer_fold_results, function(fold) fold$final_fg$performance)
   all_performance <- do.call(rbind, performance_list)
   
-  # Extract number of features in each fold's FG model
+  # Extract number of features in each fold's pFG model (meRS score)
   n_features_per_fold <- sapply(outer_fold_results, function(fold) {
-    coef_df <- fold$fold_model_coefficients
-    sum(coef_df$fg_coef != 0)
+    coef_df <- fold$penalized_fg$coefficients_table
+    sum(coef_df$pen_fg_coef != 0)
   })
   
   # Add feature count column to all_performance
@@ -1174,7 +1174,7 @@ assess_finegray_stability <- function(outer_fold_results,
   
   # Extract penalized FG coefficient tables from all folds
   coef_list <- lapply(outer_fold_results, function(fold) {
-    fold$penalized_fg_coefficients  # Changed from fold_model_coefficients
+    fold$penalized_fg$coefficients_table  # Changed from fold_model_coefficients
   })
   
   # Get all unique CpGs selected across any fold
@@ -1286,8 +1286,8 @@ assess_finegray_stability <- function(outer_fold_results,
     cat(sprintf("CpGs selected in ≥50%% folds: %d\n\n", 
                 sum(stability_metrics$selection_freq >= 0.5)))
     
-    # Show most stable CpGs (selected in at least 50% of folds)
-    stable_cpgs <- stability_metrics[stability_metrics$selection_freq >= 0.5, ]
+    # Show most stable CpGs (selected in at least 40% of folds)
+    stable_cpgs <- stability_metrics[stability_metrics$selection_freq >= 0.4, ]
     
     if (nrow(stable_cpgs) > 0) {
       cat("Most stable CpGs (≥50% selection frequency):\n")
@@ -1883,7 +1883,7 @@ calculate_methylation_risk_score <- function(X_data,
   
   return(list(
     mrs = mrs,
-    scaling_params = scaling_params,
+    input_scaling_params = scaling_params,
     input_cpg_coefs = cpg_coefficients
   ))
 }

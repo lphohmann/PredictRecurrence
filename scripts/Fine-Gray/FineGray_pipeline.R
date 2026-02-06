@@ -383,8 +383,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     alpha_grid = ALPHA_GRID,
     penalty_factor = penalty_factor_rfi,
     n_inner_folds = N_INNER_FOLDS,
-    outcome_name = "RFI",
-    compute_stability = FALSE
+    outcome_name = "RFI"
   )
   
   # Extract coefficients and features
@@ -445,8 +444,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     alpha_grid = ALPHA_GRID,
     penalty_factor = penalty_factor_death,
     n_inner_folds = N_INNER_FOLDS,
-    outcome_name = "DeathNoR",
-    compute_stability = FALSE
+    outcome_name = "DeathNoR"
   )
   
   # Extract coefficients and features
@@ -466,7 +464,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # --------------------------------------------------------------------------
   # Pool Features from Both Models
   # --------------------------------------------------------------------------
-
+  
   features_pooled <- union(features_rfi, features_death)
   
   cat(sprintf("\n--- Feature Pooling ---\n"))
@@ -486,155 +484,159 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   X_pooled_test <- X_test[, features_pooled, drop = FALSE]
   
   # --------------------------------------------------------------------------
-  # Fit Penalized Fine-Gray Model on Pooled Features to calc. Risk score, 
-  # dont include clinical vars in this calculation
+  # Fit Penalized Fine-Gray Model (MRS Construction)
   # --------------------------------------------------------------------------
-  # Fine-Gray model: Models subdistribution hazard for event of interest
+  # dont do feature selection only do RS calcualtion
+  # Only use methylation features (exclude clinical vars)
   
-  selected_cpgs <- setdiff(colnames(X_pooled_train), included_clinvars)
+  coxnet_selected_cpgs <- setdiff(colnames(X_pooled_train), included_clinvars)
   
   cat(sprintf("\n========== PENALIZED FINE-GRAY (MRS CONSTRUCTION) ==========\n"))
   
   pFG_res <- fit_penalized_finegray_cv(
-    X_input = X_pooled_train[, selected_cpgs, drop = FALSE],
+    X_input = X_pooled_train[, coxnet_selected_cpgs, drop = FALSE],
     clinical_input = clinical_train,
-    alpha_seq = c(0.1, 0.2, 0.3, 0.4, 0.5),
+    alpha_seq = 0,#c(0.1, 0.2, 0.3, 0.4, 0.5),
     lambda_seq = NULL,
     cr_time = "time_to_CompRisk_event",
     cr_event = "CompRisk_event_coded",
-    penalty = "ENET",
+    penalty = "RIDGE",#"ENET",#
     n_inner_folds = 3
   )
   
-  # Extract selected features and coefficients
-  selected_cpgs_for_mrs <- pFG_res$results_table$feature[pFG_res$results_table$selected]
-  selected_cpgs_coefs <- setNames(
+  # Extract selected CpGs and their coefficients
+  pFG_selected_cpgs <- pFG_res$results_table$feature[pFG_res$results_table$selected]
+  pFG_cpg_coefs <- setNames(
     pFG_res$results_table$pFG_coefficient[pFG_res$results_table$selected],
-    selected_cpgs_for_mrs
+    pFG_selected_cpgs
   )
-  # scaling parsm for meRS calculation
-  selected_cpgs_scaleparams <- list ("centers"=pFG_res$results_table$scale_center,
-                                    "scale"=pFG_res$results_table$scale_scale)
+  
+  # Extract scaling parameters (CpGs were scaled inside pFG model)
+  pFG_cpg_scaling <- list(
+    center = setNames(
+      pFG_res$results_table$scale_center[pFG_res$results_table$selected],
+      pFG_selected_cpgs
+    ),
+    scale = setNames(
+      pFG_res$results_table$scale_scale[pFG_res$results_table$selected],
+      pFG_selected_cpgs
+    )
+  )
   
   cat(sprintf("  BEST PENALIZED FG: Alpha=%.2f, Lambda=%.6f, CpGs=%d\n",
               pFG_res$best_alpha,
               pFG_res$best_lambda,
-              length(selected_cpgs_for_mrs)))
-  cat("    Selected CpGs:", paste(selected_cpgs_for_mrs, collapse=", "), "\n")
+              length(pFG_selected_cpgs)))
+  cat("    Selected CpGs:", paste(pFG_selected_cpgs, collapse=", "), "\n")
   
   # --------------------------------------------------------------------------
   # Calculate Methylation Risk Score (MRS)
   # --------------------------------------------------------------------------
-  # MRS = weighted sum of selected CpGs (scaled)
   
-  cat(sprintf("\n--- Calculating Methylation Risk Score ---\n"))
-  
-  # Calculate MRS for Training Data
-  mrs_train_result <- calculate_methylation_risk_score(
+  # Training MRS
+  mrs_train <- calculate_methylation_risk_score(
     X_data = X_pooled_train,
-    cpg_coefficients = selected_cpgs_coefs,
-    scaling_params = selected_cpgs_scaleparams,
+    cpg_coefficients = pFG_cpg_coefs,
+    scaling_params = pFG_cpg_scaling,
     verbose = TRUE
   )
-  MRS_train <- mrs_train_result$mrs
-
-  # Calculate MRS for Test Data (using training scaling)
-  mrs_test_result <- calculate_methylation_risk_score(
-    X_data = X_pooled_test,
-    cpg_coefficients = selected_cpgs_coefs,
-    scaling_params = selected_cpgs_scaleparams,
-    verbose = TRUE
-  )
-  MRS_test <- mrs_test_result$mrs
   
-  # Scale the MRS itself
+  # Test MRS (using same scaling)
+  mrs_test <- calculate_methylation_risk_score(
+    X_data = X_pooled_test,
+    cpg_coefficients = pFG_cpg_coefs,
+    scaling_params = pFG_cpg_scaling,
+    verbose = TRUE
+  )
+  
+  MRS_train <- mrs_train$mrs
+  MRS_test <- mrs_test$mrs
+  
+  # Scale the MRS itself (optional)
   scale_mrs <- TRUE
+  mrs_scaling <- NULL
   if (scale_mrs) {
-    # Fit scaling on training MRS
     mrs_train_scaled <- scale(MRS_train)
-    # Extract parameters
-    mrs_center <- attr(mrs_train_scaled, "scaled:center")
-    mrs_scale  <- attr(mrs_train_scaled, "scaled:scale")
-    # Apply the same scaling to test MRS
+    mrs_scaling <- list(
+      center = attr(mrs_train_scaled, "scaled:center"),
+      scale = attr(mrs_train_scaled, "scaled:scale")
+    )
+    
     MRS_train <- as.numeric(mrs_train_scaled)
-    MRS_test  <- as.numeric((MRS_test - mrs_center) / mrs_scale)
+    MRS_test <- as.numeric(scale(MRS_test, 
+                                 center = mrs_scaling$center, 
+                                 scale = mrs_scaling$scale))
+    
     cat("  MRS scaled to mean=0, sd=1\n")
   }
   
   # --------------------------------------------------------------------------
   # Prepare Data for Final Unpenalized Fine-Gray Model
   # --------------------------------------------------------------------------
-  # Combine: clinical variables + MRS
   
   cat(sprintf("\n--- Preparing Final Model Data ---\n"))
   
-  identical(clinical_train$Sample,row.names(X_pooled_train)) #true
+  # Verify row alignment
+  if (!identical(rownames(clinical_train), rownames(X_pooled_train))) {
+    stop("Row names don't match between clinical_train and X_pooled_train")
+  }
   
-  fgr_train_data <- cbind(
-    clinical_train[, c("time_to_CompRisk_event", "CompRisk_event_coded")],
+  # Build training data
+  fgr_train_data <- data.frame(
+    time_to_CompRisk_event = clinical_train$time_to_CompRisk_event,
+    CompRisk_event_coded = clinical_train$CompRisk_event_coded,
     X_pooled_train[, included_clinvars, drop = FALSE],
-    methylation_risk_score = MRS_train
+    methylation_risk_score = MRS_train,
+    row.names = rownames(clinical_train)
   )
   
-  fgr_test_data <- cbind(
-    clinical_test[, c("time_to_CompRisk_event", "CompRisk_event_coded")],
+  # Build test data
+  fgr_test_data <- data.frame(
+    time_to_CompRisk_event = clinical_test$time_to_CompRisk_event,
+    CompRisk_event_coded = clinical_test$CompRisk_event_coded,
     X_pooled_test[, included_clinvars, drop = FALSE],
-    methylation_risk_score = MRS_test
+    methylation_risk_score = MRS_test,
+    row.names = rownames(clinical_test)
   )
   
-  # Scale clinical continuous variables
-  clin_scale <- scale_continuous_features(
-    X_train = fgr_train_data[, CLIN_CONT, drop = FALSE],
-    X_test  = fgr_test_data[, CLIN_CONT, drop = FALSE]
-  )
-  
-  fgr_train_data[, CLIN_CONT] <- clin_scale$X_train_scaled
-  fgr_test_data[, CLIN_CONT] <- clin_scale$X_test_scaled
+  if (DATA_MODE != "methylation") {
+    # Scale clinical continuous variables
+    clin_train_scaled <- scale(fgr_train_data[, CLIN_CONT, drop = FALSE])
+    clin_scaling <- list(
+      variables = CLIN_CONT,
+      center = attr(clin_train_scaled, "scaled:center"),
+      scale = attr(clin_train_scaled, "scaled:scale")
+    )
+    
+    clin_test_scaled <- scale(
+      fgr_test_data[, CLIN_CONT, drop = FALSE],
+      center = clin_scaling$center,
+      scale = clin_scaling$scale
+    )
+    
+    fgr_train_data[, CLIN_CONT] <- clin_train_scaled
+    fgr_test_data[, CLIN_CONT] <- clin_test_scaled
+  }
   
   cat(sprintf("  Final model predictors: %s\n", 
               paste(setdiff(colnames(fgr_train_data), 
                             c("time_to_CompRisk_event", "CompRisk_event_coded")), 
                     collapse=", ")))
   
-  # preprocessing params
-  fg_scaling_params <- list(
-    
-    # need scaling aprams from final pFG model input
-    #pFG_res$results_table
-    # CpGs scaling pre MRS calculation
-    scaleparams_meRS_cpgs = list(cpg_coefs = mrs_train_result$input_cpg_coefs,
-                                  center = mrs_train_result$scaling_params$center,
-                                 scale = mrs_train_result$scaling_params$scale),
-    
-    # MRS scaling
-    scaleparams_fg_meRS = list(center = mrs_center,scale = mrs_scale),
-    
-    # Clinical continuous variables scaling
-    scaleparams_fg_clincont = list(
-      variables = CLIN_CONT,
-      center = clin_scale$center,
-      scale  = clin_scale$scale
-    )
-  )
-  
   # --------------------------------------------------------------------------
   # Fit Unpenalized Fine-Gray Model (FINAL MODEL)
   # --------------------------------------------------------------------------
-  # Purpose: Estimate effects of clinical variables + MRS on competing risk outcome
-  # No regularization - all variables enter the model
   
   cat(sprintf("\n========== UNPENALIZED FINE-GRAY (FINAL MODEL) ==========\n"))
   
-  results <- fit_fine_gray_model(
+  fgr_final_result <- fit_fine_gray_model(
     fgr_data = fgr_train_data,
     cr_time = "time_to_CompRisk_event",
     cr_event = "CompRisk_event_coded",
     cause = 1
   )
   
-  fgr_final <- results$model
-  
-  cat(sprintf("  Final model fitted with %d predictors\n", length(fgr_final$crrFit$coef)))
+  fgr_final_model <- fgr_final_result$model
   
   # --------------------------------------------------------------------------
   # Evaluate Final Model Performance on Test Set
@@ -643,7 +645,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   cat(sprintf("\n--- Test Set Performance ---\n"))
   
   score_final <- Score(
-    list("FGR_Final" = fgr_final),
+    list("FGR_Final" = fgr_final_model),
     formula = Hist(time_to_CompRisk_event, CompRisk_event_coded) ~ 1,
     data = fgr_test_data,
     cause = 1,
@@ -659,10 +661,8 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # Extract performance metrics
   auc_final <- score_final$AUC$score[model == "FGR_Final"]
   brier_final <- score_final$Brier$score[model == "FGR_Final"]
-  
   eval_times <- auc_final$times
   
-  # Create performance dataframe
   auc_cols <- setNames(auc_final$AUC, paste0("auc_", eval_times, "yr"))
   brier_cols <- setNames(brier_final$Brier, paste0("brier_", eval_times, "yr"))
   
@@ -675,7 +675,6 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   )
   
   fgr_performance[, -1] <- round(fgr_performance[, -1], 2)
-  
   print(fgr_performance)
   
   # --------------------------------------------------------------------------
@@ -685,13 +684,12 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   cat(sprintf("\n--- Extracting Test Set Predictions ---\n"))
   
   pred_risks <- predictRisk(
-    fgr_final,
+    fgr_final_model,
     newdata = fgr_test_data,
     times = EVAL_TIMES,
     cause = 1
   )
   
-  # Combine with outcomes and MRS
   fold_predictions <- data.frame(
     fold = fold_idx,
     sample = rownames(fgr_test_data),
@@ -708,68 +706,56 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
               nrow(fold_predictions), length(EVAL_TIMES)))
   
   # --------------------------------------------------------------------------
-  # Extract and Store Coefficients (kept separate by model type)
+  # Extract and Store Coefficients
   # --------------------------------------------------------------------------
   
   cat(sprintf("\n--- Extracting Model Coefficients ---\n"))
   
-  # ========== 1. PENALIZED FG: CpG coefficients (used to build MRS) ==========
-  coef_pen_fg_df <- data.frame(
-    feature = selected_cpgs_for_mrs,
-    pen_fg_coef = selected_cpg_coefs,
-    pen_fg_HR = exp(selected_cpg_coefs)
+  # 1. Penalized FG: CpG coefficients for MRS
+  coef_penalized_fg <- data.frame(
+    feature = pFG_selected_cpgs,
+    pen_fg_coef = pFG_cpg_coefs,
+    pen_fg_HR = exp(pFG_cpg_coefs),
+    stringsAsFactors = FALSE,
+    row.names = NULL
   )
-  rownames(coef_pen_fg_df) <- NULL
   
-  cat(sprintf("\n  Penalized FG (CpG coefficients for MRS):\n"))
-  cat(sprintf("    %d CpGs in Model\n", nrow(coef_pen_fg_df)))
-  print(coef_pen_fg_df)
+  cat(sprintf("\n  Penalized FG (CpG coefficients for MRS): %d CpGs\n", 
+              nrow(coef_penalized_fg)))
+  print(head(coef_penalized_fg, 10))
   
-  # ========== 2. FINAL FG: Clinical + MRS coefficients ==========
-  fg_final_coef <- fgr_final$crrFit$coef
-  coef_final_fg_df <- data.frame(
+  # 2. Final FG: Clinical + MRS coefficients
+  fg_final_coef <- fgr_final_model$crrFit$coef
+  coef_final_fg <- data.frame(
     feature = names(fg_final_coef),
     final_fg_coef = as.vector(fg_final_coef),
-    final_fg_HR = exp(as.vector(fg_final_coef))
+    final_fg_HR = exp(as.vector(fg_final_coef)),
+    stringsAsFactors = FALSE,
+    row.names = NULL
   )
-  rownames(coef_final_fg_df) <- NULL
   
-  cat(sprintf("\n  Final Unpenalized FG (Clinical + MRS):\n"))
-  print(coef_final_fg_df)
+  cat(sprintf("\n  Final Unpenalized FG (Clinical + MRS): %d predictors\n",
+              nrow(coef_final_fg)))
+  print(coef_final_fg)
   
-  # ========== 3. COXNET: Clinical + CpG coefficients (for comparison) ==========
-  
+  # 3. CoxNet: Comparison table
   names(coef_rfi_df) <- c("feature", "cox_rfi_coef")
   names(coef_death_df) <- c("feature", "cox_death_coef")
-  # Full outer join to see all features from both Cox models
-  coef_coxnet_comparison <- merge(coef_rfi_df, coef_death_df, 
-                                  by = "feature", all = TRUE)
-  # Keep NAs as they indicate non-selection (don't replace with 0)
-  # Add HRs (only for non-NA coefficients)
-  coef_coxnet_comparison$cox_rfi_HR <- ifelse(
-    is.na(coef_coxnet_comparison$cox_rfi_coef),
-    NA,
-    exp(coef_coxnet_comparison$cox_rfi_coef)
-  )
-  coef_coxnet_comparison$cox_death_HR <- ifelse(
-    is.na(coef_coxnet_comparison$cox_death_coef),
-    NA,
-    exp(coef_coxnet_comparison$cox_death_coef)
-  )
-  coef_coxnet_comparison <- coef_coxnet_comparison[c(
-    "feature",
-    "cox_rfi_coef",
-    "cox_rfi_HR",
-    "cox_death_coef",
-    "cox_death_HR"
-  )]
-  rownames(coef_coxnet_comparison) <- NULL
+  
+  coef_coxnet <- merge(coef_rfi_df, coef_death_df, by = "feature", all = TRUE)
+  coef_coxnet$cox_rfi_HR <- ifelse(is.na(coef_coxnet$cox_rfi_coef), 
+                                   NA, 
+                                   exp(coef_coxnet$cox_rfi_coef))
+  coef_coxnet$cox_death_HR <- ifelse(is.na(coef_coxnet$cox_death_coef), 
+                                     NA, 
+                                     exp(coef_coxnet$cox_death_coef))
+  coef_coxnet <- coef_coxnet[c("feature", "cox_rfi_coef", "cox_rfi_HR", 
+                               "cox_death_coef", "cox_death_HR")]
+  rownames(coef_coxnet) <- NULL
   
   # --------------------------------------------------------------------------
-  # Store Fold Results (UPDATED)
+  # Store Fold Results
   # --------------------------------------------------------------------------
-  
-  fold_runtime <- as.numeric(difftime(Sys.time(), fold_start_time, units = "mins"))
   
   outer_fold_results[[fold_idx]] <- list(
     
@@ -779,54 +765,70 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     test_samples = rownames(X_test),
     n_train = nrow(X_train),
     n_test = nrow(X_test),
-    fold_runtime = fold_runtime,
     
     # ========== COXNET FEATURE SELECTION ==========
-    features_rfi = features_rfi,
-    features_death = features_death,
-    features_pooled = features_pooled,
+    coxnet = list(
+      features_rfi = features_rfi,
+      features_death = features_death,
+      features_pooled = features_pooled,
+      rfi_model = rfi_model$final_fit,
+      rfi_cv_result = rfi_model$best_result,
+      death_model = death_model$final_fit,
+      death_cv_result = death_model$best_result,
+      coefficients = coef_coxnet
+    ),
     
-    # CoxNet models and their coefficients
-    coxnet_rfi_model = rfi_model$final_fit,
-    coxnet_rfi_cv_result = rfi_model$best_result,
-    coxnet_death_model = death_model$final_fit,
-    coxnet_death_cv_result = death_model$best_result,
-    coxnet_coefficients = coef_coxnet_comparison,  # comparison of both Cox models
+    # ========== PENALIZED FINE-GRAY (MRS) ==========
+    penalized_fg = list(
+      selected_cpgs = pFG_selected_cpgs,
+      cpg_coefficients = pFG_cpg_coefs,  # Named vector
+      cpg_scaling = pFG_cpg_scaling,     # For MRS calculation
+      best_alpha = pFG_res$best_alpha,
+      best_lambda = pFG_res$best_lambda,
+      cv_result = pFG_res,
+      coefficients_table = coef_penalized_fg
+    ),
     
-    # ========== PENALIZED FINE-GRAY (MRS CONSTRUCTION) ==========
-    mrs_selected_cpgs = selected_cpgs_for_mrs,
-    mrs_cpg_coefficients = selected_cpg_coefs,
+    # ========== METHYLATION RISK SCORE ==========
+    mrs = list(
+      train = MRS_train,
+      test = MRS_test,
+      scaling = mrs_scaling  # NULL if not scaled
+    ),
     
-    penalized_fg_best_alpha = pFG_res$best_alpha,
-    penalized_fg_best_lambda = pFG_res$best_lambda,
-    penalized_fg_cv_result = pFG_res,
-    penalized_fg_coefficients = coef_pen_fg_df,  # CpG-level coefficients
+    # ========== FINAL FINE-GRAY MODEL ==========
+    final_fg = list(
+      model = fgr_final_model,
+      coefficients_table = coef_final_fg,
+      clinical_scaling = if (DATA_MODE != "methylation") clin_scaling else NULL,
+      performance = fgr_performance,
+      predictions = fold_predictions
+    ),
     
-    mrs_train = MRS_train,
-    mrs_test = MRS_test,
-    
-    # ========== FINAL UNPENALIZED FINE-GRAY MODEL ==========
-    finegray_final_model = fgr_final,
-    final_fg_coefficients = coef_final_fg_df,  # Clinical + MRS coefficients
-    
-    # Performance and predictions
-    performance_df = fgr_performance,
-    fold_predictions = fold_predictions,
-    
-    # ========== SCALING PARAMETERS ==========
-    scale_params = list(
-      meth_scale = meth_scale,
-      clin_scale = clin_scale,
-      mrs_scale = if(scale_mrs) mrs_scale else NULL
+    # ========== COMPLETE PREPROCESSING PIPELINE ==========
+    # Everything needed to apply this fold's model to new data
+    preprocessing = list(
+      # Step 1: Calculate MRS
+      mrs_cpg_coefficients = pFG_cpg_coefs,
+      mrs_cpg_scaling = pFG_cpg_scaling,
+      mrs_scaling = mrs_scaling,
+      
+      # Step 2: Scale clinical vars
+      clinical_continuous_vars = CLIN_CONT,
+      clinical_scaling = if (DATA_MODE != "methylation") clin_scaling else NULL,
+      
+      # Step 3: Clinical vars to include
+      clinical_predictors = included_clinvars
     )
   )
+  fold_runtime <- as.numeric(difftime(Sys.time(), fold_start_time, units = "mins"))
   cat(sprintf("\n✓ Fold %d completed in %.1f minutes\n", fold_idx, fold_runtime))
-  
 }
 
 ################################################################################
 # SAVE RAW CV RESULTS (SAFETY BACKUP)
 ################################################################################
+#load("./output/FineGray/ERpHER2n/Combined/Unadjusted/outer_fold_results.RData")
 
 save(outer_fold_results, file = file.path(current_output_dir, 
                                           "outer_fold_results.RData"))
@@ -866,6 +868,8 @@ cat("Outer fold results saved (complete with aggregations)\n")
 
 #
 #load("~/PhD_Workspace/PredictRecurrence/output/FineGray/ERpHER2n/Methylation/Unadjusted/outer_fold_results.RData")
+#load(file.path(current_output_dir, "outer_fold_results.RData"))
+
 ################################################################################
 # TRAIN FINAL MODEL ON ALL DATA
 ################################################################################
@@ -883,69 +887,152 @@ cat(sprintf("Training samples: n=%d (RFi=%d, Death=%d)\n",
 # ----------------------------------------------------------------------------
 # Collect CV-Discovered Features
 # ----------------------------------------------------------------------------
-STABILITY_THRESHOLD_FG = 0.6
+STABILITY_THRESHOLD_FG = 0.4
 cat(sprintf("\n--- Collecting CV-Discovered Features ---\n"))
 
 stability_metrics <- stability_results$stability_metrics
 
 # Select stable non-clinical features
-stable_features <- stability_metrics$feature[
+stable_cpgs <- stability_metrics$feature[
     stability_metrics$selection_freq >= STABILITY_THRESHOLD_FG &
     stability_metrics$direction_consistent == TRUE
 ]
 
+cat(sprintf(
+  "Including CpGs with selection_freq ≥ %.2f and consistent direction: n = %d\n",
+  STABILITY_THRESHOLD_FG,
+  length(stable_cpgs)
+))
+
 # Always include clinical variables
 stable_features <- c(
-  stability_metrics$feature[stability_metrics$is_clinical == TRUE], 
-  stable_features
+  included_clinvars, 
+  stable_cpgs
 )
 
-X_pooled_all <- X_all[, stable_features, drop = FALSE]
+#X_all <- X_all[, stable_features, drop = FALSE]
+#X_all_stable_features[, stable_cpgs, drop = FALSE]
+#--------------------------------------------------------------------------
+# Fit Penalized Fine-Gray Model (MRS Construction)
+# --------------------------------------------------------------------------
+coxnet_selected_cpgs <- setdiff(colnames(X_pooled_train), included_clinvars)
 
-# ----------------------------------------------------------------------------
-# Scale Features
-# ----------------------------------------------------------------------------
+cat(sprintf("\n========== PENALIZED FINE-GRAY (MRS CONSTRUCTION) ==========\n"))
 
-cat(sprintf("\n--- Scaling Continuous Features ---\n"))
-
-scale_res_all <- scale_continuous_features(
-  X_train = X_pooled_all, 
-  X_test = NULL, 
-  dont_scale = if (DATA_MODE == "methylation") NULL else encoded_result$encoded_cols
+pFG_res <- fit_penalized_finegray_cv(
+  X_input = X_all[, stable_cpgs, drop = FALSE],
+  clinical_input = clinical_all,
+  alpha_seq = 0,#c(0.1, 0.2, 0.3, 0.4, 0.5),
+  lambda_seq = NULL,
+  cr_time = "time_to_CompRisk_event",
+  cr_event = "CompRisk_event_coded",
+  penalty = "RIDGE",#"ENET",#
+  n_inner_folds = 3
 )
 
-X_all_scaled <- scale_res_all$X_train_scaled
-
-# ----------------------------------------------------------------------------
-# Fit Final Fine-Gray Model
-# ----------------------------------------------------------------------------
-
-cat(sprintf("\n--- Fitting Fine-Gray Model ---\n"))
-
-fgr_all_data <- cbind(
-  clinical_all[c("time_to_CompRisk_event","CompRisk_event_coded")], 
-  X_all_scaled
+# Extract selected CpGs and their coefficients
+pFG_selected_cpgs <- pFG_res$results_table$feature[pFG_res$results_table$selected]
+pFG_cpg_coefs <- setNames(
+  pFG_res$results_table$pFG_coefficient[pFG_res$results_table$selected],
+  pFG_selected_cpgs
 )
 
-feature_cols <- setdiff(
-  colnames(fgr_all_data), 
-  c("time_to_CompRisk_event", "CompRisk_event_coded")
+# Extract scaling parameters (CpGs were scaled inside pFG model)
+pFG_cpg_scaling <- list(
+  center = setNames(
+    pFG_res$results_table$scale_center[pFG_res$results_table$selected],
+    pFG_selected_cpgs
+  ),
+  scale = setNames(
+    pFG_res$results_table$scale_scale[pFG_res$results_table$selected],
+    pFG_selected_cpgs
+  )
 )
 
-formula_str <- paste(
-  "Hist(time_to_CompRisk_event, CompRisk_event_coded) ~", 
-  paste(feature_cols, collapse = " + ")
-)
-formula_fg <- as.formula(formula_str)
+cat(sprintf("  BEST PENALIZED FG: Alpha=%.2f, Lambda=%.6f, CpGs=%d\n",
+            pFG_res$best_alpha,
+            pFG_res$best_lambda,
+            length(pFG_selected_cpgs)))
+cat("    Selected CpGs:", paste(pFG_selected_cpgs, collapse=", "), "\n")
 
-fgr_final <- FGR(
-  formula = formula_fg,
-  data = fgr_all_data,
+# --------------------------------------------------------------------------
+# Calculate Methylation Risk Score (MRS)
+# --------------------------------------------------------------------------
+
+# Training MRS
+mrs_all <- calculate_methylation_risk_score(
+  X_data = X_all[, stable_cpgs, drop = FALSE],
+  cpg_coefficients = pFG_cpg_coefs,
+  scaling_params = pFG_cpg_scaling,
+  verbose = TRUE
+)
+MRS_all <- mrs_all$mrs
+
+# Scale the MRS itself (optional)
+scale_mrs <- TRUE
+mrs_scaling <- NULL
+if (scale_mrs) {
+  mrs_train_scaled <- scale(MRS_all)
+  mrs_scaling <- list(
+    center = attr(mrs_train_scaled, "scaled:center"),
+    scale = attr(mrs_train_scaled, "scaled:scale")
+  )
+  
+  MRS_all <- as.numeric(mrs_train_scaled)
+  cat("  MRS scaled to mean=0, sd=1\n")
+}
+
+# --------------------------------------------------------------------------
+# Prepare Data for Final Unpenalized Fine-Gray Model
+# --------------------------------------------------------------------------
+
+cat(sprintf("\n--- Preparing Final Model Data ---\n"))
+
+# Verify row alignment
+if (!identical(rownames(clinical_all), rownames(X_all))) {
+  stop("Row names don't match between clinical_train and X_pooled_train")
+}
+
+# Build training data
+fgr_all_data <- data.frame(
+  time_to_CompRisk_event = clinical_all$time_to_CompRisk_event,
+  CompRisk_event_coded = clinical_all$CompRisk_event_coded,
+  X_all[, included_clinvars, drop = FALSE],
+  methylation_risk_score = MRS_all,
+  row.names = rownames(clinical_all)
+)
+
+if (DATA_MODE != "methylation") {
+  # Scale clinical continuous variables
+  clin_all_scaled <- scale(fgr_all_data[, CLIN_CONT, drop = FALSE])
+  clin_scaling <- list(
+    variables = CLIN_CONT,
+    center = attr(clin_all_scaled, "scaled:center"),
+    scale = attr(clin_all_scaled, "scaled:scale")
+  )
+  fgr_all_data[, CLIN_CONT] <- clin_all_scaled
+}
+
+cat(sprintf("  Final model predictors: %s\n", 
+            paste(setdiff(colnames(fgr_all_data), 
+                          c("time_to_CompRisk_event", "CompRisk_event_coded")), 
+                  collapse=", ")))
+
+# --------------------------------------------------------------------------
+# Fit Unpenalized Fine-Gray Model (FINAL MODEL)
+# --------------------------------------------------------------------------
+
+cat(sprintf("\n========== UNPENALIZED FINE-GRAY (FINAL MODEL) ==========\n"))
+
+fgr_final_all_result <- fit_fine_gray_model(
+  fgr_data = fgr_all_data,
+  cr_time = "time_to_CompRisk_event",
+  cr_event = "CompRisk_event_coded",
   cause = 1
 )
 
-cat(sprintf("Fine-Gray model fitted with %d features\n", length(feature_cols)))
-print(fgr_final)
+fgr_final_all_model <- fgr_final_all_result$model
+print(fgr_final_all_model)
 
 # ----------------------------------------------------------------------------
 # Calculate Variable Importance
@@ -954,7 +1041,7 @@ print(fgr_final)
 cat("\n--- Fine-Gray Variable Importance ---\n")
 
 vimp_fg_final <- calculate_fgr_importance(
-  fgr_model = fgr_final,
+  fgr_model = fgr_final_all_model,
   encoded_cols = if (DATA_MODE == "methylation") NULL else encoded_result$encoded_cols,
   verbose = FALSE
 )
@@ -966,7 +1053,7 @@ print(vimp_fg_final)
 ################################################################################
 
 final_results <- list(
-  fgr_final = fgr_final,
+  fgr_final = fgr_final_all_model,
   vimp_fg_final = vimp_fg_final,
   metadata = list(
     N_OUTER_FOLDS = N_OUTER_FOLDS,
