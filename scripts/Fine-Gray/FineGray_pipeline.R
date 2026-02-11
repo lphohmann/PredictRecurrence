@@ -110,7 +110,7 @@ dir.create(current_output_dir, recursive = TRUE, showWarnings = FALSE)
 ################################################################################
 
 # Create log filename with script name and timestamp
-script_name <- "finegray_pipeline_var_coxnet"
+script_name <- "finegray_pipeline"
 timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
 log_filename <- sprintf("%s_%s.log", script_name, timestamp)
 log_path <- file.path(current_output_dir, log_filename)
@@ -136,27 +136,34 @@ cat(sprintf("%s\n\n", paste(rep("=", 80), collapse = "")))
 ADMIN_CENSORING_CUTOFF <- if (COHORT_NAME == "TNBC") 5.01 else NULL
 
 # Categorical variables depend on cohort
-if (COHORT_NAME == "All") {
-  CLIN_CATEGORICAL <- c("NHG", "LN", "ER", "PR", "HER2")
+if (DATA_MODE %in% c("combined")) {
+  CLIN_CONT <- c("Age", "Size.mm")
+  CLIN_CATEGORICAL <- if (COHORT_NAME == "All") {
+    c("NHG", "LN", "ER", "PR", "HER2")
+  } else {
+    c("NHG", "LN")
+  }
+  CLINVARS_INCLUDED <- c(CLIN_CONT, CLIN_CATEGORICAL)
+  cat(sprintf("Clinical categorical variables: %s\n", paste(CLIN_CATEGORICAL, collapse=", ")))
+  cat(sprintf("Clinical continuous variables: %s\n", paste(CLIN_CONT, collapse=", ")))
 } else {
-  CLIN_CATEGORICAL <- c("NHG", "LN")
+  CLIN_CONT <- NULL
+  CLIN_CATEGORICAL <- NULL
+  CLINVARS_INCLUDED <- NULL
 }
-
-CLIN_CONT <- c("Age", "Size.mm")
-
-cat(sprintf("Clinical categorical variables: %s\n", paste(CLIN_CATEGORICAL, collapse=", ")))
-cat(sprintf("Clinical continuous variables: %s\n", paste(CLIN_CONT, collapse=", ")))
 
 # Feature selection - variance filter only
 VARIANCE_QUANTILE <- 0.75  # Keep top 25% most variable features
 
-# Variables to not penalize in elastic net (after one-hot encoding)
-# These get coefficient shrinkage but not eliminated (penalty_factor = 0)
-
 # Cross-validation
 N_OUTER_FOLDS <- 5
+
+# for CoxNets
 N_INNER_FOLDS <- 3
-ALPHA_GRID <- c(0.5,0.7,0.9)  # Elastic net mixing: 0=ridge, 1=lasso, 0.9=mostly lasso
+ALPHA_GRID <- c(0.5,0.7,0.9)  # Elastic net mixing
+
+# 
+STABILITY_THRESHOLD_FG <- 0.4
 
 # Performance evaluation timepoints (in years)
 EVAL_TIMES <- seq(1, 10)
@@ -475,6 +482,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   
   # Check if any features were selected
   if (length(features_pooled) == 0) {
+    cat(sprintf("Fold %d: No features selected by either model. Skipping fold.", fold_idx))
     warning(sprintf("Fold %d: No features selected by either model. Skipping fold.", fold_idx))
     next
   }
@@ -490,6 +498,13 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # Only use methylation features (exclude clinical vars)
   
   coxnet_selected_cpgs <- setdiff(colnames(X_pooled_train), included_clinvars)
+  
+  # Check if any cpgs were selected
+  if (length(coxnet_selected_cpgs) == 0) {
+    cat(sprintf("Fold %d: No cpgs selected by coxnets. Skipping fold.", fold_idx))
+    warning(sprintf("Fold %d: No cpgs selected by coxnets. Skipping fold.", fold_idx))
+    next
+  }
   
   cat(sprintf("\n========== PENALIZED FINE-GRAY (MRS CONSTRUCTION) ==========\n"))
   
@@ -887,7 +902,6 @@ cat(sprintf("Training samples: n=%d (RFi=%d, Death=%d)\n",
 # ----------------------------------------------------------------------------
 # Collect CV-Discovered Features
 # ----------------------------------------------------------------------------
-STABILITY_THRESHOLD_FG = 0.4
 cat(sprintf("\n--- Collecting CV-Discovered Features ---\n"))
 
 stability_metrics <- stability_results$stability_metrics

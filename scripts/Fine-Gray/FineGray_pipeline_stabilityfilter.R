@@ -194,13 +194,19 @@ cat(sprintf("%s\n\n", paste(rep("=", 80), collapse = "")))
 ADMIN_CENSORING_CUTOFF <- if (COHORT_NAME == "TNBC") 5.01 else NULL
 
 # Categorical variables depend on cohort
-if (COHORT_NAME == "All") {
-  CLIN_CATEGORICAL <- c("NHG", "LN", "ER", "PR", "HER2")
+if (DATA_MODE %in% c("combined")) {
+  CLIN_CONT <- c("Age", "Size.mm")
+  CLIN_CATEGORICAL <- if (COHORT_NAME == "All") {
+    c("NHG", "LN", "ER", "PR", "HER2")
+  } else {
+    c("NHG", "LN")
+  }
+  CLINVARS_INCLUDED <- c(CLIN_CONT, CLIN_CATEGORICAL)
 } else {
-  CLIN_CATEGORICAL <- c("NHG", "LN")
+  CLIN_CONT <- NULL
+  CLIN_CATEGORICAL <- NULL
+  CLINVARS_INCLUDED <- NULL
 }
-
-CLIN_CONT <- c("Age", "Size.mm")
 
 cat(sprintf("Clinical categorical variables: %s\n", paste(CLIN_CATEGORICAL, collapse=", ")))
 

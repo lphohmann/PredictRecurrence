@@ -1,26 +1,19 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-set -e  # stop on error
-
-SCRIPT="./scripts/Fine-Gray/FineGray_pipeline_innerCVstability.R"
-
+SCRIPT="./scripts/Fine-Gray/FineGray_dual_pipeline.R"
 COHORTS=("TNBC" "ERpHER2n" "All")
-MODES=("methylation" "combined")
 
 for COHORT in "${COHORTS[@]}"; do
-  for MODE in "${MODES[@]}"; do
-    echo "===================================================="
-    echo "Running Fine-Gray pipeline"
-    echo "  Cohort:    ${COHORT}"
-    echo "  Data mode: ${MODE}"
-    echo "===================================================="
+  echo "========================================"
+  echo "Running Fine-Gray pipeline for cohort: ${COHORT}"
+  echo "========================================"
 
-    Rscript "${SCRIPT}" "${COHORT}" "${MODE}"
+  Rscript "${SCRIPT}" "${COHORT}"
 
-    echo "✓ Finished ${COHORT} / ${MODE}"
-    echo
-  done
+  echo "Finished cohort: ${COHORT}"
+  echo
 done
 
-echo "🎉 All Fine-Gray runs completed"
+echo "All cohorts completed."
 
