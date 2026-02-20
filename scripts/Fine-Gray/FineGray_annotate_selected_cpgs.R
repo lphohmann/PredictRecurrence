@@ -79,6 +79,10 @@ if (!exists("features_pooled_all"))
 final_features <- features_pooled_all
 cpg_features <- final_features[grepl("^cg", final_features)]
 
+load(file = "./output/FineGray/ERpHER2n/DualMode/Unadjusted/final_fg_results.RData")
+
+cpg_features <- final_results$mrs_construction$selected_cpgs
+
 cat(sprintf(
   "Final features: %d | CpGs: %d | Clinical removed: %d\n",
   length(final_features),
@@ -91,8 +95,9 @@ cat(sprintf(
 ################################################################################
 
 cpg_anno <- read_csv(CPG_ANNOTATION_FILE, show_col_types = FALSE)
-if (!"illuminaID" %in% colnames(cpg_anno))
+if (!"illuminaID" %in% colnames(cpg_anno)) {
   stop("Annotation file must contain 'illuminaID'")
+  }
 
 annotated_cpgs <- cpg_anno %>%
   filter(illuminaID %in% cpg_features) %>%
@@ -165,6 +170,11 @@ mval_cpg <- beta_to_m(beta_cpg, beta_threshold = 0.001)
 ################################################################################
 # HEATMAP: CpG–CpG CORRELATION (M-values, CENTERED AT 0)
 ################################################################################
+# Subset CpGs ONLY (after loading)
+beta_cpg <- beta_matrix[, cpg_features, drop = FALSE]
+
+# Same transformation as pipeline
+mval_cpg <- beta_to_m(beta_cpg, beta_threshold = 0.001)
 
 corr_mat <- cor(
   mval_cpg,
@@ -196,27 +206,27 @@ pheatmap(
   width = 8,
   height = 8
 )
-
-################################################################################
-# PLOT 2: BETA VALUE HISTOGRAMS
-################################################################################
-
-beta_long <- beta_cpg %>%
-  as.data.frame() %>%
-  tibble::rownames_to_column("Sample") %>%
-  pivot_longer(-Sample, names_to = "CpG", values_to = "Beta")
-
-ggplot(beta_long, aes(Beta)) +
-  geom_histogram(bins = 50, fill = "steelblue", color = "black") +
-  facet_wrap(~ CpG, scales = "free_y") +
-  theme_bw() +
-  labs(title = "Beta value distributions")
-
-ggsave(
-  file.path(output_dir, "beta_value_histograms.pdf"),
-  width = 10,
-  height = 8
-)
+# 
+# ################################################################################
+# # PLOT 2: BETA VALUE HISTOGRAMS
+# ################################################################################
+# 
+# beta_long <- beta_cpg %>%
+#   as.data.frame() %>%
+#   tibble::rownames_to_column("Sample") %>%
+#   pivot_longer(-Sample, names_to = "CpG", values_to = "Beta")
+# 
+# ggplot(beta_long, aes(Beta)) +
+#   geom_histogram(bins = 50, fill = "steelblue", color = "black") +
+#   facet_wrap(~ CpG, scales = "free_y") +
+#   theme_bw() +
+#   labs(title = "Beta value distributions")
+# 
+# ggsave(
+#   file.path(output_dir, "beta_value_histograms.pdf"),
+#   width = 10,
+#   height = 8
+# )
 
 ################################################################################
 # PLOT 3: FEATURE CLASS BARPLOT

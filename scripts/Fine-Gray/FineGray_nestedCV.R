@@ -1,166 +1,98 @@
 #!/usr/bin/env Rscript
-
 ################################################################################
 # Fine-Gray Competing Risks with Dual Final Models
 # Author: Lennart Hohmann
-
 ################################################################################
 # LIBRARIES
 ################################################################################
+setwd("~/PhD_Workspace/PredictRecurrence/")
 
-library(readr)        # Fast CSV reading
-library(dplyr)        # Data manipulation
-library(survival)     # Survival analysis (Surv objects, concordance)
-library(glmnet)       # Elastic net Cox regression
-library(cmprsk)
-library(caret)        # Cross-validation fold creation
-library(data.table)   # Fast data reading with fread
-library(riskRegression) # Score() function for competing risks metrics
-library(prodlim) #prodlim::Hist()
+library(readr)          # fast CSV reading
+library(dplyr)          # data manipulation
+library(survival)       # Surv objects
+library(glmnet)         # elastic net Cox regression
+library(cmprsk)         # competing risks
+library(caret)          # CV fold creation
+library(data.table)     # fast data reading
+library(riskRegression) # Score() for competing risks metrics
+library(prodlim)        # prodlim::Hist()
 library(devtools)
 library(fastcmprsk)
 
-setwd("~/PhD_Workspace/PredictRecurrence/")
 source("./src/finegray_functions.R")
 
 ################################################################################
 # COMMAND LINE ARGUMENTS
 ################################################################################
-
 args <- commandArgs(trailingOnly = TRUE)
 
-# Defaults
-DEFAULT_COHORT <- "TNBC"
-DEFAULT_TRAIN_CPGS <- "./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt"
-DEFAULT_OUTPUT_DIR <- "./output/FineGray"
-
-# Parse arguments
-if (length(args) == 0) {
-  cat("No command line arguments provided. Using defaults.\n")
-  COHORT_NAME <- DEFAULT_COHORT
-  TRAIN_CPGS <- DEFAULT_TRAIN_CPGS
-  OUTPUT_BASE_DIR <- DEFAULT_OUTPUT_DIR
-  
-} else if (length(args) == 1) {
-  COHORT_NAME <- args[1]
-  TRAIN_CPGS <- DEFAULT_TRAIN_CPGS
-  OUTPUT_BASE_DIR <- DEFAULT_OUTPUT_DIR
-  
-} else {
-  cat("\n=== USAGE ===\n")
-  cat("Rscript FineGray_dual_pipeline.R <COHORT>\n\n")
-  cat("Arguments:\n")
-  cat("  COHORT      : 'TNBC', 'ERpHER2n', or 'All'\n\n")
-  cat("Example:\n")
-  cat("  Rscript FineGray_dual_pipeline.R ERpHER2n\n\n")
-  cat("Or run without arguments to use defaults:\n")
-  cat("  Rscript FineGray_dual_pipeline.R\n\n")
-  stop("Incorrect number of arguments provided.")
-}
-
-# Validate inputs
-if (!COHORT_NAME %in% c("TNBC", "ERpHER2n", "All")) {
-  stop(sprintf("Invalid COHORT_NAME: '%s'. Must be 'TNBC', 'ERpHER2n', or 'All'", COHORT_NAME))
-}
-
-if (TRAIN_CPGS == "NULL") {
-  TRAIN_CPGS <- NULL
-}
-
-# Print configuration
-cat(sprintf("\n=== PIPELINE SETTINGS ===\n"))
-cat(sprintf("Cohort:      %s\n", COHORT_NAME))
-cat(sprintf("Mode:        Methylation CV → Dual Final Models (MRS-only & MRS+Clinical)\n"))
-cat(sprintf("CpG file:    %s\n", ifelse(is.null(TRAIN_CPGS), "NULL (all CpGs)", TRAIN_CPGS)))
-cat(sprintf("Output dir:  %s\n", OUTPUT_BASE_DIR))
-cat(sprintf("=========================\n\n"))
+COHORT_NAME <- "TNBC" # 'TNBC', 'ERpHER2n', 'All'
+if (length(args) == 1) COHORT_NAME <- args[1]
 
 ################################################################################
-# INPUT OUTPUT SETTINGS
+# INPUT / OUTPUT
 ################################################################################
+SCRIPT_NAME <- "finegray_nCV"
 
-# Input files
 INFILE_METHYLATION <- "./data/train/train_methylation_unadjusted.csv"
-COHORT_TRAIN_IDS_PATHS <- list(
-  TNBC = "./data/train/train_subcohorts/TNBC_train_ids.csv",
-  ERpHER2n = "./data/train/train_subcohorts/ERpHER2n_train_ids.csv",
-  All = "./data/train/train_subcohorts/All_train_ids.csv"
-)
-INFILE_CLINICAL <- "./data/train/train_clinical.csv"
+INFILE_CLINICAL    <- "./data/train/train_clinical.csv"
+TRAIN_CPGS         <- "./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt"
 
-# Output directory - simplified since we don't have DATA_MODE
-current_output_dir <- file.path(
-  OUTPUT_BASE_DIR, 
-  COHORT_NAME, 
-  "DualMode",  # New folder name to distinguish from old pipeline
-  "Unadjusted"
+COHORT_TRAIN_IDS_PATHS <- list(
+  TNBC     = "./data/train/train_subcohorts/TNBC_train_ids.csv",
+  ERpHER2n = "./data/train/train_subcohorts/ERpHER2n_train_ids.csv",
+  All      = "./data/train/train_subcohorts/All_train_ids.csv"
 )
+
+current_output_dir <- file.path("./output/FineGray", COHORT_NAME)
 dir.create(current_output_dir, recursive = TRUE, showWarnings = FALSE)
 
 ################################################################################
-# SETUP LOGGING
+# LOGGING
 ################################################################################
-
-script_name <- "finegray_dual_pipeline"
-timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
-log_filename <- sprintf("%s_%s.log", script_name, timestamp)
-log_path <- file.path(current_output_dir, log_filename)
-
+log_path <- file.path(current_output_dir,
+                      sprintf("%s_%s.log", SCRIPT_NAME,
+                              format(Sys.time(), "%Y%m%d_%H%M%S")))
+# comment to switch off logging
 log_con <- file(log_path, open = "wt")
 sink(log_con, type = "output", split = TRUE)
 sink(log_con, type = "message")
 
-cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))
-cat(sprintf("FINE-GRAY DUAL MODEL PIPELINE\n"))
-cat(sprintf("Started: %s\n", Sys.time()))
-cat(sprintf("Cohort: %s\n", COHORT_NAME))
-cat(sprintf("Log file: %s\n", log_path))
-cat(sprintf("%s\n\n", paste(rep("=", 80), collapse = "")))
-
 ################################################################################
 # PARAMETERS
 ################################################################################
-
-# Administrative censoring
-ADMIN_CENSORING_CUTOFF <- if (COHORT_NAME == "TNBC") 5.01 else NULL
-
-# Clinical variables for final models only
-# These are NOT used in CV feature selection, only in final Model 2
-CLIN_CONT <- c("Age", "Size.mm")
-CLIN_CATEGORICAL <- if (COHORT_NAME == "All") {
-  c("NHG", "LN", "ER", "PR", "HER2")
-} else {
-  c("NHG", "LN")
-}
-CLINVARS_ALL <- c(CLIN_CONT, CLIN_CATEGORICAL)
-
-cat(sprintf("Clinical variables (for unpen FG Model 2 only):\n"))
-cat(sprintf("  Continuous: %s\n", paste(CLIN_CONT, collapse=", ")))
-cat(sprintf("  Categorical: %s\n\n", paste(CLIN_CATEGORICAL, collapse=", ")))
-
-# Feature selection - variance filter only
-VARIANCE_QUANTILE <- 0.75
-
 # Cross-validation
-N_OUTER_FOLDS <- 5
-N_INNER_FOLDS <- 3
-ALPHA_GRID <- c(0.5, 0.7, 0.9)
+N_OUTER_FOLDS     <- 5
+N_INNER_FOLDS     <- 3
+VARIANCE_QUANTILE <- 0.75
+ALPHA_GRID        <- c(0.5)#c(0.5, 0.7, 0.9)
 
-# Stability threshold for final model
-STABILITY_THRESHOLD_FG <- 0.4
+# Cohort-specific
+ADMIN_CENSORING_CUTOFF <- if (COHORT_NAME == "TNBC") 5.01 else NULL
+EVAL_TIMES             <- if (COHORT_NAME == "TNBC") 1:5 else 1:10
 
-# Performance evaluation timepoints (in years)
-EVAL_TIMES <- seq(1, 10)
-if (COHORT_NAME =="TNBC") {
-  EVAL_TIMES <- EVAL_TIMES[1:5]
-  ALPHA_GRID <- c(0.5)
-}
+# Clinical variables (final combined model only)
+CLIN_CONT        <- c("Age", "Size.mm")
+CLIN_CATEGORICAL <- if (COHORT_NAME == "All") c("NHG", "LN", "ER", "PR", "HER2") else c("NHG", "LN")
+CLINVARS_ALL     <- c(CLIN_CONT, CLIN_CATEGORICAL)
+
+################################################################################
+# RUN INFO
+################################################################################
+start_time <- Sys.time()
+cat(paste(rep("=", 80), collapse = ""), "\n")
+cat(sprintf("%s\n", toupper(SCRIPT_NAME)))
+cat(sprintf("Started:             %s\n", start_time))
+cat(sprintf("Cohort:              %s\n", COHORT_NAME))
+cat(sprintf("Clinical variables:  %s\n", paste(CLINVARS_ALL, collapse = ", ")))
+cat(sprintf("Evaluation times:    %s\n", paste(EVAL_TIMES,   collapse = ", ")))
+cat(sprintf("Log file:            %s\n", log_path))
+cat(paste(rep("=", 80), collapse = ""), "\n\n")
 
 ################################################################################
 # DATA LOADING AND PREPROCESSING
 ################################################################################
 
-start_time <- Sys.time()
 cat(sprintf("\n========== LOADING DATA ==========\n"))
 
 # Load sample IDs and data
@@ -208,13 +140,6 @@ clinical_data$LN <- gsub("N\\+", "Np", clinical_data$LN)
 clin <- clinical_data[c(CLIN_CONT, CLIN_CATEGORICAL)]
 clin <- clin[rownames(X), , drop = FALSE]
 encoded_result <- onehot_encode_clinical(clin, CLIN_CATEGORICAL)
-#encoded_result$encoded_df
-# i have to combined only for trainign th unpen fg models at the en of nCV outer folds
-#X <- cbind(X, encoded_result$encoded_df)
-#clinvars <- c(CLIN_CONT, encoded_result$encoded_cols)
-
-#VARS_PRESERVE <- NULL
-#VARS_NO_PENALIZATION <- NULL
 
 ################################################################################
 # COMPETING RISKS OUTCOME DEFINITION
@@ -493,7 +418,6 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   MRS_test <- mrs_test$mrs
   
   # Scale the MRS itself (optional)
-
   mrs_train_scaled <- scale(MRS_train)
   mrs_scaling <- list(
     center = attr(mrs_train_scaled, "scaled:center"),
@@ -523,7 +447,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     time_to_CompRisk_event = clinical_train$time_to_CompRisk_event,
     CompRisk_event_coded = clinical_train$CompRisk_event_coded,
     encoded_result$encoded_df[rownames(X_pooled_train), , drop = FALSE],
-    methylation_risk_score = MRS_train,
+    MeRS = MRS_train,
     row.names = rownames(clinical_train)
   )
   
@@ -532,7 +456,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
     time_to_CompRisk_event = clinical_test$time_to_CompRisk_event,
     CompRisk_event_coded = clinical_test$CompRisk_event_coded,
     encoded_result$encoded_df[rownames(X_pooled_test), , drop = FALSE],
-    methylation_risk_score = MRS_test,
+    MeRS = MRS_test,
     row.names = rownames(clinical_test)
   )
   
@@ -575,7 +499,7 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
   # Fit Unpenalized Fine-Gray Model 2: only clin
   
   fgr_CLIN <- fit_fine_gray_model(
-    fgr_data = fgr_train_data[,colnames(fgr_train_data) != "methylation_risk_score"],
+    fgr_data = fgr_train_data[,colnames(fgr_train_data) != "MeRS"],
     cr_time = "time_to_CompRisk_event",
     cr_event = "CompRisk_event_coded",
     cause = 1
@@ -734,258 +658,80 @@ for (fold_idx in 1:N_OUTER_FOLDS) {
 ################################################################################
 #load("./output/FineGray/ERpHER2n/Combined/Unadjusted/outer_fold_results.RData")
 
-save(outer_fold_results, file = file.path(current_output_dir, 
+nCV_results <- list(
+  outer_fold_results = outer_fold_results,
+  aggregated_perf_results = NULL,
+  stability_results = NULL
+)
+
+save(nCV_results, file = file.path(current_output_dir, 
                                           "outer_fold_results.RData"))
 cat("Outer fold results saved (backup)\n")
-# 
-# ################################################################################
-# # AGGREGATE CV RESULTS
-# ################################################################################
-# 
-# perf_results <- aggregate_cv_performance(outer_fold_results)
-# 
-# stability_results <- assess_finegray_stability(
-#   outer_fold_results
-# )
-# 
-# ################################################################################
-# # SAVE COMPLETE CV RESULTS (OVERWRITES BACKUP)
-# ################################################################################
-# 
-# cv_results <- list(
-#   outer_fold_results = outer_fold_results,
-#   perf_results = perf_results,
-#   stability_results = stability_results,
-#   metadata = list(
-#     N_OUTER_FOLDS = N_OUTER_FOLDS,
-#     EVAL_TIMES = EVAL_TIMES,
-#     clinvars = clinvars,
-#     COHORT_NAME = COHORT_NAME,
-#     DATA_MODE = DATA_MODE
-#   )
-# )
-# 
-# save(cv_results, file = file.path(current_output_dir, 
-#                                   "outer_fold_results.RData"))
-# cat("Outer fold results saved (complete with aggregations)\n")
-# 
-# 
-# #
-# #load("~/PhD_Workspace/PredictRecurrence/output/FineGray/ERpHER2n/Methylation/Unadjusted/outer_fold_results.RData")
-# #load(file.path(current_output_dir, "outer_fold_results.RData"))
-# 
-# ################################################################################
-# # TRAIN FINAL MODEL ON ALL DATA
-# ################################################################################
-# 
-# cat(sprintf("\n========== TRAINING FINAL MODEL ==========\n"))
-# 
-# X_all <- X
-# clinical_all <- clinical_data
-# 
-# cat(sprintf("Training samples: n=%d (RFi=%d, Death=%d)\n",
-#             nrow(X_all),
-#             sum(clinical_all$RFi_event),
-#             sum(clinical_all$DeathNoR_event)))
-# 
-# # ----------------------------------------------------------------------------
-# # Collect CV-Discovered Features
-# # ----------------------------------------------------------------------------
-# cat(sprintf("\n--- Collecting CV-Discovered Features ---\n"))
-# 
-# stability_metrics <- stability_results$stability_metrics
-# 
-# # Select stable non-clinical features
-# stable_cpgs <- stability_metrics$feature[
-#   stability_metrics$selection_freq >= STABILITY_THRESHOLD_FG &
-#     stability_metrics$direction_consistent == TRUE
-# ]
-# 
-# cat(sprintf(
-#   "Including CpGs with selection_freq ≥ %.2f and consistent direction: n = %d\n",
-#   STABILITY_THRESHOLD_FG,
-#   length(stable_cpgs)
-# ))
-# 
-# # Always include clinical variables
-# stable_features <- c(
-#   included_clinvars, 
-#   stable_cpgs
-# )
-# 
-# #X_all <- X_all[, stable_features, drop = FALSE]
-# #X_all_stable_features[, stable_cpgs, drop = FALSE]
-# #--------------------------------------------------------------------------
-# # Fit Penalized Fine-Gray Model (MRS Construction)
-# # --------------------------------------------------------------------------
-# coxnet_selected_cpgs <- setdiff(colnames(X_pooled_train), included_clinvars)
-# 
-# cat(sprintf("\n========== PENALIZED FINE-GRAY (MRS CONSTRUCTION) ==========\n"))
-# 
-# pFG_res <- fit_penalized_finegray_cv(
-#   X_input = X_all[, stable_cpgs, drop = FALSE],
-#   clinical_input = clinical_all,
-#   alpha_seq = 0,#c(0.1, 0.2, 0.3, 0.4, 0.5),
-#   lambda_seq = NULL,
-#   cr_time = "time_to_CompRisk_event",
-#   cr_event = "CompRisk_event_coded",
-#   penalty = "RIDGE",#"ENET",#
-#   n_inner_folds = 3
-# )
-# 
-# # Extract selected CpGs and their coefficients
-# pFG_selected_cpgs <- pFG_res$results_table$feature[pFG_res$results_table$selected]
-# pFG_cpg_coefs <- setNames(
-#   pFG_res$results_table$pFG_coefficient[pFG_res$results_table$selected],
-#   pFG_selected_cpgs
-# )
-# 
-# # Extract scaling parameters (CpGs were scaled inside pFG model)
-# pFG_cpg_scaling <- list(
-#   center = setNames(
-#     pFG_res$results_table$scale_center[pFG_res$results_table$selected],
-#     pFG_selected_cpgs
-#   ),
-#   scale = setNames(
-#     pFG_res$results_table$scale_scale[pFG_res$results_table$selected],
-#     pFG_selected_cpgs
-#   )
-# )
-# 
-# cat(sprintf("  BEST PENALIZED FG: Alpha=%.2f, Lambda=%.6f, CpGs=%d\n",
-#             pFG_res$best_alpha,
-#             pFG_res$best_lambda,
-#             length(pFG_selected_cpgs)))
-# cat("    Selected CpGs:", paste(pFG_selected_cpgs, collapse=", "), "\n")
-# 
-# # --------------------------------------------------------------------------
-# # Calculate Methylation Risk Score (MRS)
-# # --------------------------------------------------------------------------
-# 
-# # Training MRS
-# mrs_all <- calculate_methylation_risk_score(
-#   X_data = X_all[, stable_cpgs, drop = FALSE],
-#   cpg_coefficients = pFG_cpg_coefs,
-#   scaling_params = pFG_cpg_scaling,
-#   verbose = TRUE
-# )
-# MRS_all <- mrs_all$mrs
-# 
-# # Scale the MRS itself (optional)
-# scale_mrs <- TRUE
-# mrs_scaling <- NULL
-# if (scale_mrs) {
-#   mrs_train_scaled <- scale(MRS_all)
-#   mrs_scaling <- list(
-#     center = attr(mrs_train_scaled, "scaled:center"),
-#     scale = attr(mrs_train_scaled, "scaled:scale")
-#   )
-#   
-#   MRS_all <- as.numeric(mrs_train_scaled)
-#   cat("  MRS scaled to mean=0, sd=1\n")
-# }
-# 
-# # --------------------------------------------------------------------------
-# # Prepare Data for Final Unpenalized Fine-Gray Model
-# # --------------------------------------------------------------------------
-# 
-# cat(sprintf("\n--- Preparing Final Model Data ---\n"))
-# 
-# # Verify row alignment
-# if (!identical(rownames(clinical_all), rownames(X_all))) {
-#   stop("Row names don't match between clinical_train and X_pooled_train")
-# }
-# 
-# # Build training data
-# fgr_all_data <- data.frame(
-#   time_to_CompRisk_event = clinical_all$time_to_CompRisk_event,
-#   CompRisk_event_coded = clinical_all$CompRisk_event_coded,
-#   X_all[, included_clinvars, drop = FALSE],
-#   methylation_risk_score = MRS_all,
-#   row.names = rownames(clinical_all)
-# )
-# 
-# if (DATA_MODE != "methylation") {
-#   # Scale clinical continuous variables
-#   clin_all_scaled <- scale(fgr_all_data[, CLIN_CONT, drop = FALSE])
-#   clin_scaling <- list(
-#     variables = CLIN_CONT,
-#     center = attr(clin_all_scaled, "scaled:center"),
-#     scale = attr(clin_all_scaled, "scaled:scale")
-#   )
-#   fgr_all_data[, CLIN_CONT] <- clin_all_scaled
-# }
-# 
-# cat(sprintf("  Final model predictors: %s\n", 
-#             paste(setdiff(colnames(fgr_all_data), 
-#                           c("time_to_CompRisk_event", "CompRisk_event_coded")), 
-#                   collapse=", ")))
-# 
-# # --------------------------------------------------------------------------
-# # Fit Unpenalized Fine-Gray Model (FINAL MODEL)
-# # --------------------------------------------------------------------------
-# 
-# cat(sprintf("\n========== UNPENALIZED FINE-GRAY (FINAL MODEL) ==========\n"))
-# 
-# fgr_final_all_result <- fit_fine_gray_model(
-#   fgr_data = fgr_all_data,
-#   cr_time = "time_to_CompRisk_event",
-#   cr_event = "CompRisk_event_coded",
-#   cause = 1
-# )
-# 
-# fgr_final_all_model <- fgr_final_all_result$model
-# print(fgr_final_all_model)
-# 
-# # ----------------------------------------------------------------------------
-# # Calculate Variable Importance
-# # ----------------------------------------------------------------------------
-# 
-# cat("\n--- Fine-Gray Variable Importance ---\n")
-# 
-# vimp_fg_final <- calculate_fgr_importance(
-#   fgr_model = fgr_final_all_model,
-#   encoded_cols = if (DATA_MODE == "methylation") NULL else encoded_result$encoded_cols,
-#   verbose = FALSE
-# )
-# 
-# print(vimp_fg_final)
-# 
-# ################################################################################
-# # SAVE FINAL MODEL RESULTS
-# ################################################################################
-# 
-# final_results <- list(
-#   fgr_final = fgr_final_all_model,
-#   vimp_fg_final = vimp_fg_final,
-#   metadata = list(
-#     N_OUTER_FOLDS = N_OUTER_FOLDS,
-#     EVAL_TIMES = EVAL_TIMES,
-#     clinvars = clinvars,
-#     COHORT_NAME = COHORT_NAME,
-#     DATA_MODE = DATA_MODE
-#   )
-# )
-# 
-# save(final_results, file = file.path(current_output_dir, 
-#                                      "final_fg_results.RData"))
-# cat("Final model results saved\n")
-# 
-# 
-# 
-# ################################################################################
-# # CLEANUP AND FINISH
-# ################################################################################
-# 
-total_runtime <- as.numeric(difftime(Sys.time(), start_time, units = "mins"))
-# 
-cat(sprintf("\n%s\n", paste(rep("=", 80), collapse = "")))
-cat(sprintf("PIPELINE COMPLETED\n"))
-cat(sprintf("Total runtime: %.1f minutes\n", total_runtime))
-cat(sprintf("Finished: %s\n", Sys.time()))
-cat(sprintf("%s\n", paste(rep("=", 80), collapse = "")))
 
-# Close log file
+################################################################################
+# load RAW CV RESULTS (SAFETY BACKUP)
+################################################################################
+#load(file.path(current_output_dir, 
+#               "outer_fold_results.RData"))
+
+# only include valid folds (where not skipped)
+outer_fold_results <- Filter(function(f) {
+  !is.null(f) && !isTRUE(f$metadata$skipped)
+}, outer_fold_results)
+
+# print number of valid folds
+cat("Number of valid outer folds:", length(outer_fold_results), "\n")
+
+################################################################################
+# AGGREGATE CV RESULTS
+################################################################################
+
+perf_results_mrs <- aggregate_cv_performance_threefg(
+  outer_fold_results,
+  model_name = "FGR_MRS")
+
+perf_results_clin <- aggregate_cv_performance_threefg(
+  outer_fold_results,
+  model_name = "FGR_CLIN")
+
+perf_results_combined <- aggregate_cv_performance_threefg(
+  outer_fold_results,
+  model_name = "FGR_COMBINED")
+
+aggregated_perf <- list(FGR_MRS = perf_results_mrs,
+                        FGR_CLIN= perf_results_clin,
+                        FGR_COMBINED= perf_results_combined)
+
+stability_results <- assess_finegray_stability_threefg(
+  outer_fold_results
+)
+
+################################################################################
+# SAVE COMPLETE CV RESULTS (OVERWRITES BACKUP)
+################################################################################
+
+nCV_results <- list(
+  outer_fold_results = outer_fold_results,
+  aggregated_perf_results = aggregated_perf,
+  stability_results = stability_results
+)
+
+save(nCV_results, file = file.path(current_output_dir,
+                                  "outer_fold_results.RData"))
+
+cat("Outer fold results saved (complete with aggregations)\n")
+
+################################################################################
+# CLEANUP AND FINISH
+################################################################################
+total_runtime <- as.numeric(difftime(Sys.time(), start_time, units = "mins"))
+cat(paste(rep("=", 80), collapse = ""), "\n")
+cat(sprintf("PIPELINE COMPLETED\n"))
+cat(sprintf("Finished:      %s\n", Sys.time()))
+cat(sprintf("Total runtime: %.1f minutes\n", total_runtime))
+cat(paste(rep("=", 80), collapse = ""), "\n")
+
+# uncomment if logging enabled
 sink(type = "message")
 sink(type = "output")
 close(log_con)

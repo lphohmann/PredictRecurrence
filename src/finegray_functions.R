@@ -2012,3 +2012,34 @@ assess_finegray_stability_threefg <- function(outer_fold_results, verbose = TRUE
 ################################################################################
 # END OF HELPER FUNCTIONS
 ################################################################################
+
+
+## risk: an object class of "get_risk"  
+## marker the continuous biomarquer 
+## status the event for a binary outcome or status for a time-to-event oucome.
+plotpredictiveness <- function(risk,marker,status){
+  xlim <- c(0,100)
+  breaks = seq(xlim[1], xlim[2], length.out = 5)
+  k <- length(risk)
+  x1<- sort(marker)
+  y1 <- (((1:k)*100)/k)
+  z <- sort(risk)
+  prev<-sum(status)/length(status)
+  Qt<-y1[which.min(abs(z-prev))]
+  Tr<-quantile(x1, Qt/100)
+  plot(y1,z,type='l',xlab="(%)population \n marker Value",ylab="Risk given marker (%)",main="Estimating the predictiveness curve of a continuous biomarker",
+       ylim=c(0,1),axes=FALSE)
+  axis(1,at= c(seq(from=0,to=100,by=20),Qt), label = c(seq(from=0,to=100,by=20),round(Qt, 2)))
+  axis(2,at=seq(from=0,to=1,by=0.2),labels=seq(from=0,to=1,by=0.2)*100,las=2)
+  axis(1,at= c(breaks,Qt), label = round(c(quantile(x1, prob = breaks/100),Tr), 2),pos=-0.26)
+  abline(h=prev,col="blue",lty=2)
+  abline(v=Qt,col="blue",lty=2)
+  return(Threshold=Tr)
+}
+
+
+
+loadRData <- function(file.path){
+  load(file.path)
+  get(ls()[ls() != "file.path"])
+}

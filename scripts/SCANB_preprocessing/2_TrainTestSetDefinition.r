@@ -161,6 +161,26 @@ length(train.ids) # 1347
 length(test.ids) # 636
 
 ##############################
+# COHORT COMPOSITION OF SETS
+##############################
+
+# Define cohort membership
+mo_train_samples  <- colnames(mo.train)
+mo_test_samples   <- mo.test$Sample
+erp_samples       <- colnames(erp)
+tnbc_samples      <- colnames(tnbc)
+tnbc136_samples   <- colnames(tnbc_136)
+
+all_ids <- c(train.ids, test.ids)
+mo_all_samples <- c(mo_train_samples, mo_test_samples)
+
+cat("=== OVERALL COHORT COMPOSITION (n =", length(all_ids), ") ===\n")
+cat(sprintf("  MO cohort:        %d\n", sum(all_ids %in% mo_all_samples)))
+cat(sprintf("  ERpHER2n cohort:  %d\n", sum(all_ids %in% setdiff(erp_samples, mo_all_samples))))
+cat(sprintf("  TNBC136 cohort:   %d\n", sum(all_ids %in% setdiff(tnbc136_samples, c(mo_all_samples, erp_samples)))))
+cat(sprintf("  TNBC cohort:      %d\n", sum(all_ids %in% setdiff(tnbc_samples, c(mo_all_samples, erp_samples, tnbc136_samples)))))
+
+##############################
 # EVENT NUMS IN SETS
 ##############################
 

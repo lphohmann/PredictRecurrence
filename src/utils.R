@@ -160,38 +160,3 @@ get_risk <- function(formula,data,prediction.time=NULL,family){
 
 
 
-log_msg <- function(msg) {
-  cat("\n=== ", msg, " ===\n", sep = "")
-}
-
-variance_filter <- function(df, top_n = NULL, min_var = NULL) {
-  vars <- apply(df, 2, var)
-  if (!is.null(top_n)) {
-    keep <- names(sort(vars, decreasing = TRUE)[1:top_n])
-  } else if (!is.null(min_var)) {
-    keep <- names(vars[vars >= min_var])
-  } else {
-    stop("Must specify top_n or min_var")
-  }
-  df[, keep, drop = FALSE]
-}
-
-load_training_data <- function(train_ids, beta_path, clinical_path) {
-  clinical <- fread(clinical_path) %>% column_to_rownames("Sample")
-  clinical <- clinical[train_ids, , drop = FALSE]
-  
-  beta <- fread(beta_path, data.table = FALSE)
-  rownames(beta) <- beta[[1]]
-  beta <- t(beta[, -1])
-  beta <- beta[train_ids, , drop = FALSE]
-  
-  list(beta = beta, clinical = clinical)
-}
-
-preprocess_data <- function(beta, top_n_cpgs) {
-  log_msg(sprintf("Preprocessing: Converting to M-values and selecting top %d CpGs", top_n_cpgs))
-  mvals <- beta2m(beta)
-  variance_filter(mvals, top_n = top_n_cpgs)
-}
-
-

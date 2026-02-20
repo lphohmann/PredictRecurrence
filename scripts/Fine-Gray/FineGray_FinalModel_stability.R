@@ -22,6 +22,7 @@ library(fastcmprsk)
 
 setwd("~/PhD_Workspace/PredictRecurrence/")
 source("./src/finegray_functions.R")
+#source("./src/utils.R")
 
 ################################################################################
 # COMMAND LINE ARGUMENTS
@@ -30,7 +31,7 @@ source("./src/finegray_functions.R")
 args <- commandArgs(trailingOnly = TRUE)
 
 # Defaults
-DEFAULT_COHORT <- "ERpHER2n"
+DEFAULT_COHORT <- "All"
 DEFAULT_TRAIN_CPGS <- "./data/set_definitions/CpG_prefiltered_sets/cpg_ids_atac_overlap.txt"
 DEFAULT_OUTPUT_DIR <- "./output/FineGray"
 
@@ -242,58 +243,6 @@ y_rfi <- Surv(clinical_data$RFi_years, clinical_data$RFi_event)
 y_death_no_r <- Surv(clinical_data$DeathNoR_years, clinical_data$DeathNoR_event)
 
 ################################################################################
-# load RAW CV RESULTS (SAFETY BACKUP)
-################################################################################
-load(file.path(current_output_dir, 
-               "outer_fold_results.RData"))
-#str(outer_fold_results)
-
-# only include valid folds (where not skipped)
-outer_fold_results <- Filter(function(f) {
-  !is.null(f) && !isTRUE(f$metadata$skipped)
-}, outer_fold_results)
-
-
-################################################################################
-# AGGREGATE CV RESULTS
-################################################################################
-
-
-perf_results_mrs <- aggregate_cv_performance_threefg(
-  outer_fold_results,
-  model_name = "FGR_MRS")
-
-perf_results_clin <- aggregate_cv_performance_threefg(
-  outer_fold_results,
-  model_name = "FGR_CLIN")
-
-perf_results_combined <- aggregate_cv_performance_threefg(
-  outer_fold_results,
-  model_name = "FGR_COMBINED")
-
-aggregated_perf <- list(FGR_MRS = perf_results_mrs,
-                        FGR_CLIN= perf_results_clin,
-                        FGR_COMBINED= perf_results_combined)
-
-stability_results <- assess_finegray_stability_threefg(
-  outer_fold_results
-)
-
-################################################################################
-# SAVE COMPLETE CV RESULTS (OVERWRITES BACKUP)
-################################################################################
-
-cv_results <- list(
-  outer_fold_results = outer_fold_results,
-  aggregated_perf_results = aggregated_perf,
-  stability_results = stability_results
-)
-
-save(cv_results, file = file.path(current_output_dir,
-                                  "outer_fold_aggregated.RData"))
-cat("Outer fold results saved (complete with aggregations)\n")
-
-################################################################################
 # TRAIN FINAL MODEL ON ALL DATA
 ################################################################################
 
@@ -429,29 +378,29 @@ cat(sprintf("  Final model predictors: %s\n",
 # --------------------------------------------------------------------------
 # Fit Unpenalized Fine-Gray Model (FINAL MODEL)
 # --------------------------------------------------------------------------
-
-# Fit Unpenalized Fine-Gray Model 1: only MRS
-
-cat(sprintf("\n========== UNPENALIZED FINE-GRAY MODELS ==========\n"))
-
-fgr_MRS <- fit_fine_gray_model(
-  fgr_data = fgr_all_data[,!colnames(fgr_all_data) %in% names(encoded_result$encoded_df)],
-  cr_time = "time_to_CompRisk_event",
-  cr_event = "CompRisk_event_coded",
-  cause = 1
-)
-
-fgr_MRS <- fgr_MRS$model
-
-# Fit Unpenalized Fine-Gray Model 2: only clin
-fgr_CLIN <- fit_fine_gray_model(
-  fgr_data = fgr_all_data[,colnames(fgr_all_data) != "methylation_risk_score"],
-  cr_time = "time_to_CompRisk_event",
-  cr_event = "CompRisk_event_coded",
-  cause = 1
-)
-
-fgr_CLIN <- fgr_CLIN$model
+# 
+# # Fit Unpenalized Fine-Gray Model 1: only MRS
+# 
+# cat(sprintf("\n========== UNPENALIZED FINE-GRAY MODELS ==========\n"))
+# 
+# fgr_MRS <- fit_fine_gray_model(
+#   fgr_data = fgr_all_data[,!colnames(fgr_all_data) %in% names(encoded_result$encoded_df)],
+#   cr_time = "time_to_CompRisk_event",
+#   cr_event = "CompRisk_event_coded",
+#   cause = 1
+# )
+# 
+# fgr_MRS <- fgr_MRS$model
+# 
+# # Fit Unpenalized Fine-Gray Model 2: only clin
+# fgr_CLIN <- fit_fine_gray_model(
+#   fgr_data = fgr_all_data[,colnames(fgr_all_data) != "methylation_risk_score"],
+#   cr_time = "time_to_CompRisk_event",
+#   cr_event = "CompRisk_event_coded",
+#   cause = 1
+# )
+# 
+# fgr_CLIN <- fgr_CLIN$model
 
 # Fit Unpenalized Fine-Gray Model 3: both
 fgr_COMBINED <- fit_fine_gray_model(
@@ -468,18 +417,18 @@ fgr_COMBINED <- fgr_COMBINED$model
 # ----------------------------------------------------------------------------
 
 cat("\n--- Fine-Gray Variable Importance ---\n")
-
-vimp_fgr_MRS <- calculate_fgr_importance(
-  fgr_model = fgr_MRS,
-  encoded_cols = encoded_result$encoded_cols,
-  verbose = FALSE
-)
-
-vimp_fgr_CLIN <- calculate_fgr_importance(
-  fgr_model = fgr_CLIN,
-  encoded_cols = encoded_result$encoded_cols,
-  verbose = FALSE
-)
+# 
+# vimp_fgr_MRS <- calculate_fgr_importance(
+#   fgr_model = fgr_MRS,
+#   encoded_cols = encoded_result$encoded_cols,
+#   verbose = FALSE
+# )
+# 
+# vimp_fgr_CLIN <- calculate_fgr_importance(
+#   fgr_model = fgr_CLIN,
+#   encoded_cols = encoded_result$encoded_cols,
+#   verbose = FALSE
+# )
 
 vimp_fgr_COMBINED <- calculate_fgr_importance(
   fgr_model = fgr_COMBINED,
@@ -490,63 +439,67 @@ vimp_fgr_COMBINED <- calculate_fgr_importance(
 ###############################################################################
 # CALCULATE RISK SCORE CUTOFF FOR DICHOTOMIZATION
 ###############################################################################
+library(cmprsk)
 
-# question for aurelien,
-# for prediciveness curve cutoff calc
-# use linear predicotn (jsu coefs tiems vas)
-# or specific time poitn and Predict subject specific risks (cumulative incidence) 
+fgr_all_data$RFi_event <- clinical_all$RFi_event[match(rownames(fgr_all_data),clinical_all$Sample)]
+fgr_all_data$RFi_years <- clinical_all$RFi_years[match(rownames(fgr_all_data),clinical_all$Sample)]
 
+pdf(file.path(current_output_dir, "cutoff_selection_plots.pdf"), width = 7, height = 5)
 
-fgr_COMBINED$crrFit$coef
-coef_vec <- fgr_COMBINED$crrFit$coef  # numeric vector of coefficients
-
-# use lin predictor for now
-coef_vec <- fgr_COMBINED$coef  # numeric vector of coefficients
-newdata_model <- fgr_all_data[, names(coef_vec)]
-lp_per_patient <- as.numeric(as.matrix(newdata_model) %*% coef_vec)
-
-
-
-# Only keep model variables
-newdata_model <- fgr_all_data[, c("Age","Size.mm","NHG2","NHG3","LNNp","methylation_risk_score")]
-
-# Predict using type = "lp" but **without reference = "sample"**
-COMBINED_score <- predict(fgr_COMBINED, newdata = newdata_model, type = "lp")
-
-length(COMBINED_score)  # should now be 1008
-
-
-fgr_all_data[-1]
-?predict
-cat(sprintf("\n--- Extracting Test Set Predictions ---\n"))
-
-pred_risks <- predictRisk(
-  fgr_COMBINED,
-  newdata = fgr_all_data,
-  times = EVAL_TIMES,
-  cause = 1
-)
-
-risk_scores <- predict(fgr_COMBINED, newdata = fgr_all_data, type = "lp")
-
-length(pred_risks)
-
-fgr_all_data_RS <- 
-
-fold_predictions <- data.frame(
-  fold = fold_idx,
-  sample = rownames(fgr_test_data),
-  time = fgr_test_data$time_to_CompRisk_event,
-  event_coded = fgr_test_data$CompRisk_event_coded,
-  rfi_event = clinical_test$RFi_event,
-  methylation_risk_score = MRS_test,
-  pred_risks
-)
-
-colnames(fold_predictions)[7:ncol(fold_predictions)] <- paste0("risk_", EVAL_TIMES, "yr")
-
-cat(sprintf("  Predictions extracted for %d test samples at %d time points\n",
-            nrow(fold_predictions), length(EVAL_TIMES)))
+selected_cutoffs <- list()
+for(risk_time_cutoff in c(5,10)) {
+  # apply model to whole data chohrt (same data it was trained on)
+  risk <- predictRisk(fgr_COMBINED,
+                            newdata = fgr_all_data,
+                            times = risk_time_cutoff,
+                            cause = 1)
+  risk <- as.numeric(risk[, 1])
+  hist(log(risk),breaks = 100,
+       main = paste0("Predicted risk at year = ",risk_time_cutoff))
+  
+  threshold <- plotpredictiveness(
+    risk = risk,        # predicted risk at 5 years
+    marker = risk,      # same marker?
+    status = fgr_all_data$RFi_event
+  )
+  print(threshold)
+  selected_cutoffs <- append(selected_cutoffs,list(threshold))
+  fgr_all_data$risk_group <- ifelse(risk >= threshold, 
+                                    "High risk", "Low risk")
+  ci <- cuminc(
+    ftime = fgr_all_data$time_to_CompRisk_event, 
+    fstatus = fgr_all_data$CompRisk_event_coded,
+    group = fgr_all_data$risk_group
+  )
+  # Rename curves with counts
+  counts <- table(fgr_all_data$risk_group)
+  names(ci)[1:4] <- c(
+    paste0("High risk – Recurrence (n=", counts["High risk"], ")"),
+    paste0("Low risk – Recurrence (n=", counts["Low risk"], ")"),
+    paste0("High risk – Death without recurrence (n=", counts["High risk"], ")"),
+    paste0("Low risk – Death without recurrence (n=", counts["Low risk"], ")")
+  )
+  
+  # plot 
+  plot(ci[1:2], 
+       lty = 1:2, 
+       col = c("red", "pink"),  # 4 colors for the 4 curves
+       xlab = "Time (years)",
+       ylab = "Cumulative incidence",
+       main = "Cumulative Incidence of Recurrence")
+  mtext(paste0("Year ",risk_time_cutoff," Cutoff = ", threshold), side = 3, line = 0.5, cex = 0.9)
+  
+  # Plot with 4 distinct colors
+  plot(ci, 
+       lty = 1:2, 
+       col = c("red", "pink", "blue", "lightblue"),  # 4 colors for the 4 curves
+       xlab = "Time (years)",
+       ylab = "Cumulative incidence",
+       main = "Cumulative Incidence of Recurrence and Death w/o Recurrence")
+  mtext(paste0("Cutoff = ", threshold), side = 3, line = 0.5, cex = 0.9)
+}
+names(selected_cutoffs) <- c("5_year","10_year")
+dev.off()
 
 ###############################################################################
 # SAVE FINAL MODEL RESULTS
@@ -555,17 +508,10 @@ cat(sprintf("  Predictions extracted for %d test samples at %d time points\n",
 final_results <- list(
   
   # The three models
-  models = list(
-    fgr_MRS = fgr_MRS,
-    fgr_CLIN = fgr_CLIN,
-    fgr_COMBINED = fgr_COMBINED
-  ),
-  
-  # Variable importance
-  variable_importance = list(
-    fgr_MRS = vimp_fgr_MRS,
-    fgr_CLIN = vimp_fgr_CLIN,
-    fgr_COMBINED = vimp_fgr_COMBINED
+  final_model = list(
+    model = fgr_COMBINED,
+    rs_cutoffs = selected_cutoffs,
+    var_effects = vimp_fgr_COMBINED
   ),
   
   # MRS construction
@@ -611,11 +557,10 @@ deployment_object <- list(
   ),
   
   # The three models
-  models = list(
-    fgr_MRS = fgr_MRS,
-    fgr_CLIN = fgr_CLIN,
-    fgr_COMBINED = fgr_COMBINED
-  )
+  final_model = list(
+    model = fgr_COMBINED,
+    rs_cutoffs = selected_cutoffs
+    )
 )
 
 save(deployment_object, file = file.path(current_output_dir, "deployment_object.RData"))

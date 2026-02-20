@@ -71,9 +71,16 @@ clinical.train$LN <- factor(clinical.train$LN)
 clinical.train$RFi_event <- factor(clinical.train$RFi_event, levels = c("0", "1"))
 clinical.train$OS_event <- factor(clinical.train$OS_event, levels = c("0","1"))
 
+# define comp risk event
+clinical.train$DWR_event <- as.integer(
+  clinical.train$OS_event == 1 & clinical.train$RFi_event == 0
+)
+clinical.train$DWR_years <- clinical.train$OS_years
+clinical.train$DWR_event <- factor(clinical.train$DWR_event, levels = c("0", "1"))
+
 # Apply custom renders
 my.render.cont <- function(x) {
-    with(stats.apply.rounding(stats.default(x), digits=2), c("",
+    with(stats.apply.rounding(stats.default(x), digits=3), c("",
         "Mean (SD)"=sprintf("%s (&plusmn; %s)", MEAN, SD)))
 }
 my.render.cat <- function(x) {
@@ -85,7 +92,7 @@ my.render.cat <- function(x) {
     }))
 }
 
-table_1 <- table1(~ LN + NHG + Age + Size.mm + RFi_event + OS_event | Group,
+table_1 <- table1(~ LN + NHG + Age + Size.mm + RFi_event + DWR_event | Group,
     data = clinical.train,
     render.continuous = my.render.cont,
     render.categorical = my.render.cat,
@@ -100,6 +107,22 @@ webshot::webshot(
   vwidth = 1200,
   vheight = 800
 )
+
+library(writexl)
+
+df <- as.data.frame(table_1)
+df <- cbind(Characteristic = rownames(df), df)
+rownames(df) <- NULL
+
+# Replace HTML entities and tags
+df[] <- lapply(df, function(x) {
+  x <- gsub("&plusmn;", "±", x)      # fix plus-minus symbol
+  x <- gsub("<[^>]+>", "", x)         # strip any remaining HTML tags
+  x <- trimws(x)
+  x
+})
+write_xlsx(df, path = "~/Desktop/table_1.xlsx")
+
 
 #######################################################################
 # test set
@@ -128,6 +151,13 @@ clinical.test$LN <- factor(clinical.test$LN)
 clinical.test$RFi_event <- factor(clinical.test$RFi_event, levels = c("0", "1"))
 clinical.test$OS_event <- factor(clinical.test$OS_event, levels = c("0", "1"))
 
+# define comp risk event
+clinical.test$DWR_event <- as.integer(
+  clinical.test$OS_event == 1 & clinical.test$RFi_event == 0
+)
+clinical.test$DWR_years <- clinical.test$OS_years
+clinical.test$DWR_event <- factor(clinical.test$DWR_event, levels = c("0", "1"))
+
 # Apply custom renders
 my.render.cont <- function(x) {
     with(stats.apply.rounding(stats.default(x), digits=2), c("",
@@ -142,7 +172,7 @@ my.render.cat <- function(x) {
     }))
 }
 
-table_2 <- table1(~ LN + NHG + Age + Size.mm + RFi_event + OS_event | Group,
+table_2 <- table1(~ LN + NHG + Age + Size.mm + RFi_event + DWR_event | Group,
     data = clinical.test,
     render.continuous = my.render.cont,
     render.categorical = my.render.cat,
@@ -200,7 +230,7 @@ clinical$Set <- factor(clinical$Set, levels = c("Train", "Test"))
 #    }))
 #}
 
-table_3 <- table1(~  LN + NHG + Age + Size.mm + RFi_event + OS_event | Set, data = clinical,
+table_3 <- table1(~  LN + NHG + Age + Size.mm + RFi_event + DWR_event | Set, data = clinical,
                 overall="Total",render.continuous=my.render.cont, 
                 render.categorical=my.render.cat,
 topclass="Rtable1-zebra")
@@ -214,3 +244,18 @@ webshot::webshot(
     vwidth = 1200,
     vheight = 800
 )
+
+library(writexl)
+
+df <- as.data.frame(table_3)
+df <- cbind(Characteristic = rownames(df), df)
+rownames(df) <- NULL
+
+# Replace HTML entities and tags
+df[] <- lapply(df, function(x) {
+  x <- gsub("&plusmn;", "±", x)      # fix plus-minus symbol
+  x <- gsub("<[^>]+>", "", x)         # strip any remaining HTML tags
+  x <- trimws(x)
+  x
+})
+write_xlsx(df, path = "~/Desktop/table_3.xlsx")
