@@ -144,7 +144,11 @@ beta_to_m <- function(beta, beta_threshold = 1e-3) {
   return(m_values)
 }
 
-
+# convert m-value to beta-value
+m_to_beta <- function(m) {
+  beta <- 2^m / (2^m + 1)
+  return(beta)
+}
 #' Apply Administrative Censoring
 #'
 #' Censor patients with follow-up exceeding a specified cutoff time.
@@ -1398,114 +1402,100 @@ calculate_fgr_importance <- function(fgr_model, encoded_cols = NULL,
 # 6. PERFORMANCE AGGREGATION AND STABILITY
 ################################################################################
 
-#' Aggregate Performance Across Cross-Validation Folds
-#'
-#' Calculate mean, SE, SD, and confidence intervals for all performance metrics
-#' across CV folds. Also tracks the number of features in each fold's model.
-#'
-#' @param outer_fold_results List of fold results from outer CV loop
-#' @param round_digits Number of decimal places for rounding (default: 3)
-#' @param conf_level Confidence level for intervals (default: 0.95)
-#' @param verbose Print summary to console (default: TRUE)
-#'
-#' @return List containing:
-#'   \item{summary}{Data frame with aggregated statistics}
-#'   \item{all_folds}{Data frame with individual fold results}
-#'
-#' @export
-aggregate_cv_performance <- function(outer_fold_results, 
-                                     round_digits = 3, 
-                                     conf_level = 0.95,
-                                     verbose = TRUE) {
-  
-  if (verbose) cat("\n========== AGGREGATED PERFORMANCE ==========\n")
-  
-  # Extract performance dataframes from all folds
-  performance_list <- lapply(outer_fold_results, function(fold) fold$final_fg$performance)
-  all_performance <- do.call(rbind, performance_list)
-  
-  # Extract number of features in each fold's pFG model (MRS score)
-  n_features_per_fold <- sapply(outer_fold_results, function(fold) {
-    coef_df <- fold$penalized_fg$coefficients_table
-    sum(coef_df$pen_fg_coef != 0)
-  })
-  
-  # Add feature count column
-  all_performance$n_fg_features <- n_features_per_fold
-  
-  # Calculate feature count statistics
-  feature_row <- data.frame(
-    metric = "n_fg_features",
-    mean = round(mean(n_features_per_fold), 1),
-    se = round(sd(n_features_per_fold) / sqrt(length(n_features_per_fold)), 1),
-    sd = round(sd(n_features_per_fold), 1),
-    ci_lower = min(n_features_per_fold),
-    ci_upper = max(n_features_per_fold)
-  )
-  
-  # Get metric column names (exclude 'model' and 'n_fg_features')
-  metric_cols <- setdiff(names(all_performance), c("model", "n_fg_features"))
-  
-  # Calculate summary statistics for each metric
-  performance_summary <- data.frame(
-    metric = metric_cols,
-    mean = sapply(metric_cols, function(col) mean(all_performance[[col]], na.rm = TRUE)),
-    se = sapply(metric_cols, function(col) {
-      sd(all_performance[[col]], na.rm = TRUE) / sqrt(nrow(all_performance))
-    }),
-    sd = sapply(metric_cols, function(col) sd(all_performance[[col]], na.rm = TRUE))
-  )
-  
-  # Round to specified decimal places
-  performance_summary[, c("mean", "se", "sd")] <- 
-    round(performance_summary[, c("mean", "se", "sd")], round_digits)
-  
-  # Add confidence intervals
-  z_score <- qnorm(1 - (1 - conf_level) / 2)
-  performance_summary$ci_lower <- round(
-    performance_summary$mean - z_score * performance_summary$se, round_digits
-  )
-  performance_summary$ci_upper <- round(
-    performance_summary$mean + z_score * performance_summary$se, round_digits
-  )
-  
-  # Combine: feature row first, then performance metrics
-  performance_summary <- rbind(feature_row, performance_summary)
-  rownames(performance_summary) <- NULL
-  
-  # Print results
-  if (verbose) {
-    cat("\nIndividual Fold Performance:\n")
-    print(all_performance)
-    
-    cat(sprintf("\nPerformance Summary (Mean ± SE, %d%% CI):\n", conf_level * 100))
-    for (i in 1:nrow(performance_summary)) {
-      metric_name <- performance_summary$metric[i]
-      
-      # Special formatting for feature count row (shows range instead of CI)
-      if (metric_name == "n_fg_features") {
-        cat(sprintf("%15s: %.1f ± %.1f (range: %d - %d)\n",
-                    metric_name,
-                    performance_summary$mean[i],
-                    performance_summary$se[i],
-                    performance_summary$ci_lower[i],
-                    performance_summary$ci_upper[i]))
-      } else {
-        cat(sprintf("%15s: %.3f ± %.3f (95%% CI: %.3f - %.3f)\n",
-                    metric_name,
-                    performance_summary$mean[i],
-                    performance_summary$se[i],
-                    performance_summary$ci_lower[i],
-                    performance_summary$ci_upper[i]))
-      }
-    }
-  }
-  
-  return(list(
-    summary = performance_summary,
-    all_folds = all_performance
-  ))
-}
+# aggregate_cv_performance <- function(outer_fold_results, 
+#                                      round_digits = 3, 
+#                                      conf_level = 0.95,
+#                                      verbose = TRUE) {
+#   
+#   if (verbose) cat("\n========== AGGREGATED PERFORMANCE ==========\n")
+#   
+#   # Extract performance dataframes from all folds
+#   performance_list <- lapply(outer_fold_results, function(fold) fold$final_fg$performance)
+#   all_performance <- do.call(rbind, performance_list)
+#   
+#   # Extract number of features in each fold's pFG model (MRS score)
+#   n_features_per_fold <- sapply(outer_fold_results, function(fold) {
+#     coef_df <- fold$penalized_fg$coefficients_table
+#     sum(coef_df$pen_fg_coef != 0)
+#   })
+#   
+#   # Add feature count column
+#   all_performance$n_fg_features <- n_features_per_fold
+#   
+#   # Calculate feature count statistics
+#   feature_row <- data.frame(
+#     metric = "n_fg_features",
+#     mean = round(mean(n_features_per_fold), 1),
+#     se = round(sd(n_features_per_fold) / sqrt(length(n_features_per_fold)), 1),
+#     sd = round(sd(n_features_per_fold), 1),
+#     ci_lower = min(n_features_per_fold),
+#     ci_upper = max(n_features_per_fold)
+#   )
+#   
+#   # Get metric column names (exclude 'model' and 'n_fg_features')
+#   metric_cols <- setdiff(names(all_performance), c("model", "n_fg_features"))
+#   
+#   # Calculate summary statistics for each metric
+#   performance_summary <- data.frame(
+#     metric = metric_cols,
+#     mean = sapply(metric_cols, function(col) mean(all_performance[[col]], na.rm = TRUE)),
+#     se = sapply(metric_cols, function(col) {
+#       sd(all_performance[[col]], na.rm = TRUE) / sqrt(nrow(all_performance))
+#     }),
+#     sd = sapply(metric_cols, function(col) sd(all_performance[[col]], na.rm = TRUE))
+#   )
+#   
+#   # Round to specified decimal places
+#   performance_summary[, c("mean", "se", "sd")] <- 
+#     round(performance_summary[, c("mean", "se", "sd")], round_digits)
+#   
+#   # Add confidence intervals
+#   z_score <- qnorm(1 - (1 - conf_level) / 2)
+#   performance_summary$ci_lower <- round(
+#     performance_summary$mean - z_score * performance_summary$se, round_digits
+#   )
+#   performance_summary$ci_upper <- round(
+#     performance_summary$mean + z_score * performance_summary$se, round_digits
+#   )
+#   
+#   # Combine: feature row first, then performance metrics
+#   performance_summary <- rbind(feature_row, performance_summary)
+#   rownames(performance_summary) <- NULL
+#   
+#   # Print results
+#   if (verbose) {
+#     cat("\nIndividual Fold Performance:\n")
+#     print(all_performance)
+#     
+#     cat(sprintf("\nPerformance Summary (Mean ± SE, %d%% CI):\n", conf_level * 100))
+#     for (i in 1:nrow(performance_summary)) {
+#       metric_name <- performance_summary$metric[i]
+#       
+#       # Special formatting for feature count row (shows range instead of CI)
+#       if (metric_name == "n_fg_features") {
+#         cat(sprintf("%15s: %.1f ± %.1f (range: %d - %d)\n",
+#                     metric_name,
+#                     performance_summary$mean[i],
+#                     performance_summary$se[i],
+#                     performance_summary$ci_lower[i],
+#                     performance_summary$ci_upper[i]))
+#       } else {
+#         cat(sprintf("%15s: %.3f ± %.3f (95%% CI: %.3f - %.3f)\n",
+#                     metric_name,
+#                     performance_summary$mean[i],
+#                     performance_summary$se[i],
+#                     performance_summary$ci_lower[i],
+#                     performance_summary$ci_upper[i]))
+#       }
+#     }
+#   }
+#   
+#   return(list(
+#     summary = performance_summary,
+#     all_folds = all_performance
+#   ))
+# }
+# 
 
 
 #' Assess Feature Selection Stability for Penalized Fine-Gray Models
@@ -1671,22 +1661,6 @@ assess_finegray_stability <- function(outer_fold_results, verbose = TRUE) {
 # 6. PERFORMANCE AGGREGATION AND STABILITY (UPDATED FOR THREE-MODEL STRUCTURE)
 ################################################################################
 
-#' Aggregate Performance Across Cross-Validation Folds (Three-Model Version)
-#'
-#' Calculate mean, SE, SD, and confidence intervals for all performance metrics
-#' across CV folds for all three models (MRS-only, Clinical-only, Combined).
-#'
-#' @param outer_fold_results List of fold results from outer CV loop
-#' @param model_name Name of model to aggregate: "FGR_MRS", "FGR_CLIN", or "FGR_COMBINED"
-#' @param round_digits Number of decimal places for rounding (default: 3)
-#' @param conf_level Confidence level for intervals (default: 0.95)
-#' @param verbose Print summary to console (default: TRUE)
-#'
-#' @return List containing:
-#'   \item{summary}{Data frame with aggregated statistics}
-#'   \item{all_folds}{Data frame with individual fold results}
-#'
-#' @export
 aggregate_cv_performance_threefg <- function(outer_fold_results, 
                                      model_name = "FGR_COMBINED",
                                      round_digits = 3, 
