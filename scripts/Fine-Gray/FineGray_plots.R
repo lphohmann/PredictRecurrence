@@ -15,7 +15,7 @@ library(pheatmap)
 library(missMethyl)
 library(AnnotationDbi)
 library(org.Hs.eg.db)
-
+library(clusterProfiler)
 source("./src/finegray_functions.R")
 source("./src/finegray_plotting_functions.R")
 
@@ -24,7 +24,7 @@ source("./src/finegray_plotting_functions.R")
 ################################################################################
 args <- commandArgs(trailingOnly = TRUE)
 
-COHORT_NAME <- "All" # 'TNBC', 'ERpHER2n', 'All'
+COHORT_NAME <- "ERpHER2n" # 'TNBC', 'ERpHER2n', 'All'
 if (length(args) == 1) COHORT_NAME <- args[1]
 
 ################################################################################
@@ -86,6 +86,8 @@ stable_cpgs <- stability_metrics[stability_metrics$selection_freq >= 0.4,]$featu
 final_cpgs <- final_fg_results$mrs_construction$selected_cpgs
 length(intersect(final_cpgs,stable_cpgs))
 
+# cutoff poitns
+#final_fg_results$final_model$rs_cutoffs
 ################################################################################
 # DATA LOADING AND PREPROCESSING
 ################################################################################
@@ -329,7 +331,7 @@ sig_cpgs <- cpg_features
 
 go_results <- gometh(
   sig.cpg = sig_cpgs,
-  all.cpg = cpg_universe,
+  #all.cpg = cpg_universe,
   collection = "GO",
   array.type = "EPIC"
 )
@@ -383,6 +385,71 @@ if (nrow(go_bp) == 0) {
   )
   
   cat("GO enrichment completed and saved.\n")
+}
+
+################################################################################
+# PATHWAY ENRICHMENT FOR GENES
+################################################################################
+
+cat("\nRunning pathway enrichment using for promotor genes...\n")
+
+cpg_genes <- annotated_cpgs[annotated_cpgs$hasPromOverlap==1,]
+entrez_ids <- cpg_genes$namePromOverlap %>%
+  gsub("\\|.*", "", .) %>%        # keep only number before |
+  .[!grepl("[_|]", .)] %>%        # discard multi-gene entries
+  unique() %>%
+  na.omit()
+
+cpg_genes_names <- gsub("^\\d+\\|", "", cpg_genes$namePromOverlap)
+cpg_genes_names <- cpg_genes_names %>%
+  strsplit("_") %>%
+  unlist() %>%
+  gsub("^\\d+\\|", "", .) %>%
+  .[!grepl("[_|]", .)] %>%  # discard entries still containing _ or |
+  unique() %>%
+  na.omit()
+
+
+# GO Biological Process
+go_bp <- enrichGO(
+  gene          = entrez_ids,
+  OrgDb         = org.Hs.eg.db,
+  ont           = "BP",
+  pAdjustMethod = "fdr",
+  pvalueCutoff  = 0.05,
+  readable      = TRUE
+)
+
+if (nrow(as.data.frame(go_bp)) == 0) {
+  cat("No significant GO BP terms found.\n")
+} else {
+  #write_csv(as.data.frame(go_bp),
+  #          file.path(current_output_dir, "GO_BP_enrichment.csv"))
+  p_go <- dotplot(go_bp, showCategory = 15) +
+    labs(title = paste0(COHORT_NAME, ": GO Biological Process"),
+         subtitle = sprintf("n=%d genes", length(entrez_ids)))
+  ggsave(file.path(current_output_dir, "GO_BP_enrichment_PromOverlapGenes.pdf"), p_go, width = 8, height = 7)
+  cat(sprintf("GO BP: %d significant terms\n", nrow(as.data.frame(go_bp))))
+}
+
+# KEGG
+kegg <- enrichKEGG(
+  gene          = entrez_ids,
+  organism      = "hsa",
+  pAdjustMethod = "fdr",
+  pvalueCutoff  = 0.05
+)
+
+if (nrow(as.data.frame(kegg)) == 0) {
+  cat("No significant KEGG pathways found.\n")
+} else {
+  #write_csv(as.data.frame(kegg),
+  #          file.path(current_output_dir, "KEGG_enrichment.csv"))
+  p_kegg <- dotplot(kegg, showCategory = 15) +
+    labs(title = paste0(COHORT_NAME, ": KEGG Pathway Enrichment"),
+         subtitle = sprintf("n=%d genes", length(entrez_ids)))
+  ggsave(file.path(current_output_dir, "KEGG_enrichment_PromOverlapGenes.pdf"), p_kegg, width = 8, height = 7)
+  cat(sprintf("KEGG: %d significant pathways\n", nrow(as.data.frame(kegg))))
 }
 
 ################################################################################

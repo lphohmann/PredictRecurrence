@@ -45,9 +45,9 @@ clinical.train <- read.csv(infile_1)
 clinical.train$NHG <- as.character(clinical.train$NHG)
 table(clinical.train$Group)
 # Assign labels for better readability
-#label(clinical.train$ER) <- "ER Status"
-#label(clinical.train$PR) <- "PR Status"
-#label(clinical.train$HER2) <- "HER2 Status"
+label(clinical.train$ER) <- "ER Status"
+label(clinical.train$PR) <- "PR Status"
+label(clinical.train$HER2) <- "HER2 Status"
 label(clinical.train$LN) <- "Lymph Node Status"
 label(clinical.train$NHG) <- "Nottingham Histologic Grade (NHG)"
 label(clinical.train$Size.mm) <- "Tumor Size (mm)"
@@ -57,17 +57,17 @@ label(clinical.train$Age) <- "Age (years)"
 #label(clinical.train$NCN.PAM50) <- "PAM50 subtype"
 #label(clinical.train$OS_event) <- "OS Event"
 label(clinical.train$RFi_event) <- "RFI Event"
-label(clinical.train$OS_years) <- "Overall Survival (years)"
+#label(clinical.train$OS_years) <- "Overall Survival (years)"
 #label(clinical.train$RFi_years) <- "Recurrence-Free Interval (years)"
 label(clinical.train$Group) <- "Subgroup"
 clinical.train$Group <- factor(clinical.train$Group, levels = c("ER+HER2-","TNBC","Other"))
 
 # Convert categorical variables to factors for proper formatting
-#clinical.train$ER <- factor(clinical.train$ER, levels = c("Negative", "Positive"))
-#clinical.train$HER2 <- factor(clinical.train$HER2, levels = c("Negative", "Positive"))
-#clinical.train$PR <- factor(clinical.train$PR, levels = c("Negative", "Positive"))
+clinical.train$ER <- factor(clinical.train$ER, levels = c("Negative", "Positive"))
+clinical.train$HER2 <- factor(clinical.train$HER2, levels = c("Negative", "Positive"))
+clinical.train$PR <- factor(clinical.train$PR, levels = c("Negative", "Positive"))
 clinical.train$LN <- factor(clinical.train$LN)
-#clinical.train$Group <- factor(clinical.train$Group, levels = c("ER+HER2-", "TNBC", "Other"))
+clinical.train$Group <- factor(clinical.train$Group, levels = c("ER+HER2-", "TNBC", "Other"))
 clinical.train$RFi_event <- factor(clinical.train$RFi_event, levels = c("0", "1"))
 clinical.train$OS_event <- factor(clinical.train$OS_event, levels = c("0","1"))
 
@@ -77,6 +77,32 @@ clinical.train$DWR_event <- as.integer(
 )
 clinical.train$DWR_years <- clinical.train$OS_years
 clinical.train$DWR_event <- factor(clinical.train$DWR_event, levels = c("0", "1"))
+
+library(survival)
+
+median_followup <- function(time, event) {
+  # Coerce event to numeric 0/1
+  if (is.factor(event)) {
+    event <- as.numeric(as.character(event))
+  }
+  event <- as.numeric(event)
+  # Remove missing values
+  complete_idx <- complete.cases(time, event)
+  time <- time[complete_idx]
+  event <- event[complete_idx]
+  # Reverse Kaplan–Meier
+  fit <- survfit(Surv(time, 1 - event) ~ 1)
+  return(round(summary(fit)$table["median"],1))
+}
+
+
+# meadin follow up times
+median_followup(clinical.train$RFi_years,
+                clinical.train$RFi_event)
+
+median_followup(clinical.train$DWR_years,
+                clinical.train$DWR_event)
+
 
 # Apply custom renders
 my.render.cont <- function(x) {
@@ -121,8 +147,8 @@ df[] <- lapply(df, function(x) {
   x <- trimws(x)
   x
 })
+df[df == "" | is.na(df)] <- "."
 write_xlsx(df, path = "~/Desktop/table_1.xlsx")
-
 
 #######################################################################
 # test set
@@ -146,10 +172,10 @@ label(clinical.test$Group) <- "Subgroup"
 clinical.test$Group <- factor(clinical.test$Group, levels = c("ER+HER2-","TNBC","Other"))
 
 # Convert categorical variables to factors for proper formatting
-
 clinical.test$LN <- factor(clinical.test$LN)
 clinical.test$RFi_event <- factor(clinical.test$RFi_event, levels = c("0", "1"))
 clinical.test$OS_event <- factor(clinical.test$OS_event, levels = c("0", "1"))
+clinical.train$Group <- factor(clinical.train$Group, levels = c("ER+HER2-", "TNBC", "Other"))
 
 # define comp risk event
 clinical.test$DWR_event <- as.integer(
@@ -157,6 +183,12 @@ clinical.test$DWR_event <- as.integer(
 )
 clinical.test$DWR_years <- clinical.test$OS_years
 clinical.test$DWR_event <- factor(clinical.test$DWR_event, levels = c("0", "1"))
+
+median_followup(clinical.test$RFi_years,
+                clinical.test$RFi_event)
+
+median_followup(clinical.test$DWR_years,
+                clinical.test$DWR_event)
 
 # Apply custom renders
 my.render.cont <- function(x) {
@@ -188,7 +220,6 @@ webshot::webshot(
   vheight = 800
 )
 
-
 #######################################################################
 # test vs train set
 #######################################################################
@@ -201,6 +232,7 @@ clinical$Set <- ifelse(clinical$Sample %in% clinical.train$Sample, "Train", "Tes
 
 # Assign labels for better readability
 label(clinical$Set) <- "Set"
+label(clinical$Group) <- "Subgroup"
 
 #label(clinical$LN) <- "Lymph Node Status"
 #label(clinical$NHG) <- "Nottingham Histologic Grade (NHG)"
@@ -230,7 +262,7 @@ clinical$Set <- factor(clinical$Set, levels = c("Train", "Test"))
 #    }))
 #}
 
-table_3 <- table1(~  LN + NHG + Age + Size.mm + RFi_event + DWR_event | Set, data = clinical,
+table_3 <- table1(~ Group + LN + NHG + Age + Size.mm + RFi_event + DWR_event | Set, data = clinical,
                 overall="Total",render.continuous=my.render.cont, 
                 render.categorical=my.render.cat,
 topclass="Rtable1-zebra")
@@ -258,4 +290,5 @@ df[] <- lapply(df, function(x) {
   x <- trimws(x)
   x
 })
+df[df == "" | is.na(df)] <- "."
 write_xlsx(df, path = "~/Desktop/table_3.xlsx")
