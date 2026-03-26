@@ -46,7 +46,66 @@
 #
 ################################################################################
 
-
+plot_pam50_risk_boxplot <- function(risk,
+                                    clinical_data,
+                                    risk_time_cutoff,
+                                    main = NULL) {
+  
+  # require named risk vector
+  if (is.null(names(risk))) {
+    stop("risk vector must be named with sample IDs")
+  }
+  
+  # hardcoded settings
+  keep_subtypes <- c("LumA", "LumB", "Her2", "Basal")
+  color_palette <- c(
+    "LumA"  = "#2176d5",
+    "LumB"  = "#34c6eb",
+    "Her2"  = "#d334eb",
+    "Basal" = "#ba0606"
+  )
+  
+  # map risk to clinical data
+  clinical_tmp <- clinical_data
+  clinical_tmp$Risk <- risk[clinical_tmp$Sample]
+  
+  # subset PAM50
+  clinical_sub <- clinical_tmp[clinical_tmp$NCN.PAM50 %in% keep_subtypes, , drop = FALSE]
+  clinical_sub$NCN.PAM50 <- factor(clinical_sub$NCN.PAM50, levels = keep_subtypes)
+  
+  # remove missing
+  clinical_sub <- clinical_sub[!is.na(clinical_sub$Risk), , drop = FALSE]
+  
+  # log transform (always)
+  if (any(clinical_sub$Risk <= 0, na.rm = TRUE)) {
+    stop("Risk contains <= 0 values, cannot log-transform")
+  }
+  y <- log(clinical_sub$Risk)
+  
+  # labels
+  ylab <- paste0("log(CIF) at ", risk_time_cutoff, " years")
+  
+  if (is.null(main)) {
+    main <- paste0("Risk by PAM50 subtype (", risk_time_cutoff, "y)")
+  }
+  
+  # colors aligned
+  plot_cols <- color_palette[levels(clinical_sub$NCN.PAM50)]
+  
+  # plot
+  bp <- boxplot(y ~ clinical_sub$NCN.PAM50,
+                ylab = ylab,
+                xlab = "PAM50 subtype",
+                main = main,
+                col = plot_cols)
+  
+  # add sample sizes
+  axis(3,
+       at = seq_along(bp$n),
+       labels = paste0("n=", bp$n))
+  
+  invisible(bp)
+}
 ################################################################################
 # 1. DATA LOADING AND PREPARATION
 ################################################################################
@@ -2016,4 +2075,56 @@ plotpredictiveness <- function(risk,marker,status){
 loadRData <- function(file.path){
   load(file.path)
   get(ls()[ls() != "file.path"])
+}
+
+
+
+
+plot_recurrence_quantiles <- function(data, group_col, event_col, time_col,
+                                      title = "Recurrence Times by Group",
+                                      box_colors = c("lightblue", "lightgreen", "lightpink")) {
+  # Ensure group and event columns are factors
+  data[[group_col]] <- factor(data[[group_col]])
+  data[[event_col]] <- factor(data[[event_col]])
+  
+  # Keep only observed events
+  observed <- data[data[[event_col]] == "1", ]
+  
+  # Calculate quantiles per group
+  library(dplyr)
+  quantiles_by_group <- observed %>%
+    group_by(.data[[group_col]]) %>%
+    summarise(
+      Q25 = quantile(.data[[time_col]], 0.25),
+      Median = quantile(.data[[time_col]], 0.50),
+      Q75 = quantile(.data[[time_col]], 0.75),
+      .groups = "drop"
+    )
+  
+  print(quantiles_by_group)
+  
+  # Vertical boxplot with more y-axis ticks
+  boxplot(observed[[time_col]] ~ observed[[group_col]],
+          col = box_colors,
+          xlab = "Group", ylab = "Time to Recurrence",
+          main = title,
+          yaxt = "n")  # suppress default y-axis
+  
+  # Add custom y-axis ticks (adjust interval as needed)
+  y_ticks <- seq(0, max(observed[[time_col]], na.rm = TRUE), by = 1)  # every 1 year
+  axis(2, at = y_ticks, las = 1)  # las=1 makes labels horizontal
+  
+  # Add quantile annotations above each box
+  for (i in 1:nrow(quantiles_by_group)) {
+    group_pos <- i
+    text(group_pos, quantiles_by_group$Q25[i],
+         labels = paste0("Q1=", round(quantiles_by_group$Q25[i],1)),
+         pos = 3, cex = 0.8, col = "blue")
+    text(group_pos, quantiles_by_group$Median[i],
+         labels = paste0("Median=", round(quantiles_by_group$Median[i],1)),
+         pos = 3, cex = 0.8, col = "darkgreen")
+    text(group_pos, quantiles_by_group$Q75[i],
+         labels = paste0("Q3=", round(quantiles_by_group$Q75[i],1)),
+         pos = 3, cex = 0.8, col = "red")
+  }
 }

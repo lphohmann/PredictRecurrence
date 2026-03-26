@@ -26,7 +26,7 @@ source("./src/finegray_functions.R")
 ################################################################################
 args <- commandArgs(trailingOnly = TRUE)
 
-COHORT_NAME <- "TNBC" # 'TNBC', 'ERpHER2n', 'All'
+COHORT_NAME <- "ERpHER2n" # 'TNBC', 'ERpHER2n', 'All'
 if (length(args) == 1) COHORT_NAME <- args[1]
 
 ################################################################################
@@ -346,8 +346,14 @@ cat(sprintf("Final model predictors: %s\n",
 ###############################################################################
 # Fit Unpenalized Fine-Gray Model
 ###############################################################################
+predictor_clin <- colnames(encoded_result$encoded_df)
+
+fgr_MRS_data <- fgr_data[, c("time_to_CompRisk_event", "CompRisk_event_coded", "MeRS")]
+fgr_CLIN_data <- fgr_data[, c("time_to_CompRisk_event", "CompRisk_event_coded", predictor_clin)]
+fgr_COMBINED_data <- fgr_data[, c("time_to_CompRisk_event", "CompRisk_event_coded", predictor_clin, "MeRS")]
+
 fgr_COMBINED <- fit_fine_gray_model(
-  fgr_data = fgr_data,
+  fgr_data = fgr_COMBINED_data,
   cr_time = "time_to_CompRisk_event",
   cr_event = "CompRisk_event_coded",
   cause = 1
@@ -355,7 +361,29 @@ fgr_COMBINED <- fit_fine_gray_model(
 
 fgr_COMBINED <- fgr_COMBINED$model
 
-# ----------------------------------------------------------------------------
+# other models (not used)
+fgr_MRS <- fit_fine_gray_model(
+  fgr_data = fgr_MRS_data,
+  cr_time = "time_to_CompRisk_event",
+  cr_event = "CompRisk_event_coded",
+  cause = 1
+)
+fgr_MRS <- fgr_MRS$model
+
+# Fit Unpenalized Fine-Gray Model 2: only clin
+fgr_CLIN <- fit_fine_gray_model(
+  fgr_data = fgr_CLIN_data,
+  cr_time = "time_to_CompRisk_event",
+  cr_event = "CompRisk_event_coded",
+  cause = 1
+)
+
+fgr_CLIN <- fgr_CLIN$model
+
+###############################################################################
+# Variable Importance
+###############################################################################
+
 # Calculate Variable Importance
 cat("\n--- Fine-Gray Variable Importance ---\n")
 vimp_fgr_COMBINED <- calculate_fgr_importance(
@@ -377,10 +405,10 @@ par(mfrow = c(3,1))
 
 selected_cutoffs <- list()
 cutoff_time_points <- EVAL_TIMES
-
+cutoff_prediction_model <- fgr_COMBINED#fgr_COMBINED #fgr_MRS, fgr_CLIN
 for(risk_time_cutoff in cutoff_time_points) {
   # apply model to whole data cohort (same data it was trained on)
-  risk <- predictRisk(fgr_COMBINED,
+  risk <- predictRisk(prediction_model,
                             newdata = fgr_data,
                             times = risk_time_cutoff,
                             cause = 1)
@@ -447,9 +475,116 @@ for(risk_time_cutoff in cutoff_time_points) {
   #      ylab = "Cumulative incidence",
   #      main = "Cumulative Incidence of Recurrence and Death w/o Recurrence")
   # mtext(paste0("Cutoff = ", threshold), side = 3, line = 0.5, cex = 0.9)
+  
 }
 names(selected_cutoffs) <- paste0(cutoff_time_points, "_year")
 dev.off()
+
+
+###############################################################################
+# COMPARE MODELS
+###############################################################################
+
+# complete.dat <- loadRData("../Project_Basal/data/SCANB/1_clinical/raw/Summarized_SCAN_B_rel4_NPJbreastCancer_with_ExternalReview_Bosch_data.RData")
+# endo.samples <- complete.dat$Sample[complete.dat$TreatGroup == "Endo"]
+# clinical_endo <- clinical_data[clinical_data$Sample %in% endo.samples, , drop = FALSE]
+# plot_pam50_risk_boxplot(
+#   risk = risk_named,
+#   clinical_data = clinical_endo,
+#   risk_time_cutoff = risk_time_cutoff,
+#   main = paste0("Risk score by PAM50 at year ", risk_time_cutoff, " (Endo)")
+# )
+
+risk_time_cutoff = 10 #delete
+for(risk_time_cutoff in cutoff_time_points) {
+
+  # pam50 exploration
+  #pdf(file.path("~/Desktop/", "pam50_boxplot.pdf"), # width = 6, height = 6)
+  #dev.off()
+
+  # compare models
+  risk_comb <- as.numeric(predictRisk(fgr_COMBINED, 
+                                      newdata = fgr_COMBINED_data, 
+                                      times = risk_time_cutoff, 
+                                      cause = 1)[,1])
+  risk_clin <- as.numeric(predictRisk(fgr_CLIN,     
+                                      newdata = fgr_CLIN_data,     
+                                      times = risk_time_cutoff, 
+                                      cause = 1)[,1])
+  risk_mrs  <- as.numeric(predictRisk(fgr_MRS,      
+                                      newdata = fgr_MRS_data,      
+                                      times = risk_time_cutoff, 
+                                      cause = 1)[,1])
+  
+  summary(risk_comb - risk_clin)
+  summary(risk_comb - risk_mrs)
+  summary(risk_clin - risk_mrs)
+  
+  max(abs(risk_comb - risk_clin), na.rm = TRUE)
+  max(abs(risk_comb - risk_mrs), na.rm = TRUE)
+  max(abs(risk_clin - risk_mrs), na.rm = TRUE)
+  
+  cor(risk_comb, risk_clin, use = "complete.obs") # 0.27 # low
+  cor(risk_comb, risk_mrs,  use = "complete.obs") # 0.97 very high
+  cor(risk_clin, risk_mrs,  use = "complete.obs") # 0.17 # low
+  
+  library(corrplot)
+  
+  # build matrix once
+  risk_mat <- cbind(
+    Clinical    = risk_clin,
+    Methylation = risk_mrs,
+    Combined    = risk_comb
+  )
+  
+  # correlations
+  cor_pearson  <- cor(risk_mat, use = "complete.obs", method = "pearson")
+  cor_spearman <- cor(risk_mat, use = "complete.obs", method = "spearman")
+  
+  # plot side by side
+  par(mfrow = c(1,1))
+  pdf(file.path("~/Desktop/", "corr_erpher2n.pdf"), width = 6, height = 6, onefile = TRUE)
+  corrplot(cor_pearson,
+           method = "color",
+           addCoef.col = "black",
+           tl.col = "black",
+           col = colorRampPalette(c("#2166ac", "white", "#b2182b"))(200),
+           cl.lim = c(-1, 1),
+           title = "Pearson",
+           mar = c(0,0,2,0))
+  dev.off()
+  
+  corrplot(cor_spearman,
+           method = "color",
+           addCoef.col = "black",
+           tl.col = "black",
+           col = colorRampPalette(c("#2166ac", "white", "#b2182b"))(200),
+           cl.lim = c(-1, 1),
+           title = "Spearman",
+           mar = c(0,0,2,0))
+  
+  
+  
+  # pam50 comp
+  
+  risk_comb_named <- setNames(risk_comb, rownames(fgr_COMBINED_data))
+  risk_clin_named <- setNames(risk_clin, rownames(fgr_CLIN_data))
+  risk_mrs_named  <- setNames(risk_mrs,  rownames(fgr_MRS_data))
+  
+  par(mfrow = c(1, 3))
+  plot_pam50_risk_boxplot(risk_comb_named, clinical_data, risk_time_cutoff, main = "Combined")
+  plot_pam50_risk_boxplot(risk_clin_named, clinical_data, risk_time_cutoff, main = "Clinical")
+  plot_pam50_risk_boxplot(risk_mrs_named,  clinical_data, risk_time_cutoff, main = "Methylation")
+  
+  # to save
+  par(mfrow = c(1, 1))
+  pdf(file.path("~/Desktop/", "pam50_boxplot_clin.pdf"), width = 6, height = 6, onefile = TRUE)
+  plot_pam50_risk_boxplot(risk_comb_named, clinical_data, risk_time_cutoff, main = "Combined")
+  plot_pam50_risk_boxplot(risk_clin_named, clinical_data, risk_time_cutoff, main = "Clinical")
+  plot_pam50_risk_boxplot(risk_mrs_named,  clinical_data, risk_time_cutoff, main = "Methylation")
+  dev.off()
+}
+
 
 ###############################################################################
 # SAVE FINAL MODEL RESULTS

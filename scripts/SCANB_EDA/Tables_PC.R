@@ -9,7 +9,7 @@ rm(list=ls())
 setwd("~/PhD_Workspace/PredictRecurrence/")
 #-------------------
 # packages
-#source("./scripts/src/")
+source("./src/finegray_functions.R")
 for(pkg in c("table1", "htmltools", "finalfit", "Publish", "htmlTable", "webshot")){
     if (!requireNamespace(pkg, quietly = TRUE)) {
         install.packages(pkg)
@@ -79,6 +79,7 @@ clinical.train$DWR_years <- clinical.train$OS_years
 clinical.train$DWR_event <- factor(clinical.train$DWR_event, levels = c("0", "1"))
 
 library(survival)
+library(dplyr)
 
 median_followup <- function(time, event) {
   # Coerce event to numeric 0/1
@@ -103,6 +104,19 @@ median_followup(clinical.train$RFi_years,
 median_followup(clinical.train$DWR_years,
                 clinical.train$DWR_event)
 
+
+# Open PNG device
+png(paste0(output_path, "recurrence_quantiles_train.png"), width = 4.13, height = 5.83, units = "in", res = 300)
+plot_recurrence_quantiles(
+  data = clinical.train,
+  group_col = "Group",
+  event_col = "RFi_event",
+  time_col = "RFi_years",
+  title = "Train: Recurrence quantiles"
+)
+dev.off()
+
+paste0(output_path, "PC_TestVsTrain_table1.html")
 
 # Apply custom renders
 my.render.cont <- function(x) {
@@ -148,7 +162,7 @@ df[] <- lapply(df, function(x) {
   x
 })
 df[df == "" | is.na(df)] <- "."
-write_xlsx(df, path = "~/Desktop/table_1.xlsx")
+write_xlsx(df, path = paste0(output_path, "table_1.xlsx"))
 
 #######################################################################
 # test set
@@ -189,6 +203,17 @@ median_followup(clinical.test$RFi_years,
 
 median_followup(clinical.test$DWR_years,
                 clinical.test$DWR_event)
+
+# Open PNG device
+png(paste0(output_path, "recurrence_quantiles_test.png"), width = 4.13, height = 5.83, units = "in", res = 300)
+plot_recurrence_quantiles(
+  data = clinical.test,
+  group_col = "Group",
+  event_col = "RFi_event",
+  time_col = "RFi_years",
+  title = "Test: Recurrence quantiles"
+)
+dev.off()
 
 # Apply custom renders
 my.render.cont <- function(x) {
@@ -291,4 +316,4 @@ df[] <- lapply(df, function(x) {
   x
 })
 df[df == "" | is.na(df)] <- "."
-write_xlsx(df, path = "~/Desktop/table_3.xlsx")
+write_xlsx(df, path = paste0(output_path, "table_3.xlsx"))
