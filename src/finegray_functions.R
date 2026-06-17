@@ -2128,3 +2128,91 @@ plot_recurrence_quantiles <- function(data, group_col, event_col, time_col,
          pos = 3, cex = 0.8, col = "red")
   }
 }
+
+
+
+###
+
+# Computes risk cutoffs for a model across timepoints.
+# Returns a named list of thresholds (one per timepoint) and
+# a data.frame of per-timepoint diagnostics for logging.
+compute_risk_cutoffs <- function(model, model_data, fgr_data,
+                                 cutoff_time_points) {
+  cutoffs    <- list()
+  diag_rows  <- list()
+  
+  for (t in cutoff_time_points) {
+    risk <- as.numeric(
+      predictRisk(model, newdata = fgr_data, times = t, cause = 1)[, 1]
+    )
+    
+    # plotpredictiveness() draws a plot as a side effect even when you only
+    # want the threshold value — redirect graphics to a null device to suppress it
+    pdf(NULL)
+    threshold <- plotpredictiveness(
+      risk   = risk,
+      marker = risk,
+      status = fgr_data$RFi_event
+    )
+    dev.off()
+    
+    risk_group <- ifelse(risk >= as.numeric(threshold), "High risk", "Low risk")
+    counts     <- table(factor(risk_group, levels = c("High risk", "Low risk")))
+    
+    #cutoffs[[paste0(t, "_year")]] <- threshold
+    cutoffs[[paste0(t, "_year")]] <- unname(as.numeric(threshold))
+    diag_rows[[length(diag_rows) + 1]] <- data.frame(
+      time             = t,
+      threshold_value  = as.numeric(threshold),
+      threshold_pctile = as.numeric(gsub("%", "", names(threshold))),
+      n_high           = as.integer(counts["High risk"]),
+      n_low            = as.integer(counts["Low risk"])
+    )
+  }
+  
+  list(
+    cutoffs     = cutoffs,
+    diagnostics = do.call(rbind, diag_rows)
+  )
+}
+
+# Plots histogram + CI curves per timepoint into an open PDF device.
+# Call between pdf() and dev.off() in the main script.
+plot_cutoff_diagnostics <- function(model, fgr_data,
+                                    cutoff_time_points, cutoffs) {
+  par(mfrow = c(length(cutoff_time_points), 2))
+  
+  for (t in cutoff_time_points) {
+    risk <- as.numeric(
+      predictRisk(model, newdata = fgr_data, times = t, cause = 1)[, 1]
+    )
+    threshold   <- cutoffs[[paste0(t, "_year")]]
+    thresh_val  <- as.numeric(threshold)
+    thresh_pct  <- as.numeric(gsub("%", "", names(threshold)))
+    risk_group  <- ifelse(risk >= thresh_val, "High risk", "Low risk")
+    counts      <- table(factor(risk_group, levels = c("High risk", "Low risk")))
+    
+    # Panel 1: risk distribution
+    hist(log(risk), breaks = 100,
+         main = sprintf("Year %d | log(risk)", t),
+         xlab = "log(predicted risk)", col = "grey80", border = "white")
+    abline(v = log(thresh_val), col = "red", lty = 2)
+    
+    # Panel 2: cumulative incidence by risk group
+    fgr_data$risk_group <- risk_group
+    ci <- cuminc(
+      ftime   = fgr_data$time_to_CompRisk_event,
+      fstatus = fgr_data$CompRisk_event_coded,
+      group   = fgr_data$risk_group
+    )
+    names(ci)[1:2] <- c(
+      sprintf("High risk - Recurrence (n=%d)",  counts["High risk"]),
+      sprintf("Low risk - Recurrence (n=%d)",   counts["Low risk"])
+    )
+    plot(ci[1:2],
+         lty = 1:2, col = c("red", "pink"),
+         xlab = "Time (years)", ylab = "Cumulative incidence",
+         main = sprintf("Year %d | Cutoff = %.4f (%.1f%%)",
+                        t, thresh_val, thresh_pct))
+  }
+}

@@ -54,9 +54,9 @@ log_path <- file.path(current_output_dir,
                       sprintf("%s_%s.log", SCRIPT_NAME,
                               format(Sys.time(), "%Y%m%d_%H%M%S")))
 # comment to switch off logging
-log_con <- file(log_path, open = "wt")
-sink(log_con, type = "output", split = TRUE)
-sink(log_con, type = "message")
+#log_con <- file(log_path, open = "wt")
+#sink(log_con, type = "output", split = TRUE)
+#sink(log_con, type = "message")
 
 ################################################################################
 # PARAMETERS
@@ -361,7 +361,7 @@ fgr_COMBINED <- fit_fine_gray_model(
 
 fgr_COMBINED <- fgr_COMBINED$model
 
-# other models (not used)
+# mers
 fgr_MRS <- fit_fine_gray_model(
   fgr_data = fgr_MRS_data,
   cr_time = "time_to_CompRisk_event",
@@ -370,7 +370,7 @@ fgr_MRS <- fit_fine_gray_model(
 )
 fgr_MRS <- fgr_MRS$model
 
-# Fit Unpenalized Fine-Gray Model 2: only clin
+# only clin
 fgr_CLIN <- fit_fine_gray_model(
   fgr_data = fgr_CLIN_data,
   cr_time = "time_to_CompRisk_event",
@@ -381,277 +381,178 @@ fgr_CLIN <- fit_fine_gray_model(
 fgr_CLIN <- fgr_CLIN$model
 
 ###############################################################################
-# Variable Importance
+# Variable Importance for Combined model
 ###############################################################################
 
-# Calculate Variable Importance
-cat("\n--- Fine-Gray Variable Importance ---\n")
-vimp_fgr_COMBINED <- calculate_fgr_importance(
-  fgr_model = fgr_COMBINED,
-  encoded_cols = encoded_result$encoded_cols,
-  verbose = FALSE
-)
-print(vimp_fgr_COMBINED)
+# # Calculate Variable Importance
+# cat("\n--- Fine-Gray Variable Importance ---\n")
+# vimp_fgr_COMBINED <- calculate_fgr_importance(
+#   fgr_model = fgr_COMBINED,
+#   encoded_cols = encoded_result$encoded_cols,
+#   verbose = FALSE
+# )
+# print(vimp_fgr_COMBINED)
+
 ###############################################################################
 # CALCULATE RISK SCORE CUTOFF FOR DICHOTOMIZATION
 ###############################################################################
 cat(sprintf("\n--- Timepoint Risk Score Cutoffs ---\n"))
 
-fgr_data$RFi_event <- clinical_data$RFi_event[match(rownames(fgr_data),clinical_data$Sample)]
-fgr_data$RFi_years <- clinical_data$RFi_years[match(rownames(fgr_data),clinical_data$Sample)]
+fgr_data$RFi_event <- clinical_data$RFi_event[match(rownames(fgr_data), clinical_data$Sample)]
+fgr_data$RFi_years <- clinical_data$RFi_years[match(rownames(fgr_data), clinical_data$Sample)]
 
-pdf(file.path(current_output_dir, "cutoff_selection_plots.pdf"), width = 6, height = 11)
-par(mfrow = c(3,1))
+mrs_cutoff_res  <- compute_risk_cutoffs(fgr_MRS,  fgr_MRS_data,  fgr_data, EVAL_TIMES)
+clin_cutoff_res <- compute_risk_cutoffs(fgr_CLIN, fgr_CLIN_data, fgr_data, EVAL_TIMES)
 
-selected_cutoffs <- list()
-cutoff_time_points <- EVAL_TIMES
-cutoff_prediction_model <- fgr_COMBINED#fgr_COMBINED #fgr_MRS, fgr_CLIN
-for(risk_time_cutoff in cutoff_time_points) {
-  # apply model to whole data cohort (same data it was trained on)
-  risk <- predictRisk(prediction_model,
-                            newdata = fgr_data,
-                            times = risk_time_cutoff,
-                            cause = 1)
-  risk <- as.numeric(risk[, 1])
-  hist(log(risk),breaks = 100,
-       main = paste0("Predicted risk at year = ",risk_time_cutoff))
-  
-  threshold <- plotpredictiveness(
-    risk = risk,        # predicted risk at 5 years
-    marker = risk,      # same marker?
-    status = fgr_data$RFi_event
-  )
-
-  # print info
-  threshold_value <- as.numeric(threshold)
-  threshold_percentile <- as.numeric(gsub("%", "", names(threshold)))
-  counts <- table(fgr_data$risk_group)
-  cat(sprintf(
-    "Year %d | Cutoff at %.2fth percentile | Risk threshold = %.4f | High risk: %d | Low risk: %d\n",
-    risk_time_cutoff,
-    threshold_percentile,
-    threshold_value,
-    counts["High risk"],
-    counts["Low risk"]
-  ))
-  
-  # cumulative incidence plots 
-  selected_cutoffs <- append(selected_cutoffs,list(threshold))
-  fgr_data$risk_group <- ifelse(risk >= threshold, 
-                                    "High risk", "Low risk")
-  ci <- cuminc(
-    ftime = fgr_data$time_to_CompRisk_event, 
-    fstatus = fgr_data$CompRisk_event_coded,
-    group = fgr_data$risk_group
-  )
-  # Rename curves with counts
-  names(ci)[1:4] <- c(
-    paste0("High risk - Recurrence (n=", counts["High risk"], ")"),
-    paste0("Low risk - Recurrence (n=", counts["Low risk"], ")"),
-    paste0("High risk - Death without recurrence (n=", counts["High risk"], ")"),
-    paste0("Low risk - Death without recurrence (n=", counts["Low risk"], ")")
-  )
-  
-  # plot 
-  plot(ci[1:2], 
-       lty = 1:2, 
-       col = c("red", "pink"),  # 4 colors for the 4 curves
-       xlab = "Time (years)",
-       ylab = "Cumulative incidence",
-       main = "Cumulative Incidence of Recurrence")
-  mtext(
-    sprintf("Year %d | Cutoff = %.4f (%.2fth percentile)",
-            risk_time_cutoff,
-            threshold_value,
-            threshold_percentile),
-    side = 3, line = 0.5, cex = 0.9
-  )
-  
-  # Plot with 4 distinct colors
-  # plot(ci, 
-  #      lty = 1:2, 
-  #      col = c("red", "pink", "blue", "lightblue"),  # 4 colors for the 4 curves
-  #      xlab = "Time (years)",
-  #      ylab = "Cumulative incidence",
-  #      main = "Cumulative Incidence of Recurrence and Death w/o Recurrence")
-  # mtext(paste0("Cutoff = ", threshold), side = 3, line = 0.5, cex = 0.9)
-  
+# Log diagnostics
+for (res in list(MRS = mrs_cutoff_res, Clinical = clin_cutoff_res)) {
+  cat(sprintf("\n%s model cutoffs:\n", names(res)))  # won't work directly; see note
 }
-names(selected_cutoffs) <- paste0(cutoff_time_points, "_year")
-dev.off()
+print(mrs_cutoff_res$diagnostics)
+print(clin_cutoff_res$diagnostics)
 
-
-###############################################################################
-# COMPARE MODELS
-###############################################################################
-
-# complete.dat <- loadRData("../Project_Basal/data/SCANB/1_clinical/raw/Summarized_SCAN_B_rel4_NPJbreastCancer_with_ExternalReview_Bosch_data.RData")
-# endo.samples <- complete.dat$Sample[complete.dat$TreatGroup == "Endo"]
-# clinical_endo <- clinical_data[clinical_data$Sample %in% endo.samples, , drop = FALSE]
-# plot_pam50_risk_boxplot(
-#   risk = risk_named,
-#   clinical_data = clinical_endo,
-#   risk_time_cutoff = risk_time_cutoff,
-#   main = paste0("Risk score by PAM50 at year ", risk_time_cutoff, " (Endo)")
-# )
-
-risk_time_cutoff = 10 #delete
-for(risk_time_cutoff in cutoff_time_points) {
-
-  # pam50 exploration
-  #pdf(file.path("~/Desktop/", "pam50_boxplot.pdf"), # width = 6, height = 6)
-  #dev.off()
-
-  # compare models
-  risk_comb <- as.numeric(predictRisk(fgr_COMBINED, 
-                                      newdata = fgr_COMBINED_data, 
-                                      times = risk_time_cutoff, 
-                                      cause = 1)[,1])
-  risk_clin <- as.numeric(predictRisk(fgr_CLIN,     
-                                      newdata = fgr_CLIN_data,     
-                                      times = risk_time_cutoff, 
-                                      cause = 1)[,1])
-  risk_mrs  <- as.numeric(predictRisk(fgr_MRS,      
-                                      newdata = fgr_MRS_data,      
-                                      times = risk_time_cutoff, 
-                                      cause = 1)[,1])
-  
-  summary(risk_comb - risk_clin)
-  summary(risk_comb - risk_mrs)
-  summary(risk_clin - risk_mrs)
-  
-  max(abs(risk_comb - risk_clin), na.rm = TRUE)
-  max(abs(risk_comb - risk_mrs), na.rm = TRUE)
-  max(abs(risk_clin - risk_mrs), na.rm = TRUE)
-  
-  cor(risk_comb, risk_clin, use = "complete.obs") # 0.27 # low
-  cor(risk_comb, risk_mrs,  use = "complete.obs") # 0.97 very high
-  cor(risk_clin, risk_mrs,  use = "complete.obs") # 0.17 # low
-  
-  library(corrplot)
-  
-  # build matrix once
-  risk_mat <- cbind(
-    Clinical    = risk_clin,
-    Methylation = risk_mrs,
-    Combined    = risk_comb
-  )
-  
-  # correlations
-  cor_pearson  <- cor(risk_mat, use = "complete.obs", method = "pearson")
-  cor_spearman <- cor(risk_mat, use = "complete.obs", method = "spearman")
-  
-  # plot side by side
-  par(mfrow = c(1,1))
-  pdf(file.path("~/Desktop/", "corr_erpher2n.pdf"), width = 6, height = 6, onefile = TRUE)
-  corrplot(cor_pearson,
-           method = "color",
-           addCoef.col = "black",
-           tl.col = "black",
-           col = colorRampPalette(c("#2166ac", "white", "#b2182b"))(200),
-           cl.lim = c(-1, 1),
-           title = "Pearson",
-           mar = c(0,0,2,0))
-  dev.off()
-  
-  corrplot(cor_spearman,
-           method = "color",
-           addCoef.col = "black",
-           tl.col = "black",
-           col = colorRampPalette(c("#2166ac", "white", "#b2182b"))(200),
-           cl.lim = c(-1, 1),
-           title = "Spearman",
-           mar = c(0,0,2,0))
-  
-  
-  
-  # pam50 comp
-  
-  risk_comb_named <- setNames(risk_comb, rownames(fgr_COMBINED_data))
-  risk_clin_named <- setNames(risk_clin, rownames(fgr_CLIN_data))
-  risk_mrs_named  <- setNames(risk_mrs,  rownames(fgr_MRS_data))
-  
-  par(mfrow = c(1, 3))
-  plot_pam50_risk_boxplot(risk_comb_named, clinical_data, risk_time_cutoff, main = "Combined")
-  plot_pam50_risk_boxplot(risk_clin_named, clinical_data, risk_time_cutoff, main = "Clinical")
-  plot_pam50_risk_boxplot(risk_mrs_named,  clinical_data, risk_time_cutoff, main = "Methylation")
-  
-  # to save
-  par(mfrow = c(1, 1))
-  pdf(file.path("~/Desktop/", "pam50_boxplot_clin.pdf"), width = 6, height = 6, onefile = TRUE)
-  plot_pam50_risk_boxplot(risk_comb_named, clinical_data, risk_time_cutoff, main = "Combined")
-  plot_pam50_risk_boxplot(risk_clin_named, clinical_data, risk_time_cutoff, main = "Clinical")
-  plot_pam50_risk_boxplot(risk_mrs_named,  clinical_data, risk_time_cutoff, main = "Methylation")
+# Optional plots
+MAKE_PLOTS=FALSE
+if (MAKE_PLOTS) {
+  pdf(file.path(current_output_dir, "cutoff_selection_plots.pdf"),
+      width = 10, height = 4 * length(EVAL_TIMES))
+  plot_cutoff_diagnostics(fgr_MRS,  fgr_data, EVAL_TIMES, mrs_cutoff_res$cutoffs)
   dev.off()
 }
 
+selected_cutoffs_mrs  <- mrs_cutoff_res$cutoffs
+selected_cutoffs_clin <- clin_cutoff_res$cutoffs
 
-###############################################################################
-# SAVE FINAL MODEL RESULTS
-###############################################################################
-
-final_results <- list(
-  
-  # The three models
-  final_model = list(
-    model = fgr_COMBINED,
-    rs_cutoffs = selected_cutoffs,
-    var_effects = vimp_fgr_COMBINED
-  ),
-  
-  # MRS construction
-  mrs_construction = list(
-    selected_cpgs = pFG_selected_cpgs,
-    cpg_coefs = pFG_cpg_coefs,
-    cpg_scaling = pFG_cpg_scaling,
-    mrs_scaling = mrs_scaling
-  ),
-  
-  # Clinical preprocessing  
-  clinical_preprocessing = list(
-    continuous_vars = CLIN_CONT,
-    categorical_vars = CLIN_CATEGORICAL,
-    encoded_cols = encoded_result$encoded_cols,
-    clinical_scaling = clin_scaling
-  )
-)
-
-save(final_results, file = file.path(current_output_dir, "final_fg_results.RData"))
-
+# ###############################################################################
+# # COMPARE MODELS pam50, used in thesis book
+# ###############################################################################
+# 
+# 
+# risk_time_cutoff = 10 #delete
+# for(risk_time_cutoff in cutoff_time_points) {
+# 
+#   # pam50 exploration
+#   #pdf(file.path("~/Desktop/", "pam50_boxplot.pdf"), # width = 6, height = 6)
+#   #dev.off()
+# 
+#   # compare models
+#   risk_comb <- as.numeric(predictRisk(fgr_COMBINED, 
+#                                       newdata = fgr_COMBINED_data, 
+#                                       times = risk_time_cutoff, 
+#                                       cause = 1)[,1])
+#   risk_clin <- as.numeric(predictRisk(fgr_CLIN,     
+#                                       newdata = fgr_CLIN_data,     
+#                                       times = risk_time_cutoff, 
+#                                       cause = 1)[,1])
+#   risk_mrs  <- as.numeric(predictRisk(fgr_MRS,      
+#                                       newdata = fgr_MRS_data,      
+#                                       times = risk_time_cutoff, 
+#                                       cause = 1)[,1])
+#   
+#   summary(risk_comb - risk_clin)
+#   summary(risk_comb - risk_mrs)
+#   summary(risk_clin - risk_mrs)
+#   
+#   max(abs(risk_comb - risk_clin), na.rm = TRUE)
+#   max(abs(risk_comb - risk_mrs), na.rm = TRUE)
+#   max(abs(risk_clin - risk_mrs), na.rm = TRUE)
+#   
+#   cor(risk_comb, risk_clin, use = "complete.obs") # 0.27 # low
+#   cor(risk_comb, risk_mrs,  use = "complete.obs") # 0.97 very high
+#   cor(risk_clin, risk_mrs,  use = "complete.obs") # 0.17 # low
+#   
+#   library(corrplot)
+#   
+#   # build matrix once
+#   risk_mat <- cbind(
+#     Clinical    = risk_clin,
+#     Methylation = risk_mrs,
+#     Combined    = risk_comb
+#   )
+#   
+#   # correlations
+#   cor_pearson  <- cor(risk_mat, use = "complete.obs", method = "pearson")
+#   cor_spearman <- cor(risk_mat, use = "complete.obs", method = "spearman")
+#   
+#   # plot side by side
+#   par(mfrow = c(1,1))
+#   pdf(file.path("~/Desktop/", "corr_erpher2n.pdf"), width = 6, height = 6, onefile = TRUE)
+#   corrplot(cor_pearson,
+#            method = "color",
+#            addCoef.col = "black",
+#            tl.col = "black",
+#            col = colorRampPalette(c("#2166ac", "white", "#b2182b"))(200),
+#            cl.lim = c(-1, 1),
+#            title = "Pearson",
+#            mar = c(0,0,2,0))
+#   dev.off()
+#   
+#   corrplot(cor_spearman,
+#            method = "color",
+#            addCoef.col = "black",
+#            tl.col = "black",
+#            col = colorRampPalette(c("#2166ac", "white", "#b2182b"))(200),
+#            cl.lim = c(-1, 1),
+#            title = "Spearman",
+#            mar = c(0,0,2,0))
+#   
+#   # pam50 comp
+#   risk_comb_named <- setNames(risk_comb, rownames(fgr_COMBINED_data))
+#   risk_clin_named <- setNames(risk_clin, rownames(fgr_CLIN_data))
+#   risk_mrs_named  <- setNames(risk_mrs,  rownames(fgr_MRS_data))
+#   
+#   par(mfrow = c(1, 3))
+#   plot_pam50_risk_boxplot(risk_comb_named, clinical_data, risk_time_cutoff, main = "Combined")
+#   plot_pam50_risk_boxplot(risk_clin_named, clinical_data, risk_time_cutoff, main = "Clinical")
+#   plot_pam50_risk_boxplot(risk_mrs_named,  clinical_data, risk_time_cutoff, main = "Methylation")
+#   
+#   # to save
+#   par(mfrow = c(1, 1))
+#   pdf(file.path("~/Desktop/", "pam50_boxplot_clin.pdf"), width = 6, height = 6, onefile = TRUE)
+#   plot_pam50_risk_boxplot(risk_comb_named, clinical_data, risk_time_cutoff, main = "Combined")
+#   plot_pam50_risk_boxplot(risk_clin_named, clinical_data, risk_time_cutoff, main = "Clinical")
+#   plot_pam50_risk_boxplot(risk_mrs_named,  clinical_data, risk_time_cutoff, main = "Methylation")
+#   dev.off()
+# }
 
 ###############################################################################
 # SAVE DEPLOYMENT OBJECT (for applying to independent data)
 ###############################################################################
 
+# Everything here is the minimum needed to go from raw test data -> predictions.
+# Step 1 (MRS path):  cpg_scaling -> cpg_coefs -> mrs_scaling -> fgr_MRS -> cutoff
+# Step 2 (Clin path): clinical_scaling + encoded_cols -> fgr_CLIN -> cutoff
+
 deployment_object <- list(
   
-  # For MRS calculation
   mrs_params = list(
-    required_cpgs = pFG_selected_cpgs,
-    cpg_coefs = pFG_cpg_coefs,
-    cpg_scaling = pFG_cpg_scaling,
-    mrs_scaling = mrs_scaling
-  ),
-  # For clinical variable preparation
-  clinical_params = list(
-    continuous_vars = CLIN_CONT,
-    categorical_vars = CLIN_CATEGORICAL,
-    encoded_cols = encoded_result$encoded_cols,
-    clinical_scaling = clin_scaling
+    required_cpgs = pFG_selected_cpgs,   # which CpGs to extract from test methylation
+    cpg_coefs     = pFG_cpg_coefs,       # weights for linear combination -> raw MRS
+    cpg_scaling   = pFG_cpg_scaling,     # center/scale applied to CpGs before scoring
+    mrs_scaling   = mrs_scaling          # center/scale to standardise final MRS
   ),
   
-  # The three models
-  final_model = list(
-    model = fgr_COMBINED,
-    rs_cutoffs = selected_cutoffs
-    )
+  clinical_params = list(
+    continuous_vars  = CLIN_CONT,
+    categorical_vars = CLIN_CATEGORICAL,
+    encoded_cols     = encoded_result$encoded_cols,  # expected dummy columns after encoding
+    clinical_scaling = clin_scaling                  # center/scale for continuous vars
+  ),
+  
+  mrs_model = list(
+    model      = fgr_MRS,
+    rs_cutoffs = selected_cutoffs_mrs
+  ),
+  
+  clin_model = list(
+    model      = fgr_CLIN,
+    rs_cutoffs = selected_cutoffs_clin
+  )
 )
-
 save(deployment_object, file = file.path(current_output_dir, "deployment_object.RData"))
 
 cat("\nSaved:\n")
-cat("  - final_fg_results.RData (complete results)\n")
-cat("  - deployment_object.RData (for predictions on new data)\n")
+cat("  - deployment_object.RData (minimal object for test set predictions)\n")
 
 ###############################################################################
 # CLEANUP AND FINISH
